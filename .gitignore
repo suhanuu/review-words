@@ -14,3 +14,7 @@ _data/re/.profile*/
 # 系统杂项
 .DS_Store
 Thumbs.db
+
+# 运行时自动生成的缓存与本地工具记录（不纳入仓库）
+.wbapp_*.genie
+.workbuddy/
