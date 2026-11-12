@@ -4641,3 +4641,146 @@ button {
   .drill .meaning-block { --meaning-h: 88px; }
   .drill .action-zone { height: 64px; }
 }
+
+/* User-owned OpenAI-compatible API settings for writing practice */
+.ai-settings { margin: 16px 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); }
+.ai-settings summary { display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text); font-size: 13px; font-weight: 650; }
+.ai-settings-summary { color: var(--muted); font-size: 11px; font-weight: 400; }
+.ai-settings-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.ai-settings-fields label { display: grid; gap: 7px; color: var(--text-soft); font-size: 12px; }
+.ai-settings-fields label:first-child { grid-column: 1 / -1; }
+.ai-settings-fields input { width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 9px; color: var(--text); background: var(--surface); font: 13px var(--font-sans); }
+.ai-settings-fields input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+.ai-settings-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ai-security-note { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.7; }
+#aiConfigStatus { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
+@media (max-width: 560px) { .ai-settings-fields { grid-template-columns: 1fr; } .ai-settings-fields label:first-child { grid-column: auto; } .ai-settings-actions { flex-direction: column; align-items: stretch; } }
+
+/* 今日薄弱词汇：一词一枚可勾选的胶囊标签 */
+.weak-word-list { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.weak-word-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-soft);
+  font-size: 12.5px;
+  line-height: 1.2;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.16s var(--ease), background-color 0.16s var(--ease),
+    color 0.16s var(--ease);
+}
+.weak-word-chip:hover { border-color: var(--line-strong); color: var(--text); }
+.weak-word-chip input {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.weak-word-chip span {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+}
+.weak-word-chip small { color: var(--muted); font-size: 10.5px; letter-spacing: 0.02em; }
+.weak-word-chip:has(input:checked) { border-color: var(--accent-ring); background: var(--accent-soft); }
+.weak-word-chip:has(input:checked) small { color: var(--accent-deep); }
+
+/* 作文页底部操作条：难度选择、生成按钮、状态文字各就各位，手机上自动换行 */
+.ai-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
+.ai-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+.ai-controls select {
+  padding: 7px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+  font: 12.5px var(--font-sans);
+}
+.ai-controls #aiStatus { flex: 1 1 220px; min-width: 0; margin: 0; }
+
+/* 手机端顶栏：导航按钮不再折成两行，空间不够时在导航条内部横向滑动，
+   右侧设置/主题图标永远留在屏幕里，页面本身不出现横向滚动。 */
+@media (max-width: 720px) {
+  .topbar { overflow: hidden; }
+  .brand, .topbar-right { flex: 0 0 auto; }
+  .nav {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav-btn { flex: 0 0 auto; white-space: nowrap; }
+}
+@media (max-width: 480px) {
+  .topbar { padding: 0 10px; gap: 6px; }
+  /* 站名让位给导航，只保留书本图标 */
+  .brand-copy { display: none; }
+  .brand-mark { display: grid; width: 30px; height: 30px; border-radius: 9px; }
+  .brand-mark svg { width: 17px; height: 17px; }
+  .nav { gap: 1px; padding: 3px; }
+  .nav-btn { min-width: 34px; padding: 5px 7px; font-size: 11px; }
+  .topbar-right { gap: 1px; }
+  .icon-btn { width: 28px; height: 28px; }
+}
+
+/* ============================================================
+   自评揭晓释义
+   ============================================================ */
+/* 中文意思放回原来打字的大字位置：窗口再矮也先看到意思 */
+.reveal-answer {
+  display: inline-block;
+  font-size: clamp(23px, 2.6vw, 32px);
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+.drill.is-reveal .answer { min-height: 0; }
+.drill.is-reveal .meaning-block {
+  height: auto;
+  /* 比打字阶段多留 96px：两行长释义也能整段显示，不被底部按钮盖住 */
+  max-height: calc(var(--meaning-h) + 96px);
+  min-height: 0;
+  gap: 4px;
+  overflow-y: auto;
+  /* 1px 的取整误差不值得冒出一条滚动条；长释义仍可用滚轮查看 */
+  scrollbar-width: none;
+}
+.drill.is-reveal .meaning-block::-webkit-scrollbar { display: none; }
+.drill.is-reveal .action-zone { margin-top: 8px; }
+/* 已记录提示压缩成一行，把高度让给释义 */
+.drill.is-reveal .review-result { padding: 3px 12px; font-size: 11.5px; }
+/* 矮屏：释义区多留一点高度，完整释义不再被整段隐藏 */
+@media (max-height: 620px) and (min-width: 861px) {
+  .drill.is-reveal .meaning-block { --meaning-h: 96px; }
+  .drill.is-reveal .full-def { display: block; }
+}
+
+/* 作文 / 书架 / 收藏页可以比一屏长：让它们自己纵向滚动，
+   不要被禁滚的 main 裁掉（之前展开 AI 设置后下半页就看不到了） */
+@media (min-width: 861px) {
+  #view-writing.is-active,
+  #view-books.is-active,
+  #view-favs.is-active {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+  }
+}

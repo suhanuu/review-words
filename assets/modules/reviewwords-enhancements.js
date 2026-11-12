@@ -1,7 +1,7 @@
 (function(){
 'use strict';
 var $=function(id){return document.getElementById(id);};
-var BOOKS_KEY='reviewwords.books.v1', ACTIVE_KEY='reviewwords.activeBook.v1', PREFIX='wordtype.v1:book:', ARTICLES='reviewwords.articles.v1', TASKS='reviewwords.dailyTasks.v1', WORKER='reviewwords.workerUrl.v1';
+var BOOKS_KEY='reviewwords.books.v1', ACTIVE_KEY='reviewwords.activeBook.v1', PREFIX='wordtype.v1:book:', ARTICLES='reviewwords.articles.v1', TASKS='reviewwords.dailyTasks.v1', AI_SETTINGS='reviewwords.aiSettings.v1';
 function get(k,d){try{return JSON.parse(localStorage.getItem(k)||'null')||d;}catch(e){return d;}}
 function active(){return localStorage.getItem(ACTIVE_KEY)||'redbook-2024';}
 function archive(){return get(PREFIX+active(),{});}
@@ -30,20 +30,147 @@ function renderHistory(){
 }
 function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function prepareTask(){var tasks=get(TASKS,{}),k=active()+':'+today();if(!tasks[k])tasks[k]={bookId:active(),date:today(),status:'待生成',createdAt:Date.now()};localStorage.setItem(TASKS,JSON.stringify(tasks));$('dailyTaskStatus').textContent='今日任务：'+tasks[k].status+'（不会自动调用 AI）';}
+function readAISettings(){return get(AI_SETTINGS,{});}
+function endpointFor(base){
+ var u=new URL(base);
+ if(u.protocol!=='https:' && !(u.hostname==='localhost'||u.hostname==='127.0.0.1')) throw new Error('API 地址必须使用 HTTPS（本地调试可使用 localhost）。');
+ var p=u.pathname.replace(/\/+$/,'');
+ if(/\/chat\/completions$/i.test(p)) return u.toString().replace(/\/+$/,'');
+ if(/\/v1$/i.test(p)) u.pathname=p+'/chat/completions';
+ else u.pathname=p+'/v1/chat/completions';
+ return u.toString().replace(/\/+$/,'');
+}
+function validateAISettings(settings){
+ if(!settings.baseUrl||!settings.apiKey||!settings.model) throw new Error('请填写 API Base URL、API Key 和模型名称。');
+ endpointFor(settings.baseUrl);
+ return settings;
+}
+function saveAISettings(showStatus){
+ var settings={baseUrl:($('aiBaseUrl').value||'').trim(),apiKey:($('aiApiKey').value||'').trim(),model:($('aiModel').value||'').trim()};
+ try{validateAISettings(settings);localStorage.setItem(AI_SETTINGS,JSON.stringify(settings));if(showStatus!==false)$('aiConfigStatus').textContent='设置已保存在当前浏览器。';return settings;}
+ catch(e){$('aiConfigStatus').textContent=e.message;throw e;}
+}
+async function callCompatibleAPI(settings,messages,maxTokens,jsonMode){
+ var endpoint=endpointFor(settings.baseUrl);
+ var payload={model:settings.model,messages:messages,temperature:0.65,max_tokens:maxTokens||1200};
+ if(jsonMode) payload.response_format={type:'json_object'};
+ var resp=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+settings.apiKey},body:JSON.stringify(payload)});
+ var raw=await resp.json().catch(function(){return {};});
+ if(!resp.ok){var detail=raw.error&&raw.error.message?raw.error.message:(resp.status+' '+resp.statusText);throw new Error('API 请求失败：'+detail);}
+ var choice=raw.choices&&raw.choices[0];
+ var content=choice&&choice.message&&choice.message.content;
+ if(Array.isArray(content)) content=content.map(function(x){return (x&&x.text)||'';}).join('');
+ if(typeof content!=='string'||!content.trim()) throw new Error('API 返回内容为空，请检查模型是否支持 Chat Completions。');
+ return {content:content.trim(),finishReason:(choice&&choice.finish_reason)||''};
+}
+// 有的模型会带 ```json 围栏、前后解释文字，甚至字符串里直接塞真实换行；
+// 这里逐层剥掉再解析，避免明明有内容却判成「不是 JSON」。
+function stripFence(text){
+ var s=String(text==null?'':text).replace(/^\uFEFF/,'').trim();
+ return s.replace(/^```[a-zA-Z]*\s*/,'').replace(/\s*```$/,'').trim();
+}
+function extractJsonObject(s){
+ var start=s.indexOf('{');
+ if(start<0) throw new Error('模型没有返回 JSON（返回内容开头：'+s.slice(0,120).replace(/\s+/g,' ')+'…）');
+ var depth=0,inStr=false,esc=false;
+ for(var i=start;i<s.length;i++){
+  var ch=s.charAt(i);
+  if(inStr){
+   if(esc) esc=false;
+   else if(ch==='\\') esc=true;
+   else if(ch==='"') inStr=false;
+   continue;
+  }
+  if(ch==='"'){inStr=true;continue;}
+  if(ch==='{') depth++;
+  else if(ch==='}'){depth--;if(depth===0) return s.slice(start,i+1);}
+ }
+ return s.slice(start);
+}
+function repairJsonText(body){
+ var out='',inStr=false,esc=false;
+ for(var i=0;i<body.length;i++){
+  var c=body.charAt(i);
+  if(inStr){
+   if(esc){out+=c;esc=false;}
+   else if(c==='\\'){out+=c;esc=true;}
+   else if(c==='"'){out+=c;inStr=false;}
+   else if(c==='\n'){out+='\\n';}
+   else if(c==='\r'){out+='\\r';}
+   else if(c==='\t'){out+='\\t';}
+   else out+=c;
+  }else{
+   if(c==='"') inStr=true;
+   out+=c;
+  }
+ }
+ return out;
+}
+function parseArticleJSON(content){
+ var body=extractJsonObject(stripFence(content));
+ try{return JSON.parse(body);}catch(e){}
+ try{return JSON.parse(repairJsonText(body));}catch(e){
+  throw new Error('模型没有返回有效 JSON（返回内容开头：'+body.slice(0,120).replace(/\s+/g,' ')+'…）');
+ }
+}
+// 兼容模型把键名写成中文的情况
+function normalizeArticle(data){
+ if(!data||typeof data!=='object'||Array.isArray(data)) return {};
+ var pick=function(keys){
+  for(var i=0;i<keys.length;i++){
+   var v=data[keys[i]];
+   if(typeof v==='string'&&v.trim()) return v;
+  }
+  return '';
+ };
+ return {
+  title:pick(['title','标题']),
+  content:pick(['content','正文','文章','passage','text']),
+  translation:pick(['translation','翻译','中文翻译','译文']),
+  difficulty:pick(['difficulty','难度','level'])
+ };
+}
+async function testAISettings(){
+ var settings;try{settings=saveAISettings(false);}catch(e){return;}
+ $('btnTestAISettings').disabled=true;$('aiConfigStatus').textContent='正在测试连接……';
+ try{await callCompatibleAPI(settings,[{role:'user',content:'Reply with exactly: OK'}],16);$('aiConfigStatus').textContent='连接成功：模型已返回内容。';}
+ catch(e){$('aiConfigStatus').textContent='连接失败：'+e.message;}
+ finally{$('btnTestAISettings').disabled=false;}
+}
 async function generate(){
  var chosen=weak().filter(function(x){return selected[x.word]!==false;}).slice(0,24);
  if(!chosen.length){$('aiStatus').textContent='没有选中的薄弱词。';return;}
- var url=($('aiWorkerUrl').value||'').trim();if(!url){$('aiStatus').textContent='请先填写 Cloudflare Worker HTTPS 地址。';return;}
- localStorage.setItem(WORKER,url);$('aiStatus').textContent='正在生成并校验文章……';$('btnGenerateArticle').disabled=true;
+ var settings;try{settings=validateAISettings(readAISettings());}catch(e){$('aiStatus').textContent='请先打开「AI API 设置」并保存配置：'+e.message;var panel=$('aiSettingsPanel');if(panel)panel.open=true;return;}
+ $('aiStatus').textContent='正在生成并校验文章……';$('btnGenerateArticle').disabled=true;
  try{
-  var resp=await fetch(url.replace(/\/$/,'')+'/generate-article',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({words:chosen.map(function(x){return x.word;}),difficulty:$('aiDifficulty').value,targetLength:150,language:'en',includeTranslation:true})});
-  if(!resp.ok)throw new Error('服务端返回 '+resp.status);
-  var data=await resp.json();if(!data.content||!data.translation)throw new Error('返回内容缺少英文正文或中文翻译');
-  var lower=data.content.toLowerCase(),missing=chosen.filter(function(x){return !new RegExp('(^|[^a-z])'+x.word.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'([^a-z]|$)','i').test(lower);});
+  var difficulty=$('aiDifficulty').value;
+  var prompt='Write an original English learning passage of about 150 words, CEFR '+(difficulty==='adaptive'?'adaptive A2-B2':difficulty)+'. Naturally include EVERY target word exactly as written (same spelling; do not change inflection). Avoid a list-like style. Then provide a faithful Simplified Chinese translation. Return ONLY a single JSON object (no markdown, no code fence, no explanation) with keys title, content, translation, difficulty. Inside JSON strings use \\n for line breaks; never put a raw line break inside a string. Target words: '+chosen.map(function(x){return x.word;}).join(', ')+'.';
+  var messages=[{role:'system',content:'You are an English-learning writing assistant. Reply with one valid JSON object and nothing else.'},{role:'user',content:prompt}];
+  var answer;
+  // 部分服务商不支持 response_format；报错就退回普通模式
+  try{answer=await callCompatibleAPI(settings,messages,2400,true);}
+  catch(e1){
+   if(/response_format|json_object|not support|unsupported|invalid.*(parameter|field)|未知参数/i.test(e1.message)) answer=await callCompatibleAPI(settings,messages,2400,false);
+   else throw e1;
+  }
+  var data;
+  try{data=normalizeArticle(parseArticleJSON(answer.content));}
+  catch(parseErr){
+   // 让模型按同一上下文再输出一次纯 JSON，通常第二次就对了
+   var fixMessages=messages.concat([
+    {role:'assistant',content:String(answer.content).slice(0,3000)},
+    {role:'user',content:'Your previous reply was not valid JSON. Reply again with ONLY the JSON object (title, content, translation, difficulty). Escape newlines as \\n and do not wrap it in markdown.'}
+   ]);
+   var retry=await callCompatibleAPI(settings,fixMessages,2400,false);
+   try{data=normalizeArticle(parseArticleJSON(retry.content));}
+   catch(e2){throw new Error(e2.message+(answer.finishReason==='length'?'（首次返回疑似被输出上限截断）':'')+'。可换一个更听话的模型，或再试一次。');}
+  }
+  if(!data.content||!data.translation)throw new Error('返回内容缺少英文正文或中文翻译');
+  var lower=String(data.content).toLowerCase(),missing=chosen.filter(function(x){return !new RegExp('(^|[^a-z])'+x.word.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'([^a-z]|$)','i').test(lower);});
   if(missing.length)throw new Error('文章未覆盖全部目标词：'+missing.map(function(x){return x.word;}).join(', '));
-  var wc=(data.content.match(/\b[\w'-]+\b/g)||[]).length;
+  var wc=(String(data.content).match(/\b[\w'-]+\b/g)||[]).length;
   if(wc<100||wc>190)throw new Error('文章长度为 '+wc+' 词，未达到约 150 词要求，请重试');
-  var a=saveCurrentArticle({id:'article-'+Date.now(),bookId:active(),date:today(),title:data.title||'Daily weak-word writing',content:data.content,translation:data.translation,targetWords:chosen.map(function(x){return x.word;}),difficulty:data.difficulty||$('aiDifficulty').value,wordCount:wc,createdAt:new Date().toISOString(),provider:data.provider||'cloudflare-worker'});
+  var a=saveCurrentArticle({id:'article-'+Date.now(),bookId:active(),date:today(),title:data.title||'Daily weak-word writing',content:String(data.content),translation:String(data.translation),targetWords:chosen.map(function(x){return x.word;}),difficulty:data.difficulty||difficulty,wordCount:wc,createdAt:new Date().toISOString(),provider:settings.model});
   showArticle(a);chosen.forEach(function(x){selected[x.word]=false;});renderWeak();$('aiStatus').textContent='生成成功，已保存；本批目标词 '+chosen.length+' 个，正文 '+wc+' 词。剩余已选词可继续生成下一篇。';
   var tasks=get(TASKS,{}),k=active()+':'+today();tasks[k]={bookId:active(),date:today(),status:'已生成',articleId:a.id,createdAt:Date.now()};localStorage.setItem(TASKS,JSON.stringify(tasks));$('dailyTaskStatus').textContent='今日任务：已生成';
  }catch(e){$('aiStatus').textContent='生成失败：'+e.message;}
@@ -51,18 +178,18 @@ async function generate(){
 }
 function backup(){
  var data={format:'review-words-backup',version:1,exportedAt:new Date().toISOString(),items:{}};
- for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&(/^(wordtype\.v1|reviewwords\.)/.test(k)))data.items[k]=localStorage.getItem(k);}
+ for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k!==AI_SETTINGS&&(/^(wordtype\.v1|reviewwords\.)/.test(k)))data.items[k]=localStorage.getItem(k);}
  var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='review-words-backup-'+today()+'.json';a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},1000);$('backupStatus').textContent='已导出 '+Object.keys(data.items).length+' 项本地数据。';
 }
 function restore(file){
- var reader=new FileReader();reader.onload=function(){try{var d=JSON.parse(String(reader.result||''));if(d.format!=='review-words-backup'||!d.items)throw new Error('不是有效的 Review Words 备份文件');if(!confirm('恢复将覆盖备份中同名的数据键，建议先导出当前备份。确定继续吗？'))return;Object.keys(d.items).forEach(function(k){if(/^(wordtype\.v1|reviewwords\.)/.test(k))localStorage.setItem(k,String(d.items[k]));});$('backupStatus').textContent='恢复成功，页面即将重新载入。';setTimeout(function(){location.reload();},500);}catch(e){$('backupStatus').textContent='恢复失败：'+e.message;}};reader.readAsText(file,'UTF-8');
+ var reader=new FileReader();reader.onload=function(){try{var d=JSON.parse(String(reader.result||''));if(d.format!=='review-words-backup'||!d.items)throw new Error('不是有效的 Review Words 备份文件');if(!confirm('恢复将覆盖备份中同名的数据键，建议先导出当前备份。确定继续吗？'))return;Object.keys(d.items).forEach(function(k){if(k!==AI_SETTINGS&&/^(wordtype\.v1|reviewwords\.)/.test(k))localStorage.setItem(k,String(d.items[k]));});$('backupStatus').textContent='恢复成功，页面即将重新载入。';setTimeout(function(){location.reload();},500);}catch(e){$('backupStatus').textContent='恢复失败：'+e.message;}};reader.readAsText(file,'UTF-8');
 }
 function editDistance(a,b){var prev=Array.from({length:b.length+1},function(_,i){return i;}),cur=[];for(var i=1;i<=a.length;i++){cur=[i];for(var j=1;j<=b.length;j++)cur[j]=Math.min(cur[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));prev=cur;}return prev[b.length];}
 function renderTypingStats(){var list=get('reviewwords.typingRecords.v1',[]);var n=list.length,avgW=n?Math.round(list.reduce(function(s,x){return s+(x.wpm||0);},0)/n):0,avgA=n?Math.round(list.reduce(function(s,x){return s+(x.accuracy||0);},0)/n*100):0,errs=list.reduce(function(s,x){return s+(x.errors||0);},0);if($('typingSessions'))$('typingSessions').textContent=n;if($('typingAvgWpm'))$('typingAvgWpm').textContent=avgW;if($('typingAvgAcc'))$('typingAvgAcc').textContent=avgA+'%';if($('typingTotalErrors'))$('typingTotalErrors').textContent=errs;if($('typingRecent')){$('typingRecent').innerHTML='';list.slice(0,8).forEach(function(x){var row=document.createElement('div');row.className='article-history-item';var t=document.createElement('span');t.textContent=x.date+' · '+x.mode+' · '+x.wpm+' WPM · '+Math.round(x.accuracy*100)+'% · '+x.errors+' 处差异';row.appendChild(t);$('typingRecent').appendChild(row);});if(!n)$('typingRecent').textContent='完成作文训练后，这里会显示成绩。';}}
 function bind(){
  if(!$('weakWordList'))return;
- var u=localStorage.getItem(WORKER);if(u)$('aiWorkerUrl').value=u;
- renderWeak();renderTypingStats();$('btnGenerateArticle').addEventListener('click',generate);$('btnPrepareDaily').addEventListener('click',prepareTask);$('btnShowHistory').addEventListener('click',renderHistory);
+ var cfg=readAISettings();if(cfg.baseUrl)$('aiBaseUrl').value=cfg.baseUrl;if(cfg.apiKey)$('aiApiKey').value=cfg.apiKey;if(cfg.model)$('aiModel').value=cfg.model;
+ renderWeak();renderTypingStats();$('btnGenerateArticle').addEventListener('click',generate);$('btnSaveAISettings').addEventListener('click',function(){try{saveAISettings(true);}catch(e){}});$('btnTestAISettings').addEventListener('click',testAISettings);$('btnPrepareDaily').addEventListener('click',prepareTask);$('btnShowHistory').addEventListener('click',renderHistory);
  $('btnExportBackup').addEventListener('click',backup);$('backupFile').addEventListener('change',function(){if(this.files[0])restore(this.files[0]);});
  $('btnStartWriting').addEventListener('click',function(){window.__rwTypingStarted=Date.now();var s=$('articleSource').value.trim();if(s){var a=saveCurrentArticle({id:'manual-'+Date.now(),bookId:active(),title:'手动文章',content:s,translation:$('articleTranslation').value,wordCount:(s.match(/\b[\w'-]+\b/g)||[]).length,createdAt:new Date().toISOString()});}},true);
  $('btnSubmitWriting').addEventListener('click',function(){var source=$('articleSource').value,typed=$('writingInput').value;if(!source)return;var dist=editDistance(source,typed),max=Math.max(source.length,typed.length);var mins=Math.max((Date.now()-Number(window.__rwTypingStarted||Date.now()))/60000,1/60000);var rec=get('reviewwords.typingRecords.v1',[]);var accuracy=max?Math.max(0,1-dist/max):0;var correctChars=Math.max(0,source.length-dist);rec.unshift({bookId:active(),date:today(),mode:document.querySelector('[data-typing-mode].is-active')?.dataset.typingMode||'strict',accuracy:accuracy,errors:dist,wpm:Math.round(correctChars/5/mins),durationMs:mins*60000,articleId:articles()[0]?.id||null,article:source.slice(0,120)});localStorage.setItem('reviewwords.typingRecords.v1',JSON.stringify(rec.slice(0,500)));renderTypingStats();},true);

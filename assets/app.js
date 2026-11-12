@@ -969,6 +969,7 @@
     el('typeRow').classList.remove('show');
     // 这一屏还没有答案，把答案区收起来，别留一大片空白
     document.querySelector('.drill').classList.add('is-recall');
+    document.querySelector('.drill').classList.remove('is-reveal');
     // 背词阶段只看词义并自评；键盘与手部动画统一放到作文训练。
     showKeyboard(false);
 
@@ -1183,6 +1184,15 @@
     f.className = 'feedback' + (kind ? ' ' + kind : '');
   }
 
+  // 自评揭晓：把中文意思放进原来打字的大字位置，任何窗口高度都先看到意思；
+  // 完整释义、已记录提示依次排在下面，实在放不下时先裁掉最下面的提示。
+  function renderMeaning() {
+    var w = state.current;
+    if (!w) return;
+    el('answerText').innerHTML =
+      '<span class="reveal-answer">' + esc(w.a || w.def || '') + '</span>';
+  }
+
   // 背词只做熟悉度判断。先保存复习记录，再停留在当前词上展示中文释义。
   function rate(g) {
     if (state.phase !== 'recall') return;
@@ -1191,7 +1201,8 @@
 
     // 揭晓释义；详细词根、搭配和例句仍由原有「详细释义」抽屉按需加载。
     document.querySelector('.drill').classList.remove('is-recall');
-    el('answerText').innerHTML = '';
+    document.querySelector('.drill').classList.add('is-reveal');
+    renderMeaning();
     el('fullDef').classList.add('show');
     el('rateFeedback').hidden = false;
     el('rateFeedback').className = 'review-result grade-' + g;
@@ -1204,6 +1215,7 @@
     el('rateRow').classList.add('is-finished');
     el('btnMeaningNext').hidden = false;
     el('btnMeaningNext').focus();
+    el('hints').textContent = '空格 / 回车 下一个单词　·　R 重听发音';
   }
 
   function submit() {
@@ -1308,6 +1320,12 @@
   function next() {
     state.step += 1;
     loadNext();
+  }
+
+  // 揭晓释义后，「空格 / 回车 / 下一个单词按钮」共用这个入口，防止连按跳两个词
+  function nextFromReveal() {
+    if (state.phase !== 'judged') return;
+    next();
   }
 
   // 全书的词都学过、且当下没有到期复习时才会走到这里
@@ -2021,7 +2039,7 @@
     // 自评揭晓释义后，由用户主动进入下一个单词。
     el('btnMeaningNext').addEventListener('click', function (e) {
       e.stopPropagation();
-      if (state.phase === 'judged') next();
+      nextFromReveal();
     });
 
     // 收藏当前词：再点一次取消
@@ -2157,11 +2175,17 @@
         if (tag === 'INPUT' && e.key !== 'Enter') return;
       }
 
-      // 看词阶段先自评：J/K/L 定了级，才揭晓中文并进入打字
+      // 看词阶段先自评：J/K/L 定了级，才揭晓中文
       if (state.phase === 'recall') {
         if (e.key === 'j' || e.key === 'J' || e.key === '1') { e.preventDefault(); rate(1); return; }
         if (e.key === 'k' || e.key === 'K' || e.key === '2') { e.preventDefault(); rate(2); return; }
         if (e.key === 'l' || e.key === 'L' || e.key === '3') { e.preventDefault(); rate(3); return; }
+        if (e.key === 'r' || e.key === 'R') { if (state.current) speak(state.current.w, true); return; }
+      }
+
+      // 释义已经揭晓：空格 / 回车进入下一个词（按钮有焦点时也走这里，避免触发两次）
+      if (state.phase === 'judged') {
+        if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); nextFromReveal(); return; }
         if (e.key === 'r' || e.key === 'R') { if (state.current) speak(state.current.w, true); return; }
       }
     });

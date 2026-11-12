@@ -116,13 +116,25 @@
     <div class="page writing-page">
       <h2 class="page-title">作文训练</h2>
       <p class="page-sub">把薄弱词汇放进真实语境，再通过英文输入巩固拼写。键盘与手部提示只在这里显示。</p>
-      <section class="writing-card weak-pool-card"><div class="writing-card-head"><strong>今日薄弱词汇</strong><span id="weakPoolCount" class="writing-status">整理中</span></div><p class="page-sub">忘了优先，其次模糊，再其次收藏。重复来源自动合并；可取消勾选排除本次生成。</p><div id="weakWordList" class="weak-word-list"></div><div class="ai-controls"><label>Cloudflare Worker 地址<input id="aiWorkerUrl" type="url" placeholder="https://your-worker.workers.dev"></label><label>文章难度<select id="aiDifficulty"><option value="adaptive">自适应（A2–B2）</option><option value="A2">A2</option><option value="B1">B1</option><option value="B2">B2</option></select></label><button class="primary-btn" id="btnGenerateArticle" type="button">生成约 150 词作文</button><span id="aiStatus" role="status"></span></div></section>
+      <section class="writing-card weak-pool-card"><div class="writing-card-head"><strong>今日薄弱词汇</strong><span id="weakPoolCount" class="writing-status">整理中</span></div><p class="page-sub">忘了优先，其次模糊，再其次收藏。重复来源自动合并；可取消勾选排除本次生成。</p><div id="weakWordList" class="weak-word-list"></div>
+        <details class="ai-settings" id="aiSettingsPanel">
+          <summary>AI API 设置 <span class="ai-settings-summary">配置你自己的 API 服务</span></summary>
+          <div class="ai-settings-fields">
+            <label>API Base URL<input id="aiBaseUrl" type="url" inputmode="url" placeholder="https://api.openai.com/v1" autocomplete="url"></label>
+            <label>API Key<input id="aiApiKey" type="password" placeholder="粘贴你的 API Key" autocomplete="off"></label>
+            <label>模型名称<input id="aiModel" type="text" placeholder="例如 gpt-4o-mini" autocomplete="off"></label>
+            <div class="ai-settings-actions"><button class="ghost-btn" id="btnTestAISettings" type="button">测试连接</button><button class="primary-btn" id="btnSaveAISettings" type="button">保存 API 设置</button></div>
+            <p class="ai-security-note">密钥保存在当前浏览器本地，不会写入 GitHub 项目文件，也不会包含在数据备份中。浏览器直接请求 API 需要服务商允许跨域（CORS）；请勿在公用电脑保存密钥。</p>
+            <span id="aiConfigStatus" role="status" aria-live="polite"></span>
+          </div>
+        </details>
+        <div class="ai-controls"><label>文章难度<select id="aiDifficulty"><option value="adaptive">自适应（A2–B2）</option><option value="A2">A2</option><option value="B1">B1</option><option value="B2">B2</option></select></label><button class="primary-btn" id="btnGenerateArticle" type="button">生成约 150 词作文</button><span id="aiStatus" role="status" aria-live="polite"></span></div></section>
 <section class="writing-card article-history-card"><div class="writing-card-head"><strong>文章与每日任务</strong><span id="dailyTaskStatus" class="writing-status"></span></div><div class="history-actions"><button class="ghost-btn" id="btnPrepareDaily" type="button">准备今日任务</button><button class="ghost-btn" id="btnShowHistory" type="button">查看文章历史</button></div><div id="articleHistory" class="article-history" hidden></div></section>
 <div class="writing-grid">
         <section class="writing-card">
           <div class="writing-card-head"><strong>今日文章</strong><span class="writing-status" id="articleStatus">等待文章</span></div>
-          <label class="writing-label" for="articleSource">英文原文（后续接入 AI 自动生成）</label>
-          <textarea id="articleSource" class="article-source" placeholder="将生成的英文作文放在这里。第一阶段先支持粘贴文章进行打字训练。"></textarea>
+          <label class="writing-label" for="articleSource">英文原文</label>
+          <textarea id="articleSource" class="article-source" placeholder="生成的英文作文会显示在这里，也可以粘贴自己的文章。"></textarea>
           <label class="writing-label" for="articleTranslation">中文翻译</label>
           <textarea id="articleTranslation" class="article-translation" placeholder="中文翻译会与文章一起保存。" readonly></textarea>
           <div class="writing-controls">
