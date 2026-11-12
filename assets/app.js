@@ -2,10 +2,18 @@
   'use strict';
 
   var STORE_KEY = 'wordtype.v1';
-  // 还没有账号系统：所有数据都在本机这份档案里。
-  // 将来接入账号后，把 USER_SCOPE 设成用户 id，本地档案就按人分开，
-  // 两个人共用一台电脑也不会串收藏（服务端同步另行实现，数据结构不用改）。
+  var BOOKS_KEY = 'reviewwords.books.v1';
+  var ACTIVE_BOOK_KEY = 'reviewwords.activeBook.v1';
+  var DEFAULT_BOOK_ID = 'redbook-2024';
   var USER_SCOPE = '';
+  function readBooks() {
+    try { var list = JSON.parse(localStorage.getItem(BOOKS_KEY) || 'null'); if (Array.isArray(list) && list.length) return list; } catch (e) {}
+    var initial = [{ id: DEFAULT_BOOK_ID, name: '2024 考研英语词汇·红宝书', kind: 'builtin', createdAt: Date.now(), wordCount: (window.WORD_BANK || []).length }];
+    localStorage.setItem(BOOKS_KEY, JSON.stringify(initial)); return initial;
+  }
+  var books = readBooks();
+  var activeBookId = localStorage.getItem(ACTIVE_BOOK_KEY) || DEFAULT_BOOK_ID;
+  if (!books.some(function (b) { return b.id === activeBookId; })) activeBookId = DEFAULT_BOOK_ID;
   var MAX_TRIES = 3;
   var MIN = 60000;
   var DAY = 86400000;
@@ -31,10 +39,10 @@
   var el = function (id) { return document.getElementById(id); };
 
   // ================= 存储 =================
-  function storeKey() {
-    return USER_SCOPE ? STORE_KEY + ':' + USER_SCOPE : STORE_KEY;
+  function storeKey() { return STORE_KEY + ':book:' + activeBookId + (USER_SCOPE ? ':' + USER_SCOPE : ''); }
+  if (activeBookId === DEFAULT_BOOK_ID && !localStorage.getItem(storeKey()) && localStorage.getItem(STORE_KEY)) {
+    localStorage.setItem(storeKey(), localStorage.getItem(STORE_KEY));
   }
-
   var db = load();
 
   function load() {
@@ -99,7 +107,7 @@
   var wordIndex = null;
 
   function allWords() {
-    if (!wordCache) wordCache = db.custom.concat(window.WORD_BANK || []);
+    if (!wordCache) wordCache = activeBookId === DEFAULT_BOOK_ID ? db.custom.concat(window.WORD_BANK || []) : db.custom.slice();
     return wordCache;
   }
 
@@ -617,10 +625,11 @@
   }
 
   function visualKey(e, down) {
-    if (state.view !== 'drill') return;
-    if (state.phase !== 'typing' && state.phase !== 'recall') return;
-    // 抬起一律处理：否则按着键切走焦点时，手会一直停在下压姿势
-    if (down && state.phase === 'typing' && document.activeElement !== el('typeInput')) return;
+    if (state.view !== 'writing' && state.view !== 'drill') return;
+    if (state.view === 'drill' && state.phase !== 'typing' && state.phase !== 'recall') return;
+    // 作文训练只响应真实键盘事件，不允许点击屏幕键盘代替输入。
+    if (down && state.view === 'writing' && document.activeElement !== el('writingInput')) return;
+    if (down && state.view === 'drill' && state.phase === 'typing' && document.activeElement !== el('typeInput')) return;
     var code = eventCode(e);
     if (!code) return;
     var key = document.querySelector('.kb-key[data-code="' + code + '"]');
@@ -887,7 +896,7 @@
   // ================= 视图切换 =================
   function setView(name) {
     state.view = name;
-    ['drill', 'done', 'stats', 'words', 'favs'].forEach(function (v) {
+    ['drill', 'done', 'writing', 'books', 'stats', 'words', 'favs'].forEach(function (v) {
       var node = el('view-' + v);
       if (node) node.classList.toggle('is-active', v === name);
     });
@@ -897,8 +906,8 @@
     if (name === 'stats') renderStats();
     if (name === 'words') renderWords(true);
     if (name === 'favs') renderFavs();
-    // 键盘只跟着学习区走，切到统计/词库时收起
-    showKeyboard(name === 'drill');
+    // 键盘和手部提示只属于作文训练，不再出现在背词页。
+    showKeyboard(name === 'writing');
     if (name === 'drill') updateHint();
     // 学习页锁住文档滚动：练习时页面不能因为聚焦、锚定或内容变高而整体位移
     var lock = name === 'drill';
@@ -955,8 +964,8 @@
     el('typeRow').classList.remove('show');
     // 这一屏还没有答案，把答案区收起来，别留一大片空白
     document.querySelector('.drill').classList.add('is-recall');
-    // 键盘常驻：从看词自评这一屏就摆出来，提示当前该按什么
-    showKeyboard(true);
+    // 背词阶段只看词义并自评；键盘与手部动画统一放到作文训练。
+    showKeyboard(false);
 
     var inp = el('typeInput');
     inp.value = '';
@@ -1169,32 +1178,12 @@
     f.className = 'feedback' + (kind ? ' ' + kind : '');
   }
 
-  // 自评即揭示：三个选项在看词阶段就摆着，选完才把中文释义放出来
+  // 背词只做熟悉度判断，不再进入中文打字流程。
+  // 三个等级直接写入该词的复习计划，然后切到下一个词。
   function rate(g) {
     if (state.phase !== 'recall') return;
     state.grade = g;
-    state.phase = 'typing';
-    el('stageMode').textContent = '中文打字';
-    el('fullDef').classList.add('show');
-    el('rateRow').classList.remove('show');
-    el('typeRow').classList.add('show');
-    document.querySelector('.drill').classList.remove('is-recall');
-    showKeyboard(true);
-    beep(520, 0.05, 'sine', 0.03);
-
-    var inp = el('typeInput');
-    inp.disabled = false;
-    inp.value = '';
-    state.committed = '';
-    state.comp = '';
-    state.locked = false;
-    state.lockValue = '';
-    // preventScroll：聚焦输入框时不要顺手把页面滚一下
-    try { inp.focus({ preventScroll: true }); } catch (e) { inp.focus(); }
-
-    renderAnswer();
-    setFeedback('');
-    el('hints').textContent = 'Enter 提交　·　打错会锁住，Backspace 删掉重来';
+    finish(true, g, true);
   }
 
   function submit() {
@@ -1239,7 +1228,7 @@
     setTimeout(function () { inp.classList.remove('is-bad'); }, 500);
   }
 
-  function finish(ok, forcedGrade) {
+  function finish(ok, forcedGrade, reviewOnly) {
     if (state.phase === 'judged' && !forcedGrade) return;
     state.phase = 'judged';
     updateHint();   // 这一词已结束，清掉键位提示
@@ -1254,13 +1243,15 @@
     // applyGrade 内部写 iv / dueAt / last / lastAt / forgot，这里不再重复写时间
     applyGrade(rec, grade);
     rec.seen += 1;
-    if (!ok || state.errors > 0 || state.mistakes > 0) rec.wrong += 1;
+    if (reviewOnly ? grade < 3 : (!ok || state.errors > 0 || state.mistakes > 0)) rec.wrong += 1;
 
     var d = dayEntry();
     d.words += 1;
-    d.chars += Array.from(w.a).length;
-    d.seconds += Math.max(1, (Date.now() - state.wordStart) / 1000);
-    if (ok && state.errors === 0 && state.mistakes === 0) d.clean += 1;
+    if (!reviewOnly) {
+      d.chars += Array.from(w.a).length;
+      d.seconds += Math.max(1, (Date.now() - state.wordStart) / 1000);
+    }
+    if (reviewOnly ? grade === 3 : (ok && state.errors === 0 && state.mistakes === 0)) d.clean += 1;
     if (wasNew) d.newWords += 1;
 
     save();
@@ -1269,7 +1260,11 @@
     // 评价完立刻把这个词推进未来的队列，本轮不会再出现
     var gap = ivText(rec.iv);
     var inp = el('typeInput');
-    if (ok) {
+    if (reviewOnly) {
+      setFeedback((grade === 1 ? '已记录：忘了' : grade === 2 ? '已记录：模糊' : '已记录：很熟') + ' · ' + gap + '后复习', 'ok');
+      beep(520, 0.045, 'sine', 0.025);
+      setTimeout(next, 260);
+    } else if (ok) {
       inp.classList.remove('is-bad');
       inp.classList.add('is-ok');
       setFeedback('对了 · ' + gap + '后复习', 'ok');
@@ -1920,7 +1915,49 @@
   }
 
   // ================= 事件绑定 =================
+
+  // ================= 多词书管理（本地优先） =================
+  function renderBookshelf() {
+    var grid = el('bookshelfGrid'); if (!grid) return; grid.innerHTML = '';
+    books.forEach(function (book) {
+      var current = book.id === activeBookId, card = document.createElement('article');
+      card.className = 'book-card' + (current ? ' is-current' : '');
+      var cover = document.createElement('div'); cover.className = 'book-cover'; cover.textContent = (book.name || '词').slice(0, 1);
+      var info = document.createElement('div'), title = document.createElement('strong'), desc = document.createElement('p'), tag = document.createElement('span');
+      title.textContent = book.name; desc.textContent = (book.kind === 'builtin' ? '内置词库' : '自定义词书') + ' · ' + (book.wordCount || 0) + ' 词';
+      tag.className = 'book-tag'; tag.textContent = current ? '当前学习词书' : '独立学习档案';
+      info.appendChild(title); info.appendChild(desc); info.appendChild(tag);
+      if (!current) {
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'ghost-btn book-switch'; b.textContent = '切换到这本';
+        b.addEventListener('click', function () { localStorage.setItem(ACTIVE_BOOK_KEY, book.id); location.reload(); }); info.appendChild(b);
+      }
+      card.appendChild(cover); card.appendChild(info); grid.appendChild(card);
+    });
+  }
+  function createBookFromFile() {
+    var name = (el('newBookName').value || '').trim(), file = el('newBookFile').files && el('newBookFile').files[0], hint = el('bookImportHint');
+    if (!name) { hint.textContent = '请先填写词书名称。'; return; }
+    if (!file) { hint.textContent = '请选择 CSV 或 TXT 文件。'; return; }
+    var reader = new FileReader();
+    reader.onload = function () {
+      var parsed = parseImport(String(reader.result || ''));
+      if (!parsed.length) { hint.textContent = '没有识别到有效单词。每行格式：单词 | 音标 | 中文释义。'; return; }
+      var seen = {}, words = [];
+      parsed.forEach(function (w) { var k = String(w.w || '').toLowerCase(); if (k && !seen[k]) { seen[k] = 1; words.push(w); } });
+      if (!words.length) { hint.textContent = '文件中没有有效单词。'; return; }
+      var id = 'book-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
+      books.push({ id: id, name: name, kind: 'custom', createdAt: Date.now(), wordCount: words.length });
+      localStorage.setItem(BOOKS_KEY, JSON.stringify(books));
+      localStorage.setItem(STORE_KEY + ':book:' + id, JSON.stringify({ settings: Object.assign({}, DEFAULTS), records: {}, days: {}, custom: words, favs: {} }));
+      localStorage.setItem(ACTIVE_BOOK_KEY, id); hint.textContent = '已导入 ' + words.length + ' 个单词，正在切换……';
+      setTimeout(function () { location.reload(); }, 250);
+    };
+    reader.onerror = function () { hint.textContent = '文件读取失败。'; };
+    reader.readAsText(file, 'UTF-8');
+  }
+
   function bind() {
+    if (el('btnCreateBook')) el('btnCreateBook').addEventListener('click', createBookFromFile);
     document.querySelectorAll('.nav-btn').forEach(function (b) {
       b.addEventListener('click', function () {
         if (b.dataset.view === 'drill') {
@@ -2128,6 +2165,53 @@
           applySettings();
         });
       });
+    });
+
+    // 作文打字 MVP：文章可先手动粘贴；AI 生成、文章历史和 IndexedDB 随后接入。
+    var typingMode = 'strict';
+    var writingStartedAt = 0;
+    var writingSource = '';
+    var writingInput = el('writingInput');
+    document.querySelectorAll('[data-typing-mode]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        typingMode = b.dataset.typingMode;
+        document.querySelectorAll('[data-typing-mode]').forEach(function (x) { x.classList.toggle('is-active', x === b); });
+        el('typingState').textContent = typingMode === 'strict' ? '严格模式' : '自由模式';
+      });
+    });
+    el('btnStartWriting').addEventListener('click', function () {
+      writingSource = el('articleSource').value.trim();
+      if (!writingSource) { el('articleStatus').textContent = '请先粘贴文章'; return; }
+      writingInput.disabled = false; writingInput.value = ''; writingStartedAt = Date.now();
+      el('typingPrompt').textContent = writingSource;
+      el('typingState').textContent = typingMode === 'strict' ? '严格模式 · 按顺序输入' : '自由模式 · 完成后对照';
+      el('articleStatus').textContent = '练习中';
+      el('writingErrors').textContent = '0'; el('writingWpm').textContent = '0'; el('writingAccuracy').textContent = '—';
+      setView('writing'); writingInput.focus();
+    });
+    writingInput.addEventListener('input', function () {
+      if (typingMode === 'strict' && !writingSource.startsWith(writingInput.value)) {
+        var candidate = writingInput.value; var validLength = 0;
+        while (validLength < candidate.length && candidate[validLength] === writingSource[validLength]) validLength++;
+        el('writingErrors').textContent = String((parseInt(el('writingErrors').textContent, 10) || 0) + 1);
+        writingInput.value = candidate.slice(0, validLength);
+      }
+      var typed = writingInput.value;
+      var mins = Math.max((Date.now() - writingStartedAt) / 60000, 1 / 60000);
+      var correct = 0; for (var i = 0; i < typed.length; i++) if (typed[i] === writingSource[i]) correct++;
+      el('writingWpm').textContent = String(Math.round((correct / 5) / mins));
+      el('writingAccuracy').textContent = typed.length ? Math.round(correct / typed.length * 100) + '%' : '—';
+    });
+    el('btnSubmitWriting').addEventListener('click', function () {
+      if (!writingSource) return;
+      var typed = writingInput.value; var errors = 0;
+      var max = Math.max(typed.length, writingSource.length);
+      for (var i = 0; i < max; i++) if (typed[i] !== writingSource[i]) errors++;
+      el('writingErrors').textContent = String(errors);
+      el('writingAccuracy').textContent = (max ? Math.round((max - errors) / max * 100) : 0) + '%';
+      el('typingState').textContent = errors ? '已提交 · 有差异' : '已完成 · 完全一致';
+      el('articleStatus').textContent = '本次练习已提交';
+      writingInput.disabled = true;
     });
 
     el('btnImport').addEventListener('click', doImport);
