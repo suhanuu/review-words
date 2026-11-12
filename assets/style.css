@@ -4586,3 +4586,58 @@ button {
 .book-import-hint { flex-basis:100%; margin:0; color:var(--muted); font-size:12px; line-height:1.7; }
 .book-switch { display:block; margin-top:10px; padding:7px 12px; font-size:12px; }
 .book-card.is-current { outline:2px solid var(--accent); outline-offset:3px; }
+
+
+/* 单词自评揭晓：先展示中文释义，详细资料仍默认收起在「详细释义」抽屉中。 */
+.review-result {
+  width: min(100%, 640px);
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--text-soft);
+  background: var(--surface-2, var(--surface));
+  border: 1px solid var(--line);
+}
+.review-result.grade-1 {
+  color: var(--bad, #cf4545);
+  background: var(--bad-soft, rgba(207,69,69,.08));
+}
+.review-result.grade-2 {
+  color: #a66b12;
+  background: rgba(230, 170, 55, .12);
+}
+.review-result.grade-3 {
+  color: var(--accent, #18834b);
+  background: var(--accent-soft);
+}
+.meaning-next-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 172px;
+  padding: 11px 20px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  color: #fff;
+  background: var(--accent);
+  box-shadow: var(--shadow-key);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: transform .16s ease, filter .16s ease;
+}
+.meaning-next-btn:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.meaning-next-btn:active { transform: translateY(0); }
+.meaning-next-btn:focus-visible { outline: 3px solid var(--accent-ring); outline-offset: 3px; }
+.meaning-next-btn[hidden] { display: none !important; }
+.rate-row.is-finished { display: none; }
+.drill .full-def.show { display: block; opacity: 1; transform: none; }
+@media (max-height: 620px) and (min-width: 861px) {
+  .drill .full-def.show { display: block; }
+  .drill .meaning-block { --meaning-h: 88px; }
+  .drill .action-zone { height: 64px; }
+}

@@ -958,6 +958,11 @@
     el('wordPhonetic').textContent = w.ph || '';
     el('fullDef').textContent = w.def;
     el('fullDef').classList.remove('show');
+    el('rateFeedback').hidden = true;
+    el('rateFeedback').textContent = '';
+    el('btnMeaningNext').hidden = true;
+    el('rateRow').classList.remove('is-finished');
+    el('btnDetail').hidden = false;
     prefetchDetail(w.w);
     // 三个自评选项在看词阶段就出现：先凭印象定级，定完才揭晓中文
     el('rateRow').classList.add('show');
@@ -1178,12 +1183,27 @@
     f.className = 'feedback' + (kind ? ' ' + kind : '');
   }
 
-  // 背词只做熟悉度判断，不再进入中文打字流程。
-  // 三个等级直接写入该词的复习计划，然后切到下一个词。
+  // 背词只做熟悉度判断。先保存复习记录，再停留在当前词上展示中文释义。
   function rate(g) {
     if (state.phase !== 'recall') return;
     state.grade = g;
-    finish(true, g, true);
+    finish(true, g, true, true);
+
+    // 揭晓释义；详细词根、搭配和例句仍由原有「详细释义」抽屉按需加载。
+    document.querySelector('.drill').classList.remove('is-recall');
+    el('answerText').innerHTML = '';
+    el('fullDef').classList.add('show');
+    el('rateFeedback').hidden = false;
+    el('rateFeedback').className = 'review-result grade-' + g;
+    el('rateFeedback').textContent = g === 3
+      ? '✓ 已记录：很熟 · ' + ivText(getRec(state.current.w).iv) + '后复习'
+      : g === 2
+        ? '已记录：模糊 · ' + ivText(getRec(state.current.w).iv) + '后复习'
+        : '已记录：忘了 · ' + ivText(getRec(state.current.w).iv) + '后复习';
+    el('rateRow').classList.remove('show');
+    el('rateRow').classList.add('is-finished');
+    el('btnMeaningNext').hidden = false;
+    el('btnMeaningNext').focus();
   }
 
   function submit() {
@@ -1228,7 +1248,7 @@
     setTimeout(function () { inp.classList.remove('is-bad'); }, 500);
   }
 
-  function finish(ok, forcedGrade, reviewOnly) {
+  function finish(ok, forcedGrade, reviewOnly, holdForMeaning) {
     if (state.phase === 'judged' && !forcedGrade) return;
     state.phase = 'judged';
     updateHint();   // 这一词已结束，清掉键位提示
@@ -1263,7 +1283,7 @@
     if (reviewOnly) {
       setFeedback((grade === 1 ? '已记录：忘了' : grade === 2 ? '已记录：模糊' : '已记录：很熟') + ' · ' + gap + '后复习', 'ok');
       beep(520, 0.045, 'sine', 0.025);
-      setTimeout(next, 260);
+      if (!holdForMeaning) setTimeout(next, 260);
     } else if (ok) {
       inp.classList.remove('is-bad');
       inp.classList.add('is-ok');
@@ -1996,6 +2016,12 @@
     el('btnDetail').addEventListener('click', function (e) {
       e.stopPropagation();
       openCurrentDetail();
+    });
+
+    // 自评揭晓释义后，由用户主动进入下一个单词。
+    el('btnMeaningNext').addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (state.phase === 'judged') next();
     });
 
     // 收藏当前词：再点一次取消
