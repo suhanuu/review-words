@@ -1190,8 +1190,30 @@
   function renderMeaning() {
     var w = state.current;
     if (!w) return;
-    el('answerText').innerHTML =
-      '<span class="reveal-answer">' + esc(w.a || w.def || '') + '</span>';
+    // 释义字段按词性标签分组：n.、vt.、vi.、adj. 等；同一词性的多个义项合并显示。
+    var definition = String(w.def || w.m || w.a || '').replace(/\s+/g, ' ').trim();
+    var parts = definition.split(/[；;]+/).map(function (part) { return part.trim(); }).filter(Boolean);
+    var rows = [];
+    parts.forEach(function (part) {
+      var match = part.match(/^((?:(?:vt|vi|adj|adv|prep|pron|conj|interj|num|art|aux|n|v)(?:\.|\/)?)+)\s*(.*)$/i);
+      if (match) {
+        var pos = match[1].replace(/\/$/, '').toLowerCase();
+        var meaning = match[2].trim();
+        var existing = rows.find(function (row) { return row.pos === pos; });
+        if (meaning) {
+          if (existing) existing.meaning += '；' + meaning;
+          else rows.push({ pos: pos, meaning: meaning });
+        }
+      } else if (rows.length) {
+        rows[rows.length - 1].meaning += '；' + part;
+      } else if (part) {
+        rows.push({ pos: '', meaning: part });
+      }
+    });
+    if (!rows.length) rows.push({ pos: '', meaning: String(w.a || w.def || '') });
+    el('answerText').innerHTML = rows.map(function (row) {
+      return '<div class="meaning-entry">' + (row.pos ? '<span class="meaning-pos">' + esc(row.pos) + '</span>' : '') + '<span class="meaning-text">' + esc(row.meaning) + '</span></div>';
+    }).join('');
   }
 
   // 背词只做熟悉度判断。先保存复习记录，再停留在当前词上展示中文释义。

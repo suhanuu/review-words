@@ -4772,11 +4772,10 @@ button {
   .drill.is-reveal .full-def { display: block; }
 }
 
-/* 作文 / 文章历史 / 书架 / 收藏页可以比一屏长：让它们自己纵向滚动，
+/* 作文 / 书架 / 收藏页可以比一屏长：让它们自己纵向滚动，
    不要被禁滚的 main 裁掉（之前展开 AI 设置后下半页就看不到了） */
 @media (min-width: 861px) {
   #view-writing.is-active,
-  #view-article-history.is-active,
   #view-books.is-active,
   #view-favs.is-active {
     height: 100%;
@@ -4888,3 +4887,87 @@ body.is-typing-screen .main { min-height: 100vh; }
 .article-source-preview { width:100%; min-height:118px; padding:12px 14px; border:1px solid var(--line); border-radius:12px; color:var(--text); background:var(--surface-2); font:15px/1.9 var(--font-sans); white-space:pre-wrap; overflow-wrap:anywhere; }
 .target-word-mark { color:#1769aa; background:rgba(23,105,170,.12); border-radius:3px; padding:0 2px; }
 .article-edit-btn { margin:8px 0 14px; }
+
+/* 本轮优化：多词性释义、作文生成状态条；编辑文章按钮已移除 */
+.drill.is-reveal .answer {
+  width: min(100%, 760px);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  text-align: center;
+}
+.meaning-entry {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  width: 100%;
+  font-size: clamp(19px, 2.2vw, 27px);
+  line-height: 1.42;
+  letter-spacing: 0;
+}
+.meaning-pos {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-size: .72em;
+  font-weight: 650;
+}
+.meaning-text { color: var(--text); }
+.ai-controls #aiStatus { display: none !important; }
+.ai-progress {
+  display: flex;
+  flex: 1 1 210px;
+  min-width: 150px;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+}
+.ai-progress-track {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 70px;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line);
+}
+.ai-progress-fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: #347db8;
+  transition: width .25s ease, background-color .2s ease;
+}
+.ai-progress-text {
+  flex: 0 1 auto;
+  max-width: 270px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.ai-progress.is-idle .ai-progress-track { opacity: .45; }
+.ai-progress.is-loading .ai-progress-fill {
+  width: 38%;
+  background: #347db8;
+  animation: rw-progress-indeterminate 1.25s ease-in-out infinite;
+}
+.ai-progress.is-loading .ai-progress-text { color: var(--muted); }
+.ai-progress.is-success .ai-progress-fill { width: 100%; background: #347db8; }
+.ai-progress.is-success .ai-progress-text { color: #347db8; font-weight: 600; }
+.ai-progress.is-error .ai-progress-fill { width: 100%; background: #d9534f; }
+.ai-progress.is-error .ai-progress-text { color: #d9534f; font-weight: 600; }
+@keyframes rw-progress-indeterminate {
+  0% { transform: translateX(-110%); }
+  55% { transform: translateX(130%); }
+  100% { transform: translateX(290%); }
+}
+@media (max-width: 680px) {
+  .ai-progress { flex-basis: 100%; order: 5; }
+  .meaning-entry { font-size: clamp(17px, 4.3vw, 22px); }
+}
