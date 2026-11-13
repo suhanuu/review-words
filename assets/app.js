@@ -625,10 +625,10 @@
   }
 
   function visualKey(e, down) {
-    if (state.view !== 'writing' && state.view !== 'drill') return;
+    if (state.view !== 'typing' && state.view !== 'drill') return;
     if (state.view === 'drill' && state.phase !== 'typing' && state.phase !== 'recall') return;
     // 作文训练只响应真实键盘事件，不允许点击屏幕键盘代替输入。
-    if (down && state.view === 'writing' && document.activeElement !== el('writingInput')) return;
+    if (down && state.view === 'typing' && document.activeElement !== el('writingInput')) return;
     if (down && state.view === 'drill' && state.phase === 'typing' && document.activeElement !== el('typeInput')) return;
     var code = eventCode(e);
     if (!code) return;
@@ -896,18 +896,19 @@
   // ================= 视图切换 =================
   function setView(name) {
     state.view = name;
-    ['drill', 'done', 'writing', 'books', 'stats', 'words', 'favs'].forEach(function (v) {
+    ['drill', 'done', 'writing', 'typing', 'books', 'stats', 'words', 'favs'].forEach(function (v) {
       var node = el('view-' + v);
       if (node) node.classList.toggle('is-active', v === name);
     });
     document.querySelectorAll('.nav-btn').forEach(function (b) {
-      b.classList.toggle('is-active', b.dataset.view === name || (name === 'done' && b.dataset.view === 'drill'));
+      b.classList.toggle('is-active', b.dataset.view === name || (name === 'typing' && b.dataset.view === 'writing') || (name === 'done' && b.dataset.view === 'drill'));
     });
     if (name === 'stats') renderStats();
     if (name === 'words') renderWords(true);
     if (name === 'favs') renderFavs();
     // 键盘和手部提示只属于作文训练，不再出现在背词页。
-    showKeyboard(name === 'writing');
+    showKeyboard(name === 'typing');
+    document.body.classList.toggle('is-typing-screen', name === 'typing');
     if (name === 'drill') updateHint();
     // 学习页锁住文档滚动：练习时页面不能因为聚焦、锚定或内容变高而整体位移
     var lock = name === 'drill';
@@ -1203,14 +1204,10 @@
     document.querySelector('.drill').classList.remove('is-recall');
     document.querySelector('.drill').classList.add('is-reveal');
     renderMeaning();
-    el('fullDef').classList.add('show');
-    el('rateFeedback').hidden = false;
-    el('rateFeedback').className = 'review-result grade-' + g;
-    el('rateFeedback').textContent = g === 3
-      ? '✓ 已记录：很熟 · ' + ivText(getRec(state.current.w).iv) + '后复习'
-      : g === 2
-        ? '已记录：模糊 · ' + ivText(getRec(state.current.w).iv) + '后复习'
-        : '已记录：忘了 · ' + ivText(getRec(state.current.w).iv) + '后复习';
+    // 用户只需要看到单词意思；复习等级和间隔继续在后台记录，不在揭晓区显示。
+    el('fullDef').classList.remove('show');
+    el('rateFeedback').hidden = true;
+    el('rateFeedback').textContent = '';
     el('rateRow').classList.remove('show');
     el('rateRow').classList.add('is-finished');
     el('btnMeaningNext').hidden = false;
@@ -2237,7 +2234,7 @@
       el('typingState').textContent = typingMode === 'strict' ? '严格模式 · 按顺序输入' : '自由模式 · 完成后对照';
       el('articleStatus').textContent = '练习中';
       el('writingErrors').textContent = '0'; el('writingWpm').textContent = '0'; el('writingAccuracy').textContent = '—';
-      setView('writing'); writingInput.focus();
+      setView('typing'); writingInput.focus();
     });
     writingInput.addEventListener('input', function () {
       if (typingMode === 'strict' && !writingSource.startsWith(writingInput.value)) {
@@ -2252,6 +2249,12 @@
       el('writingWpm').textContent = String(Math.round((correct / 5) / mins));
       el('writingAccuracy').textContent = typed.length ? Math.round(correct / typed.length * 100) + '%' : '—';
     });
+    function returnToArticleView() {
+      var writingNav = document.querySelector('.nav-btn[data-view="writing"]');
+      if (writingNav) writingNav.click();
+    }
+    el('btnBackToWriting').addEventListener('click', returnToArticleView);
+    el('btnTypingBackBottom').addEventListener('click', returnToArticleView);
     el('btnSubmitWriting').addEventListener('click', function () {
       if (!writingSource) return;
       var typed = writingInput.value; var errors = 0;

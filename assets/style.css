@@ -4784,3 +4784,60 @@ button {
     overscroll-behavior: contain;
   }
 }
+
+
+/* Review Words layout refresh: single-column reading and dedicated typing screen */
+.writing-page { max-width: 1080px; }
+.writing-grid { grid-template-columns: minmax(0, 1fr); }
+.article-reading-card { display: flex; flex-direction: column; }
+.article-reading-card .article-source,
+.article-reading-card .article-translation {
+  width: 100%; height: auto; min-height: 190px; max-height: none;
+  resize: vertical; overflow: hidden; line-height: 1.85; font-size: 14px;
+}
+.article-reading-card .article-translation { height: auto; }
+.article-reading-card .writing-controls { margin-top: 18px; }
+
+#view-typing.is-active {
+  position: fixed; inset: 0; z-index: 1200; overflow-y: auto; overflow-x: hidden;
+  padding: clamp(14px, 3vh, 30px) clamp(14px, 4vw, 56px) 28px;
+  background: var(--bg); animation: none;
+}
+body.is-typing-screen { overflow: hidden; }
+body.is-typing-screen .topbar { display: none; }
+body.is-typing-screen .main { min-height: 100vh; }
+.typing-screen { width: min(100%, 1180px); margin: 0 auto; }
+.typing-screen-head {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 14px;
+  padding-bottom: 16px; border-bottom: 1px solid var(--line);
+}
+.typing-screen-head > div { display: flex; align-items: center; gap: 12px; color: var(--text); }
+.typing-screen-head > div strong { font-size: 18px; }
+.typing-screen-mode { justify-self: end; color: var(--muted); font-size: 12px; }
+.typing-screen-content { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding-top: 18px; }
+.typing-source-panel, .typing-card {
+  min-width: 0; padding: 18px 20px; border: 1px solid var(--line);
+  border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-sm);
+}
+.typing-source-panel .typing-prompt {
+  max-height: min(30vh, 280px); overflow-y: auto; font-size: clamp(14px, 1.4vw, 17px);
+  line-height: 1.9; white-space: pre-wrap;
+}
+.typing-screen .writing-input { min-height: 150px; height: clamp(150px, 22vh, 230px); resize: vertical; font-size: 15px; line-height: 1.8; }
+.typing-screen .writing-keyboard { max-height: none; margin-top: 0; opacity: 1; overflow: visible; transform: none; }
+.typing-screen .writing-keyboard.on { max-height: none; margin-top: 0; }
+.typing-screen .keyboard-panel { width: min(100%, 820px); }
+.typing-screen-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.typing-screen .typing-metrics { margin: 12px 0 16px; font-size: 13px; }
+@media (max-width: 680px) {
+  #view-typing.is-active { padding: 10px 10px 20px; }
+  .typing-screen-head { grid-template-columns: 1fr auto; }
+  .typing-screen-head > div { grid-column: 1 / -1; grid-row: 1; }
+  .typing-screen-head > button { grid-column: 1; grid-row: 2; justify-self: start; }
+  .typing-screen-mode { grid-column: 2; grid-row: 2; }
+  .typing-source-panel, .typing-card { padding: 14px; }
+  .typing-source-panel .typing-prompt { max-height: 25vh; }
+  .typing-screen .writing-keyboard .hands { display: none; }
+}
+/* The passage is fully visible in the dedicated practice view; the page itself scrolls if needed. */
+.typing-source-panel .typing-prompt { max-height: none; overflow: visible; }

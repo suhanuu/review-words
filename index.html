@@ -115,7 +115,7 @@
   <section class="view" id="view-writing">
     <div class="page writing-page">
       <h2 class="page-title">作文训练</h2>
-      <p class="page-sub">把薄弱词汇放进真实语境，再通过英文输入巩固拼写。键盘与手部提示只在这里显示。</p>
+      <p class="page-sub">把薄弱词汇放进真实语境。先阅读英文原文和中文翻译，再进入独立的全屏打字练习。</p>
       <section class="writing-card weak-pool-card"><div class="writing-card-head"><strong>今日薄弱词汇</strong><span id="weakPoolCount" class="writing-status">整理中</span></div><p class="page-sub">忘了优先，其次模糊，再其次收藏。重复来源自动合并；可取消勾选排除本次生成。</p><div id="weakWordList" class="weak-word-list"></div>
         <details class="ai-settings" id="aiSettingsPanel">
           <summary>AI API 设置 <span class="ai-settings-summary">配置你自己的 API 服务</span></summary>
@@ -128,13 +128,13 @@
             <span id="aiConfigStatus" role="status" aria-live="polite"></span>
           </div>
         </details>
-        <div class="ai-controls"><label>文章难度<select id="aiDifficulty"><option value="adaptive">自适应（A2–B2）</option><option value="A2">A2</option><option value="B1">B1</option><option value="B2">B2</option></select></label><button class="primary-btn" id="btnGenerateArticle" type="button">生成约 150 词作文</button><span id="aiStatus" role="status" aria-live="polite"></span></div></section>
+        <div class="ai-controls"><label>文章难度<select id="aiDifficulty"><option value="cet4">大学英语四级（CET-4）</option><option value="cet6">大学英语六级（CET-6）</option></select></label><button class="primary-btn" id="btnGenerateArticle" type="button">生成约 150 词作文</button><span id="aiStatus" role="status" aria-live="polite"></span></div></section>
 <section class="writing-card article-history-card"><div class="writing-card-head"><strong>文章与每日任务</strong><span id="dailyTaskStatus" class="writing-status"></span></div><div class="history-actions"><button class="ghost-btn" id="btnPrepareDaily" type="button">准备今日任务</button><button class="ghost-btn" id="btnShowHistory" type="button">查看文章历史</button></div><div id="articleHistory" class="article-history" hidden></div></section>
 <div class="writing-grid">
-        <section class="writing-card">
+        <section class="writing-card article-reading-card">
           <div class="writing-card-head"><strong>今日文章</strong><span class="writing-status" id="articleStatus">等待文章</span></div>
           <label class="writing-label" for="articleSource">英文原文</label>
-          <textarea id="articleSource" class="article-source" placeholder="生成的英文作文会显示在这里，也可以粘贴自己的文章。"></textarea>
+          <textarea id="articleSource" class="article-source" placeholder="生成的英文作文会显示在这里，也可以粘贴自己的文章。" spellcheck="false"></textarea>
           <label class="writing-label" for="articleTranslation">中文翻译</label>
           <textarea id="articleTranslation" class="article-translation" placeholder="中文翻译会与文章一起保存。" readonly></textarea>
           <div class="writing-controls">
@@ -142,16 +142,32 @@
             <button type="button" class="primary-btn" id="btnStartWriting">开始打字</button>
           </div>
         </section>
-        <section class="writing-card typing-card">
-          <div class="writing-card-head"><strong>英文输入</strong><span id="typingState" class="writing-status">尚未开始</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 独立全屏打字练习 ============ -->
+  <section class="view" id="view-typing" aria-label="全屏打字练习">
+    <div class="typing-screen">
+      <div class="typing-screen-head">
+        <button type="button" class="ghost-btn" id="btnBackToWriting">← 返回作文阅读</button>
+        <div><strong>英文打字练习</strong><span id="typingState" class="writing-status">尚未开始</span></div>
+        <span class="typing-screen-mode">使用实体键盘输入</span>
+      </div>
+      <div class="typing-screen-content">
+        <div class="typing-source-panel">
+          <div class="writing-card-head"><strong>英文原文</strong><span class="writing-status">对照输入</span></div>
           <div id="typingPrompt" class="typing-prompt">先准备一篇文章，再开始练习。</div>
+        </div>
+        <section class="writing-card typing-card">
+          <div class="writing-card-head"><strong>在这里输入</strong><span class="writing-status">实时统计</span></div>
           <textarea id="writingInput" class="writing-input" placeholder="开始后，在这里使用真实键盘输入英文文章。" disabled spellcheck="false" autocapitalize="off"></textarea>
           <div class="typing-metrics"><span>速度 <b id="writingWpm">0</b> WPM</span><span>准确率 <b id="writingAccuracy">—</b></span><span>错误 <b id="writingErrors">0</b></span></div>
-          <button type="button" class="ghost-btn" id="btnSubmitWriting">提交并查看结果</button>
+          <div class="typing-screen-actions"><button type="button" class="primary-btn" id="btnSubmitWriting">提交并查看结果</button><button type="button" class="ghost-btn" id="btnTypingBackBottom">返回作文阅读</button></div>
         </section>
-      </div>
-      <div class="keyboard-dock writing-keyboard" id="keyboardDock" aria-hidden="true">
-        <div class="keyboard-panel"><div class="kb-bar"><span>键盘指法 · 请使用实体键盘输入</span><span id="kbState">等待输入</span></div><div class="kb-wrap"><div class="kb-board" id="kbBoard"></div><div class="hands" id="handsSvg" aria-hidden="true"></div></div></div>
+        <div class="keyboard-dock writing-keyboard" id="keyboardDock" aria-hidden="true">
+          <div class="keyboard-panel"><div class="kb-bar"><span>键盘指法 · 请使用实体键盘输入</span><span id="kbState">等待输入</span></div><div class="kb-wrap"><div class="kb-board" id="kbBoard"></div><div class="hands" id="handsSvg" aria-hidden="true"></div></div></div>
+        </div>
       </div>
     </div>
   </section>
