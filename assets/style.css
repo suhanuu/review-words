@@ -4772,10 +4772,11 @@ button {
   .drill.is-reveal .full-def { display: block; }
 }
 
-/* 作文 / 书架 / 收藏页可以比一屏长：让它们自己纵向滚动，
+/* 作文 / 文章历史 / 书架 / 收藏页可以比一屏长：让它们自己纵向滚动，
    不要被禁滚的 main 裁掉（之前展开 AI 设置后下半页就看不到了） */
 @media (min-width: 861px) {
   #view-writing.is-active,
+  #view-article-history.is-active,
   #view-books.is-active,
   #view-favs.is-active {
     height: 100%;
@@ -4841,3 +4842,49 @@ body.is-typing-screen .main { min-height: 100vh; }
 }
 /* The passage is fully visible in the dedicated practice view; the page itself scrolls if needed. */
 .typing-source-panel .typing-prompt { max-height: none; overflow: visible; }
+
+/* Review Words UI refinement: article history, reading and typing */
+.weak-pool-note { margin: 10px 2px 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.ai-controls { display:flex; align-items:center; flex-wrap:wrap; gap:10px; }
+.ai-controls #aiStatus { display:none !important; }
+.ai-controls #btnShowHistory { margin-left:auto; }
+.article-word-count { margin-left:auto; color:var(--muted); font-size:12px; font-weight:500; }
+.article-reading-card { width:100%; }
+.article-reading-card .article-source, .article-reading-card .article-translation { min-height:0; height:auto; max-height:none; overflow:visible; resize:vertical; font-size:15px; line-height:1.9; }
+.article-reading-card .article-source { margin-bottom:16px; }
+.article-reading-card .article-translation { background:var(--surface); }
+.article-history-page { max-width:980px; }
+.history-page-head { display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
+.history-page-head .page-title { margin:0; }
+.article-history-list { display:grid; gap:10px; margin-top:22px; }
+.article-history-list .article-history-item { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:16px 18px; border:1px solid var(--line); border-radius:14px; background:var(--surface); }
+.article-history-info { display:grid; gap:6px; min-width:0; }
+.article-history-info strong { color:var(--text); font-size:15px; }
+.article-history-info small { color:var(--muted); font-size:12px; }
+.rw-toast { position:fixed; z-index:2000; top:18px; left:50%; transform:translate(-50%,-12px); opacity:0; pointer-events:none; max-width:min(90vw,720px); padding:12px 18px; border:1px solid var(--line); border-radius:12px; background:var(--surface); color:var(--text); box-shadow:var(--shadow-lg); transition:opacity .18s ease,transform .18s ease; }
+.rw-toast.is-visible { opacity:1; transform:translate(-50%,0); }
+.rw-toast.is-error { border-color:var(--bad); }
+#view-typing.is-active { display:block; }
+.typing-screen-content { grid-template-columns:minmax(0,1fr); }
+.typing-source-panel { display:flex; flex-direction:column; gap:16px; }
+.typing-source-panel .typing-prompt { max-height:none; overflow:visible; min-height:120px; padding:20px; border-radius:12px; background:var(--surface-2); color:var(--text); font:clamp(17px,1.7vw,22px)/2 var(--font-mono); white-space:pre-wrap; overflow-wrap:anywhere; }
+.typing-char { white-space:pre-wrap; border-radius:3px; }
+.typing-char.is-correct { color:#219653; }
+.typing-char.is-wrong { color:#dc3545; background:rgba(220,53,69,.10); }
+.typing-char.is-current { border-left:2px solid var(--accent); }
+.typing-live-metrics { color:var(--muted); font-size:12px; font-weight:400; }
+.typing-live-metrics b { color:var(--text); font-variant-numeric:tabular-nums; }
+.typing-screen .writing-keyboard { order:2; width:100%; }
+.typing-screen .keyboard-panel { width:min(100%,900px); margin:0 auto; }
+.typing-input-holder { padding:0; border:0; box-shadow:none; background:transparent; }
+.typing-capture-input { position:fixed !important; left:-10000px !important; top:0 !important; width:2px !important; height:2px !important; min-height:2px !important; opacity:0 !important; }
+.typing-screen-actions { justify-content:center; }
+@media(max-width:680px) {
+ .ai-controls #btnShowHistory { margin-left:0; }
+ .article-history-list .article-history-item { align-items:flex-start; }
+ .typing-source-panel .typing-prompt { font-size:15px; line-height:1.85; padding:14px; }
+ .typing-live-metrics { display:block; line-height:1.8; }
+}
+.article-source-preview { width:100%; min-height:118px; padding:12px 14px; border:1px solid var(--line); border-radius:12px; color:var(--text); background:var(--surface-2); font:15px/1.9 var(--font-sans); white-space:pre-wrap; overflow-wrap:anywhere; }
+.target-word-mark { color:#1769aa; background:rgba(23,105,170,.12); border-radius:3px; padding:0 2px; }
+.article-edit-btn { margin:8px 0 14px; }

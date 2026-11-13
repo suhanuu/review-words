@@ -896,7 +896,7 @@
   // ================= 视图切换 =================
   function setView(name) {
     state.view = name;
-    ['drill', 'done', 'writing', 'typing', 'books', 'stats', 'words', 'favs'].forEach(function (v) {
+    ['drill', 'done', 'writing', 'typing', 'article-history', 'books', 'stats', 'words', 'favs'].forEach(function (v) {
       var node = el('view-' + v);
       if (node) node.classList.toggle('is-active', v === name);
     });
@@ -2214,40 +2214,45 @@
       });
     });
 
-    // 作文打字 MVP：文章可先手动粘贴；AI 生成、文章历史和 IndexedDB 随后接入。
-    var typingMode = 'strict';
+    // 作文打字：在原文位置逐字呈现输入反馈，虚拟键盘位于原文下方。
     var writingStartedAt = 0;
     var writingSource = '';
     var writingInput = el('writingInput');
-    document.querySelectorAll('[data-typing-mode]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        typingMode = b.dataset.typingMode;
-        document.querySelectorAll('[data-typing-mode]').forEach(function (x) { x.classList.toggle('is-active', x === b); });
-        el('typingState').textContent = typingMode === 'strict' ? '严格模式' : '自由模式';
-      });
-    });
+    function renderTypingPrompt(typed) {
+      var host = el('typingPrompt'); if (!host) return;
+      host.innerHTML = '';
+      for (var i = 0; i < writingSource.length; i++) {
+        var span = document.createElement('span'); span.className = 'typing-char';
+        if (i < typed.length) span.classList.add(typed[i] === writingSource[i] ? 'is-correct' : 'is-wrong');
+        else if (i === typed.length) span.classList.add('is-current');
+        span.textContent = writingSource[i]; host.appendChild(span);
+      }
+      if (typed.length > writingSource.length) {
+        for (var j = writingSource.length; j < typed.length; j++) {
+          var extra = document.createElement('span'); extra.className = 'typing-char is-wrong'; extra.textContent = typed[j]; host.appendChild(extra);
+        }
+      }
+    }
     el('btnStartWriting').addEventListener('click', function () {
       writingSource = el('articleSource').value.trim();
-      if (!writingSource) { el('articleStatus').textContent = '请先粘贴文章'; return; }
+      if (!writingSource) { el('articleStatus').textContent = '请先生成或填写文章'; return; }
       writingInput.disabled = false; writingInput.value = ''; writingStartedAt = Date.now();
-      el('typingPrompt').textContent = writingSource;
-      el('typingState').textContent = typingMode === 'strict' ? '严格模式 · 按顺序输入' : '自由模式 · 完成后对照';
+      renderTypingPrompt('');
+      el('typingState').textContent = '开始输入';
       el('articleStatus').textContent = '练习中';
       el('writingErrors').textContent = '0'; el('writingWpm').textContent = '0'; el('writingAccuracy').textContent = '—';
       setView('typing'); writingInput.focus();
     });
     writingInput.addEventListener('input', function () {
-      if (typingMode === 'strict' && !writingSource.startsWith(writingInput.value)) {
-        var candidate = writingInput.value; var validLength = 0;
-        while (validLength < candidate.length && candidate[validLength] === writingSource[validLength]) validLength++;
-        el('writingErrors').textContent = String((parseInt(el('writingErrors').textContent, 10) || 0) + 1);
-        writingInput.value = candidate.slice(0, validLength);
-      }
       var typed = writingInput.value;
+      renderTypingPrompt(typed);
       var mins = Math.max((Date.now() - writingStartedAt) / 60000, 1 / 60000);
-      var correct = 0; for (var i = 0; i < typed.length; i++) if (typed[i] === writingSource[i]) correct++;
+      var correct = 0, errors = 0;
+      for (var i = 0; i < typed.length; i++) { if (typed[i] === writingSource[i]) correct++; else errors++; }
+      el('writingErrors').textContent = String(errors + Math.max(0, writingSource.length - typed.length) * 0);
       el('writingWpm').textContent = String(Math.round((correct / 5) / mins));
       el('writingAccuracy').textContent = typed.length ? Math.round(correct / typed.length * 100) + '%' : '—';
+      el('kbState').textContent = typed.length >= writingSource.length ? '输入完成' : '已输入 ' + typed.length + ' / ' + writingSource.length;
     });
     function returnToArticleView() {
       var writingNav = document.querySelector('.nav-btn[data-view="writing"]');
@@ -2257,14 +2262,14 @@
     el('btnTypingBackBottom').addEventListener('click', returnToArticleView);
     el('btnSubmitWriting').addEventListener('click', function () {
       if (!writingSource) return;
-      var typed = writingInput.value; var errors = 0;
-      var max = Math.max(typed.length, writingSource.length);
-      for (var i = 0; i < max; i++) if (typed[i] !== writingSource[i]) errors++;
+      var typed = writingInput.value, errors = 0, max = Math.max(typed.length, writingSource.length), correct = 0;
+      for (var i = 0; i < max; i++) { if (typed[i] !== writingSource[i]) errors++; else if (i < typed.length) correct++; }
       el('writingErrors').textContent = String(errors);
-      el('writingAccuracy').textContent = (max ? Math.round((max - errors) / max * 100) : 0) + '%';
+      el('writingAccuracy').textContent = (max ? Math.round(correct / max * 100) : 0) + '%';
       el('typingState').textContent = errors ? '已提交 · 有差异' : '已完成 · 完全一致';
       el('articleStatus').textContent = '本次练习已提交';
       writingInput.disabled = true;
+      renderTypingPrompt(typed);
     });
 
     el('btnImport').addEventListener('click', doImport);
