@@ -4856,8 +4856,15 @@ body.is-typing-screen .main { min-height: 100vh; }
 .history-page-head { display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
 .history-page-head .page-title { margin:0; }
 .article-history-list { display:grid; gap:10px; margin-top:22px; }
+.history-bulk-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:14px; margin-top:18px; padding:12px 14px; border:1px solid var(--line); border-radius:12px; background:var(--surface); }
+.history-select-all, .history-article-pick { display:inline-flex; align-items:center; gap:8px; cursor:pointer; color:var(--text); }
+.history-select-all input, .history-article-check { width:17px; height:17px; accent-color:var(--accent); cursor:pointer; flex:0 0 auto; }
+.history-selected-count { color:var(--muted); font-size:13px; }
+.history-delete-selected { margin-left:auto; }
+.history-delete-selected:disabled { opacity:.45; cursor:not-allowed; }
 .article-history-list .article-history-item { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:16px 18px; border:1px solid var(--line); border-radius:14px; background:var(--surface); }
-.article-history-info { display:grid; gap:6px; min-width:0; }
+.article-history-info { display:grid; gap:6px; min-width:0; flex:1; }
+.history-article-pick { flex:0 0 auto; }
 .article-history-info strong { color:var(--text); font-size:15px; }
 .article-history-info small { color:var(--muted); font-size:12px; }
 .rw-toast { position:fixed; z-index:2000; top:18px; left:50%; transform:translate(-50%,-12px); opacity:0; pointer-events:none; max-width:min(90vw,720px); padding:12px 18px; border:1px solid var(--line); border-radius:12px; background:var(--surface); color:var(--text); box-shadow:var(--shadow-lg); transition:opacity .18s ease,transform .18s ease; }
@@ -4880,7 +4887,8 @@ body.is-typing-screen .main { min-height: 100vh; }
 .typing-screen-actions { justify-content:center; }
 @media(max-width:680px) {
  .ai-controls #btnShowHistory { margin-left:0; }
- .article-history-list .article-history-item { align-items:flex-start; }
+ .article-history-list .article-history-item { align-items:center; }
+ .history-delete-selected { margin-left:0; }
  .typing-source-panel .typing-prompt { font-size:15px; line-height:1.85; padding:14px; }
  .typing-live-metrics { display:block; line-height:1.8; }
 }
@@ -4970,4 +4978,36 @@ body.is-typing-screen .main { min-height: 100vh; }
 @media (max-width: 680px) {
   .ai-progress { flex-basis: 100%; order: 5; }
   .meaning-entry { font-size: clamp(17px, 4.3vw, 22px); }
+}
+
+/* Review Words: show only the highlighted reading preview for loaded articles.
+   The textarea remains in the DOM as the source of truth for typing practice. */
+#articleSource[hidden] {
+  display: none !important;
+}
+
+/* Article history is a long-form page inside the desktop one-screen shell.
+   Give it the same independent scrolling behavior as writing/books/favorites. */
+@media (min-width: 861px) {
+  #view-article-history.is-active {
+    display: block;
+    height: 100%;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
+  }
+
+  #view-article-history .article-history-page {
+    min-height: 100%;
+    padding-bottom: 36px;
+  }
+}
+
+@media (max-width: 860px) {
+  #view-article-history.is-active {
+    overflow-x: hidden;
+    overflow-y: visible;
+  }
 }

@@ -13,6 +13,7 @@ function weak(){
  return Object.keys(map).map(function(k){return map[k];}).sort(function(a,b){return b.rank-a.rank||a.word.localeCompare(b.word);});
 }
 var selected={};
+var selectedHistory={};
 function renderWeak(){
  var host=$('weakWordList');if(!host)return;host.innerHTML='';var list=weak();
  list.forEach(function(x){if(selected[x.word]===undefined)selected[x.word]=true;var lab=document.createElement('label');lab.className='weak-word-chip';var cb=document.createElement('input');cb.type='checkbox';cb.checked=!!selected[x.word];cb.addEventListener('change',function(){selected[x.word]=cb.checked;});var span=document.createElement('span');span.textContent=x.word;var small=document.createElement('small');small.textContent=x.source.join(' / ');lab.append(cb,span,small);host.appendChild(lab);});
@@ -26,11 +27,36 @@ function fitArticleTextareas(){['articleSource','articleTranslation'].forEach(fu
 function escapeHTML(s){return String(s).replace(/[&<>\"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c];});}
 function renderHighlightedArticle(content,targetWords){var safe=escapeHTML(content);(targetWords||[]).filter(Boolean).sort(function(a,b){return b.length-a.length;}).forEach(function(word){var escaped=escapeHTML(word).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');safe=safe.replace(new RegExp('(^|[^A-Za-z])('+escaped+')(?=[^A-Za-z]|$)','gi'),function(_,pre,hit){return pre+'<mark class=\"target-word-mark\">'+hit+'</mark>';});});return safe;}
 function showArticle(a){$('articleSource').value=a.content||'';$('articleTranslation').value=a.translation||'';var preview=$('articleSourcePreview');if(preview){preview.innerHTML=renderHighlightedArticle(a.content||'',a.targetWords||[]);preview.hidden=false;$('articleSource').hidden=true;} $('articleStatus').textContent='已载入文章'+(a.difficulty?' · '+(a.difficulty==='cet4'?'四级 CET-4':a.difficulty==='cet6'?'六级 CET-6':a.difficulty):'');if($('articleWordCount'))$('articleWordCount').textContent=(a.wordCount||((a.content||'').match(/\b[\w'-]+\b/g)||[]).length)+' 词';fitArticleTextareas();}
-function switchInternalView(name){document.querySelectorAll('.view').forEach(function(v){v.classList.toggle('is-active',v.id==='view-'+name);});document.body.classList.toggle('is-typing-screen',name==='typing');document.documentElement.classList.remove('is-drill-locked');document.body.classList.remove('is-drill-locked');window.scrollTo(0,0);}
+function switchInternalView(name){document.querySelectorAll('.view').forEach(function(v){v.classList.toggle('is-active',v.id==='view-'+name);});document.body.classList.toggle('is-typing-screen',name==='typing');document.documentElement.classList.remove('is-drill-locked');document.body.classList.remove('is-drill-locked');window.scrollTo(0,0);var activeView=$('view-'+name);if(activeView&&name==='article-history'){activeView.scrollTop=0;}}
+function historyKey(article,index){return article&&article.id?String(article.id):'legacy-'+index;}
+function updateHistorySelection(){
+ var list=articles(),checks=Array.prototype.slice.call(document.querySelectorAll('.history-article-check'));
+ var chosen=checks.filter(function(c){return c.checked;}).length;
+ var count=$('historySelectedCount'),del=$('btnDeleteSelectedArticles'),all=$('historySelectAll');
+ if(count)count.textContent='已选择 '+chosen+' 篇';
+ if(del)del.disabled=chosen===0;
+ if(all){all.checked=checks.length>0&&chosen===checks.length;all.indeterminate=chosen>0&&chosen<checks.length;}
+}
 function renderHistory(){
  var host=$('articleHistory');if(!host)return;host.innerHTML='';
- articles().slice(0,100).forEach(function(a){var row=document.createElement('div');row.className='article-history-item';var info=document.createElement('div');info.className='article-history-info';var title=document.createElement('strong');title.textContent=Array.isArray(a.targetWords)&&a.targetWords.length?a.targetWords.join(', '):(a.title||'练习文章');var meta=document.createElement('small');var level=a.difficulty==='cet4'?'四级 CET-4':a.difficulty==='cet6'?'六级 CET-6':a.difficulty||'未标注';var dt=a.createdAt?new Date(a.createdAt).toLocaleString():(a.date||'');meta.textContent=dt+' · '+(a.wordCount||0)+' 词 · '+level;info.append(title,meta);var b=document.createElement('button');b.className='ghost-btn';b.textContent='查看';b.addEventListener('click',function(){showArticle(a);switchInternalView('writing');});row.append(info,b);host.appendChild(row);});
+ var list=articles();
+ list.forEach(function(a,index){
+  var key=historyKey(a,index),row=document.createElement('div');row.className='article-history-item';row.dataset.historyKey=key;
+  var pick=document.createElement('label');pick.className='history-article-pick';pick.setAttribute('aria-label','选择这篇文章');
+  var cb=document.createElement('input');cb.type='checkbox';cb.className='history-article-check';cb.checked=!!selectedHistory[key];cb.addEventListener('change',function(){selectedHistory[key]=cb.checked;updateHistorySelection();});pick.appendChild(cb);
+  var info=document.createElement('div');info.className='article-history-info';var title=document.createElement('strong');title.textContent=Array.isArray(a.targetWords)&&a.targetWords.length?a.targetWords.join(', '):(a.title||'练习文章');var meta=document.createElement('small');var level=a.difficulty==='cet4'?'四级 CET-4':a.difficulty==='cet6'?'六级 CET-6':a.difficulty||'未标注';var dt=a.createdAt?new Date(a.createdAt).toLocaleString():(a.date||'');meta.textContent=dt+' · '+(a.wordCount||0)+' 词 · '+level;info.append(title,meta);
+  var b=document.createElement('button');b.className='ghost-btn';b.textContent='查看';b.addEventListener('click',function(){showArticle(a);switchInternalView('writing');});row.append(pick,info,b);host.appendChild(row);
+ });
  if(!host.children.length)host.textContent='还没有保存的文章。';
+ updateHistorySelection();
+}
+function deleteSelectedHistory(){
+ var list=articles(),chosen=list.map(function(a,i){return selectedHistory[historyKey(a,i)]?i:-1;}).filter(function(i){return i>=0;});
+ if(!chosen.length)return;
+ if(!window.confirm('确定删除选中的 '+chosen.length+' 篇历史文章吗？删除后无法恢复。'))return;
+ var remove={};chosen.forEach(function(i){remove[i]=true;});
+ saveArticles(list.filter(function(a,i){return !remove[i];}));
+ selectedHistory={};renderHistory();showToast('已删除 '+chosen.length+' 篇历史文章');
 }
 function showToast(message,isError){var node=$('rwToast');if(!node){node=document.createElement('div');node.id='rwToast';node.className='rw-toast';node.setAttribute('role','status');document.body.appendChild(node);}node.textContent=message;node.classList.toggle('is-error',!!isError);node.classList.add('is-visible');clearTimeout(window.__rwToastTimer);window.__rwToastTimer=setTimeout(function(){node.classList.remove('is-visible');},3600);}
 function setGenerationProgress(state,message){var box=$('aiProgress');var text=$('aiProgressText');if(!box)return;box.classList.remove('is-idle','is-loading','is-success','is-error');box.classList.add('is-'+state);if(text)text.textContent=message||'';box.setAttribute('aria-label',message||'作文生成状态');}
@@ -197,7 +223,7 @@ function renderTypingStats(){var list=get('reviewwords.typingRecords.v1',[]);var
 function bind(){
  if(!$('weakWordList'))return;
  var cfg=readAISettings();if(cfg.baseUrl)$('aiBaseUrl').value=cfg.baseUrl;if(cfg.apiKey)$('aiApiKey').value=cfg.apiKey;if(cfg.model)$('aiModel').value=cfg.model;
- renderWeak();renderTypingStats();$('articleSource').addEventListener('input',function(){fitArticleTextareas();if($('articleWordCount'))$('articleWordCount').textContent=(($('articleSource').value.match(/\b[\w'-]+\b/g)||[]).length)+' 词';});$('articleTranslation').addEventListener('input',fitArticleTextareas);$('btnGenerateArticle').addEventListener('click',generate);$('btnSaveAISettings').addEventListener('click',function(){try{saveAISettings(true);}catch(e){}});$('btnTestAISettings').addEventListener('click',testAISettings);$('btnShowHistory').addEventListener('click',function(){renderHistory();switchInternalView('article-history');});if($('btnHistoryBack'))$('btnHistoryBack').addEventListener('click',function(){switchInternalView('writing');});
+ renderWeak();renderTypingStats();$('articleSource').addEventListener('input',function(){fitArticleTextareas();if($('articleWordCount'))$('articleWordCount').textContent=(($('articleSource').value.match(/\b[\w'-]+\b/g)||[]).length)+' 词';});$('articleTranslation').addEventListener('input',fitArticleTextareas);$('btnGenerateArticle').addEventListener('click',generate);$('btnSaveAISettings').addEventListener('click',function(){try{saveAISettings(true);}catch(e){}});$('btnTestAISettings').addEventListener('click',testAISettings);$('btnShowHistory').addEventListener('click',function(){renderHistory();switchInternalView('article-history');});if($('btnHistoryBack'))$('btnHistoryBack').addEventListener('click',function(){switchInternalView('writing');});if($('historySelectAll'))$('historySelectAll').addEventListener('change',function(){var checks=document.querySelectorAll('.history-article-check');Array.prototype.forEach.call(checks,function(cb){cb.checked=$('historySelectAll').checked;var row=cb.closest('.article-history-item');if(row)selectedHistory[row.dataset.historyKey]=cb.checked;});updateHistorySelection();});if($('btnDeleteSelectedArticles'))$('btnDeleteSelectedArticles').addEventListener('click',deleteSelectedHistory);
  $('btnExportBackup').addEventListener('click',backup);$('backupFile').addEventListener('change',function(){if(this.files[0])restore(this.files[0]);});
  $('btnSubmitWriting').addEventListener('click',function(){var source=$('articleSource').value,typed=$('writingInput').value;if(!source)return;var dist=editDistance(source,typed),max=Math.max(source.length,typed.length);var mins=Math.max((Date.now()-Number(window.__rwTypingStarted||Date.now()))/60000,1/60000);var rec=get('reviewwords.typingRecords.v1',[]);var accuracy=max?Math.max(0,1-dist/max):0;var correctChars=Math.max(0,source.length-dist);rec.unshift({bookId:active(),date:today(),mode:document.querySelector('[data-typing-mode].is-active')?.dataset.typingMode||'strict',accuracy:accuracy,errors:dist,wpm:Math.round(correctChars/5/mins),durationMs:mins*60000,articleId:articles()[0]?.id||null,article:source.slice(0,120)});localStorage.setItem('reviewwords.typingRecords.v1',JSON.stringify(rec.slice(0,500)));renderTypingStats();},true);
  document.querySelectorAll('.nav-btn[data-view="writing"]').forEach(function(b){b.addEventListener('click',renderWeak);});document.querySelectorAll('.nav-btn[data-view="stats"]').forEach(function(b){b.addEventListener('click',renderTypingStats);});

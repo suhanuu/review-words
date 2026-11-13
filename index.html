@@ -173,6 +173,11 @@
     <div class="page article-history-page">
       <div class="history-page-head"><button type="button" class="ghost-btn" id="btnHistoryBack">← 返回作文训练</button><h2 class="page-title">文章历史</h2></div>
       <p class="page-sub">按生成时间查看已保存的文章，点击“查看”继续阅读或练习。</p>
+      <div class="history-bulk-toolbar" id="historyBulkToolbar">
+        <label class="history-select-all"><input type="checkbox" id="historySelectAll"> <span>全选</span></label>
+        <span class="history-selected-count" id="historySelectedCount" aria-live="polite">已选择 0 篇</span>
+        <button type="button" class="danger-btn history-delete-selected" id="btnDeleteSelectedArticles" disabled>删除选中</button>
+      </div>
       <div id="articleHistory" class="article-history-list"></div>
     </div>
   </section>
