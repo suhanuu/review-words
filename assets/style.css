@@ -5011,3 +5011,155 @@ body.is-typing-screen .main { min-height: 100vh; }
     overflow-y: visible;
   }
 }
+
+/* ============================================================
+   UI 改版 · 第 1 步：骨架统一（版心 / 字号 / 间距）
+   ——————————————————————————————————————————————
+   只动样式，不动 HTML 与脚本。本层放在文件最后，靠层叠覆盖旧规则。
+   · 布局与字号只作用在 ≥721px：手机端继续用原来的紧凑规则，
+     手机导航、触控尺寸留给第 3 步，表格留给第 7 步。
+   · 旧文件里 .page / #view-words .page / .writing-page 有多份重复
+     定义，本层统一覆盖；真正的去重放在第 8 步一次做完。
+   ============================================================ */
+
+:root {
+  /* 版心：原来有 880 / 950 / 980 / 1080 四种宽度 */
+  --shell: 1040px;
+  --shell-pad: 32px;
+
+  /* 字号阶梯：32 / 24 / 18 / 15 / 13.5 / 12.5 */
+  --fs-title: 32px;
+  --fs-lead: 24px;
+  --fs-h: 18px;
+  --fs-body: 15px;
+  --fs-sm: 13.5px;
+  --fs-xs: 12.5px;   /* 下限：正文类文字不再低于 12.5px */
+
+  /* 间距按 8px 网格 */
+  --sp-1: 8px;
+  --sp-2: 16px;
+  --sp-3: 24px;
+  --sp-4: 32px;
+}
+
+@media (min-width: 721px) {
+
+  /* ---------- 1. 版心 ---------- */
+  .page {
+    max-width: var(--shell);
+    padding: 48px var(--shell-pad) 96px;
+  }
+  #view-words .page { max-width: var(--shell); }
+  .writing-page { max-width: var(--shell); }
+  .article-history-page,
+  #view-article-history .article-history-page { max-width: var(--shell); }
+
+  /* 学习卡与页面内容同宽：1040 - 32×2 = 976 */
+  .drill {
+    width: min(var(--shell), 100%);
+    padding-left: var(--shell-pad);
+    padding-right: var(--shell-pad);
+  }
+
+  /* ---------- 2. 字号 ---------- */
+  .page-title { font-size: var(--fs-title); }
+  #view-stats .page-title,
+  #view-words .page-title,
+  #view-favs .page-title { font-size: var(--fs-title); }
+
+  .page-sub { font-size: 14px; line-height: 1.65; letter-spacing: 0.01em; margin: 0 0 var(--sp-4); }
+  #view-stats .page-sub,
+  #view-words .page-sub,
+  #view-favs .page-sub { font-size: 14px; letter-spacing: 0.01em; }
+
+  .nav-btn { font-size: var(--fs-sm); }
+
+  .brand-copy small { font-size: 11px; }
+
+  /* 练习页顶部那条进度信息：10.5px 在 1440 屏上几乎看不清 */
+  .drill-top { font-size: 12px; }
+  .hints { font-size: var(--fs-xs); }
+  .stage-kicker { font-size: 12px; }
+  .rate kbd { font-size: 11px; }
+
+  /* 词表 */
+  .word-table { font-size: 14px; }
+  .word-table th { font-size: var(--fs-xs); }
+  .word-table td.p { font-size: 13px; }
+  .word-count { font-size: var(--fs-xs); }
+  .detail-btn,
+  .row-detail { font-size: var(--fs-xs); }
+
+  /* 数字卡与图表 */
+  .stat-card .lbl { font-size: var(--fs-xs); }
+  .stat-card .num small { font-size: 12px; }
+  .done-stat .lbl { font-size: var(--fs-xs); }
+  .done-kicker { font-size: var(--fs-xs); }
+  .chart-title { font-size: var(--fs-sm); }
+  .chart-latest { font-size: var(--fs-xs); }
+  .empty-note { font-size: var(--fs-sm); }
+
+  /* 表单与说明文字 */
+  .writing-label,
+  .book-import-label,
+  .ai-settings-fields label,
+  .ai-controls label,
+  #aiConfigStatus,
+  .ai-progress-text,
+  .typing-screen-mode,
+  .typing-live-metrics,
+  .article-history-info small { font-size: var(--fs-xs); }
+
+  .setting-desc,
+  .weak-pool-note,
+  .ai-security-note,
+  .ai-settings-summary,
+  .import-hint,
+  .book-import-hint,
+  .fav-empty-desc,
+  .writing-status,
+  .book-tag,
+  .mode-btn,
+  .typing-metrics,
+  .badge,
+  .fav-time { font-size: 12px; }
+
+  .seg button,
+  .detail-ph,
+  .detail-sec-title,
+  .detail-chip span,
+  .feedback,
+  .review-result { font-size: var(--fs-xs); }
+
+  .detail-chip b,
+  .full-def,
+  .fav-def,
+  .detail-list li b,
+  .detail-sent li span,
+  .fav-empty-btn,
+  .danger-btn { font-size: 13px; }
+
+  .fav-ph,
+  .weak-word-chip { font-size: 13px; }
+  .weak-word-chip small { font-size: 12px; }
+  .book-card p,
+  .book-switch,
+  .import-caret,
+  .import-box textarea { font-size: var(--fs-xs); }
+
+  /* ---------- 3. 间距 ---------- */
+  .page-sub { margin-bottom: var(--sp-4); }
+  .stat-cards { gap: var(--sp-2); }
+  .chart-block { padding: var(--sp-3) var(--sp-3) var(--sp-3); }
+}
+
+/* 矮窗口（≤760px 高）：统计 / 词库 / 收藏是"一屏装下"的版式，
+   标题和副标题保持紧凑，不跟着大屏一起放大 */
+@media (min-width: 861px) and (max-height: 760px) {
+  #view-stats .page-title,
+  #view-words .page-title,
+  #view-favs .page-title { font-size: 24px; }
+  #view-stats .page-sub,
+  #view-words .page-sub,
+  #view-favs .page-sub { font-size: var(--fs-xs); margin-bottom: 10px; }
+}
