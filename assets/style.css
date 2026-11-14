@@ -2642,11 +2642,36 @@ body.is-typing-screen .main { min-height: 100vh; }
 .typing-prompt::-webkit-scrollbar-track { background:transparent; }
 .typing-prompt::-webkit-scrollbar-thumb { background:var(--line); border-radius:999px; }
 .typing-prompt::-webkit-scrollbar-thumb:hover { background:var(--muted); }
+
+/* 中英文切换：原文卡片右上角的分段按钮 */
+.typing-lang-seg { display:inline-flex; gap:2px; padding:3px; border-radius:10px; background:var(--surface-2); }
+.typing-lang-seg button { padding:4px 12px; border:0; border-radius:8px; background:transparent; color:var(--muted); font:12px/1.4 var(--font-sans); cursor:pointer; transition:background-color .12s var(--ease),color .12s var(--ease); }
+.typing-lang-seg button.is-active { color:var(--text); background:var(--surface); box-shadow:var(--shadow-key,0 1px 2px rgba(0,0,0,.08)); }
+/* 中文模式：原文换成正文字体（等宽字体的汉字很难看），4 行窗口跟着行距算 */
+#view-typing.is-cn .typing-source-panel .typing-prompt { height:calc(4 * 1.9em + 40px); font:clamp(18px,1.8vw,24px)/1.9 var(--font-sans); letter-spacing:.01em; }
+/* 中文要选字，输入框不能藏在屏幕外，露成一条可见的输入条，输入法候选框会跟着它出现 */
+#view-typing.is-cn .typing-capture-input {
+  position:static !important; left:auto !important; top:auto !important;
+  display:block !important; width:100% !important; max-width:664px;
+  height:48px !important; min-height:48px !important;
+  margin:0 auto 10px; padding:10px 16px !important; opacity:1 !important;
+  border:1px solid var(--line) !important; border-radius:12px !important;
+  background:var(--surface-2) !important; color:var(--text) !important;
+  font:16px/1.6 var(--font-sans) !important;
+  resize:none !important; overflow:hidden !important; white-space:pre;
+}
 @media(max-width:680px) {
  .ai-controls #btnShowHistory { margin-left:0; }
  .article-history-list .article-history-item { align-items:center; }
  .history-delete-selected { margin-left:0; }
  .typing-source-panel .typing-prompt { height:calc(6em + 28px); padding:14px; font-size:15px; line-height:2; }
+ #view-typing.is-cn .typing-source-panel .typing-prompt { height:calc(3 * 1.9em + 28px); font-size:16px; }
+ #view-typing.is-cn .typing-capture-input { height:42px !important; min-height:42px !important; font-size:15px !important; }
+ .typing-lang-seg button { white-space:nowrap; }
+ .typing-source-panel .writing-card-head { flex-wrap:wrap; row-gap:8px; }
+ .typing-source-panel .writing-card-head > strong { white-space:nowrap; }
+ .typing-source-panel .typing-live-metrics { flex:1 0 100%; margin-left:0; }
+ .typing-lang-seg { margin-left:auto; }
  .typing-live-metrics { display:block; line-height:1.8; }
 }
 .article-source-preview { width:100%; min-height:118px; padding:12px 14px; border:1px solid var(--line); border-radius:12px; color:var(--text); background:var(--surface-2); font:15px/1.9 var(--font-sans); white-space:pre-wrap; overflow-wrap:anywhere; }

@@ -2532,13 +2532,37 @@
     });
 
     // 作文打字：在原文位置逐字呈现输入反馈，虚拟键盘位于原文下方。
+    // 中英文共用同一套渲染与统计，区别只在数据源、字体和输入法处理。
     var writingStartedAt = 0;
     var writingSource = '';
     var writingInput = el('writingInput');
+    var typingLang = 'en';          // en / zh
+    var typingComposing = false;    // 中文输入法还在拼拼音：没上屏之前不能按拼音算错
 
     // 校验一律忽略大小写：原文照原样显示，比较时两边都转小写。
     function sameChar(a, b) {
       return a != null && b != null && String(a).toLowerCase() === String(b).toLowerCase();
+    }
+
+    function typingLangText(lang) {
+      var node = el(lang === 'zh' ? 'articleTranslation' : 'articleSource');
+      return node ? String(node.value || '').trim() : '';
+    }
+
+    function syncTypingLangUi() {
+      var view = el('view-typing');
+      if (view) view.classList.toggle('is-cn', typingLang === 'zh');
+      var label = el('typingSourceLabel');
+      if (label) label.textContent = typingLang === 'zh' ? '中文原文' : '英文原文';
+      var unit = el('typingSpeedUnit');
+      if (unit) unit.textContent = typingLang === 'zh' ? '字/分' : 'WPM';
+      var mode = el('typingScreenMode');
+      if (mode) mode.textContent = typingLang === 'zh' ? '使用中文输入法输入' : '使用实体键盘输入';
+      var kbHint = el('kbHintText');
+      if (kbHint) kbHint.textContent = typingLang === 'zh' ? '虚拟键盘 · 用输入法输入' : '虚拟键盘 · 请使用实体键盘输入';
+      document.querySelectorAll('[data-typing-lang]').forEach(function (btn) {
+        btn.classList.toggle('is-active', btn.dataset.typingLang === typingLang);
+      });
     }
 
     // 方向键、Home/End、翻页键在打字页没意义：它们会把光标从末尾挪走，
@@ -2558,6 +2582,8 @@
       if (!inp || inp.disabled) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (TYPING_CURSOR_KEYS[e.key]) {
+        // 中文输入法在候选框里选字要用方向键，拼音还没上屏时放行
+        if (typingLang === 'zh' && typingComposing) return;
         e.preventDefault();
         if (document.activeElement === inp) inp.setSelectionRange(inp.value.length, inp.value.length);
         return;
@@ -2616,9 +2642,15 @@
       host.scrollTop = prevScroll;
       if (!keepScroll) keepCursorOnTopLine(host);
     }
-    el('btnStartWriting').addEventListener('click', function () {
-      writingSource = el('articleSource').value.trim();
-      if (!writingSource) { el('articleStatus').textContent = '请先生成或填写文章'; return; }
+    function beginTyping() {
+      writingSource = typingLangText(typingLang);
+      if (!writingSource) {
+        el('articleStatus').textContent = typingLang === 'zh'
+          ? '这篇还没有中文译文，先让 AI 生成一篇'
+          : '请先生成或填写文章';
+        return false;
+      }
+      typingComposing = false;
       writingInput.disabled = false; writingInput.value = ''; writingStartedAt = Date.now();
       window.__rwTypingStarted = writingStartedAt;
       // 背词页留下的「下一步敲哪个键」高亮和状态文字别带到打字页
@@ -2629,11 +2661,32 @@
       el('typingState').textContent = '开始输入';
       el('articleStatus').textContent = '练习中';
       el('writingErrors').textContent = '0'; el('writingWpm').textContent = '0'; el('writingAccuracy').textContent = '—';
+      return true;
+    }
+    el('btnStartWriting').addEventListener('click', function () {
+      if (!beginTyping()) return;
       setView('typing'); writingInput.focus();
     });
-    writingInput.addEventListener('input', function () {
+
+    // 中英文切换：正在练就按新语言重开，免得两种文字混在一起
+    document.querySelectorAll('[data-typing-lang]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var next = btn.dataset.typingLang === 'zh' ? 'zh' : 'en';
+        if (next === typingLang) return;
+        if (state.view === 'typing' && !typingLangText(next)) {
+          el('articleStatus').textContent = next === 'zh' ? '这篇还没有中文译文' : '还没有英文原文';
+          return;
+        }
+        typingLang = next;
+        syncTypingLangUi();
+        if (state.view === 'typing' && beginTyping()) writingInput.focus();
+      });
+    });
+    syncTypingLangUi();
+
+    function refreshTyping() {
       // 兜底：插入点必须停在末尾，任何方式把光标挪走都在这里拽回来，
-      // 避免下一个字母插进句子中间、后面整段错位。
+      // 避免下一个字插进句子中间、后面整段错位。
       if (writingInput.selectionStart !== writingInput.value.length || writingInput.selectionEnd !== writingInput.value.length) {
         try { writingInput.setSelectionRange(writingInput.value.length, writingInput.value.length); } catch (err) {}
       }
@@ -2642,10 +2695,24 @@
       var mins = Math.max((Date.now() - writingStartedAt) / 60000, 1 / 60000);
       var correct = 0, errors = 0;
       for (var i = 0; i < typed.length; i++) { if (sameChar(typed[i], writingSource[i])) correct++; else errors++; }
-      el('writingErrors').textContent = String(errors + Math.max(0, writingSource.length - typed.length) * 0);
-      el('writingWpm').textContent = String(Math.round((correct / 5) / mins));
+      el('writingErrors').textContent = String(errors);
+      // 英文按词（5 字符）算 WPM，中文按字算
+      el('writingWpm').textContent = String(typingLang === 'zh'
+        ? Math.round(correct / mins)
+        : Math.round((correct / 5) / mins));
       el('writingAccuracy').textContent = typed.length ? Math.round(correct / typed.length * 100) + '%' : '—';
       el('kbState').textContent = typed.length >= writingSource.length ? '输入完成' : '已输入 ' + typed.length + ' / ' + writingSource.length;
+    }
+
+    writingInput.addEventListener('compositionstart', function () { typingComposing = true; });
+    writingInput.addEventListener('compositionend', function () {
+      typingComposing = false;
+      refreshTyping();
+    });
+    writingInput.addEventListener('input', function () {
+      // 拼音还挂在候选框里（value 里是 gongzheng 这种），上屏了再校验
+      if (typingComposing) return;
+      refreshTyping();
     });
     function returnToArticleView() {
       var writingNav = document.querySelector('.nav-btn[data-view="writing"]');

@@ -150,14 +150,14 @@
       <div class="typing-screen-head">
         <button type="button" class="ghost-btn" id="btnBackToWriting">← 返回作文阅读</button>
         <div><strong>英文打字练习</strong><span id="typingState" class="writing-status">尚未开始</span></div>
-        <span class="typing-screen-mode">使用实体键盘输入</span>
+        <span class="typing-screen-mode" id="typingScreenMode">使用实体键盘输入</span>
       </div>
       <div class="typing-screen-content">
         <div class="typing-source-panel">
-          <div class="writing-card-head"><strong>英文原文</strong><span class="typing-live-metrics">速度 <b id="writingWpm">0</b> WPM　准确率 <b id="writingAccuracy">—</b>　错误 <b id="writingErrors">0</b></span></div>
+          <div class="writing-card-head"><strong id="typingSourceLabel">英文原文</strong><div class="typing-lang-seg" role="group" aria-label="练习语言"><button type="button" class="is-active" data-typing-lang="en">英文</button><button type="button" data-typing-lang="zh">中文</button></div><span class="typing-live-metrics">速度 <b id="writingWpm">0</b> <span id="typingSpeedUnit">WPM</span>　准确率 <b id="writingAccuracy">—</b>　错误 <b id="writingErrors">0</b></span></div>
           <div id="typingPrompt" class="typing-prompt" aria-live="polite">先准备一篇文章，再开始练习。</div>
           <div class="keyboard-dock writing-keyboard" id="keyboardDock" aria-hidden="true">
-            <div class="keyboard-panel"><div class="kb-bar"><span>虚拟键盘 · 请使用实体键盘输入</span><span id="kbState">等待输入</span></div><div class="kb-wrap"><div class="kb-board" id="kbBoard"></div><div class="hands" id="handsSvg" aria-hidden="true"></div></div></div>
+            <div class="keyboard-panel"><div class="kb-bar"><span id="kbHintText">虚拟键盘 · 请使用实体键盘输入</span><span id="kbState">等待输入</span></div><div class="kb-wrap"><div class="kb-board" id="kbBoard"></div><div class="hands" id="handsSvg" aria-hidden="true"></div></div></div>
           </div>
         </div>
         <section class="writing-card typing-card typing-input-holder" aria-label="打字输入区">
