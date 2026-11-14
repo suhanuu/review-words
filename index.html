@@ -223,7 +223,6 @@
         <p class="book-import-hint" id="bookImportHint">每行格式：单词 | 音标 | 中文释义。也支持逗号或 Tab 分隔。切换词书后，学习记录、复习计划和收藏互相独立。</p>
       </div>
       <div class="bookshelf-grid" id="bookshelfGrid"></div>
-<section class="data-tools-card"><h3>本地数据安全</h3><p>数据优先保存在当前浏览器，并同步写入 IndexedDB。清理浏览器数据前请先导出备份。</p><div class="data-tools-actions"><button class="ghost-btn" id="btnExportBackup" type="button">导出全部数据 JSON</button><label class="ghost-btn file-button">恢复 JSON 备份<input id="backupFile" type="file" accept=".json,application/json"></label></div><small id="backupStatus" aria-live="polite"></small></section>
     </div>
   </section>
 
@@ -428,6 +427,16 @@ abandon | /əˈbændən/ | v. 放弃；抛弃
       <button data-val="1" class="on">标准</button>
       <button data-val="1.1">大</button>
     </div>
+  </div>
+
+  <div class="drawer-section">
+    <div class="drawer-section-title">本地数据</div>
+    <p class="drawer-section-note">数据优先保存在当前浏览器，并同步写入 IndexedDB。清理浏览器数据前请先导出备份。</p>
+    <div class="drawer-data-actions">
+      <button class="ghost-btn" id="btnExportBackup" type="button">导出全部数据 JSON</button>
+      <label class="ghost-btn file-button">恢复 JSON 备份<input id="backupFile" type="file" accept=".json,application/json"></label>
+    </div>
+    <small id="backupStatus" aria-live="polite"></small>
   </div>
 
   <button class="danger-btn" id="btnReset">清空全部学习记录</button>
