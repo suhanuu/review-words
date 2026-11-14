@@ -234,6 +234,12 @@
       <h2 class="page-title">统计</h2>
       <p class="page-sub">练字的成果和背词的进度，分开看。</p>
 
+      <div class="zone-head">
+        <span class="zone-name">背词</span>
+        <span class="zone-rule"></span>
+        <span class="zone-tag">单词按「很熟」算</span>
+      </div>
+
       <div class="stat-cards">
         <div class="stat-card is-pop" data-pop="words" role="button" tabindex="0"><div class="num" id="statWordsToday">0</div><div class="lbl">今日单词<span class="lbl-go">看本月 ›</span></div></div>
         <div class="stat-card"><div class="num" id="statWordsTotal">0</div><div class="lbl">累计单词</div></div>
@@ -241,17 +247,37 @@
         <div class="stat-card"><div class="num" id="statTimeTotal">0<small>小时</small></div><div class="lbl">累计时长</div></div>
       </div>
 
-      <div class="chart-row">
-        <div class="chart-block">
-          <div class="chart-head">
-            <div class="chart-title">单词/个</div>
-            <div class="chart-latest" id="wordsLatest"></div>
-          </div>
-          <div class="chart" data-series="words"></div>
+      <div class="chart-block">
+        <div class="chart-head">
+          <div class="chart-title">单词/个</div>
+          <div class="chart-latest" id="wordsLatest"></div>
+        </div>
+        <div class="chart" data-series="words"></div>
+      </div>
+
+      <div class="zone-head">
+        <span class="zone-name">打字</span>
+        <span class="zone-rule"></span>
+        <div class="typing-lang-seg" role="group" aria-label="练习语言">
+          <button type="button" data-typing-stat="en" class="is-active">英文</button>
+          <button type="button" data-typing-stat="zh">中文</button>
         </div>
       </div>
 
-      <section class="data-tools-card typing-results-card"><h3>作文打字成绩</h3><div class="stat-cards"><div class="stat-card"><div class="num" id="typingSessions">0</div><div class="lbl">练习次数</div></div><div class="stat-card"><div class="num" id="typingAvgWpm">0</div><div class="lbl">平均 WPM</div></div><div class="stat-card"><div class="num" id="typingAvgAcc">0%</div><div class="lbl">平均准确率</div></div><div class="stat-card"><div class="num" id="typingTotalErrors">0</div><div class="lbl">累计差异数</div></div></div><div id="typingRecent" class="article-history"></div></section>
+      <div class="stat-cards is-typing">
+        <div class="stat-card is-pop" id="typingSessionsCard" role="button" tabindex="0"><div class="num" id="typingSessions">0</div><div class="lbl">练习次数<span class="lbl-go">查看记录 ›</span></div></div>
+        <div class="stat-card"><div class="num" id="typingAvgSpeed">0<small>WPM</small></div><div class="lbl">平均速度</div></div>
+        <div class="stat-card"><div class="num" id="typingAvgAcc">0<small>%</small></div><div class="lbl">平均准确率</div></div>
+        <div class="stat-card"><div class="num" id="typingTotalErrors">0</div><div class="lbl">累计差异数</div></div>
+      </div>
+
+      <div class="chart-block">
+        <div class="chart-head">
+          <div class="chart-title" id="typingChartUnit">WPM</div>
+          <div class="chart-latest" id="typingLatest"></div>
+        </div>
+        <div class="chart" id="typingChart" data-series="typing"></div>
+      </div>
 
       <!-- 点「今日单词 / 今日时长」弹出来的当月折线 -->
       <div class="month-pop" id="monthPop" hidden>
@@ -272,6 +298,26 @@
           <div class="month-pop-foot" id="monthPopFoot"></div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- ============ 打字练习记录 ============ -->
+  <section class="view" id="view-typing-history">
+    <div class="page typing-hist-page">
+      <div class="history-page-head">
+        <button type="button" class="ghost-btn" id="btnTypingHistoryBack">← 返回统计</button>
+        <h2 class="page-title">打字练习记录</h2>
+      </div>
+      <p class="page-sub">英文按 WPM、中文按 字/分 分开记，按时间倒序。</p>
+      <div class="typing-hist-tools">
+        <div class="typing-lang-seg" role="group" aria-label="筛选语言">
+          <button type="button" data-hist-lang="all" class="is-active">全部</button>
+          <button type="button" data-hist-lang="en">英文</button>
+          <button type="button" data-hist-lang="zh">中文</button>
+        </div>
+        <span class="typing-hist-sum" id="typingHistSum"></span>
+      </div>
+      <div class="typing-hist-list" id="typingHistoryList"></div>
     </div>
   </section>
 

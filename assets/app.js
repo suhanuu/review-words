@@ -917,7 +917,7 @@
   // ================= 视图切换 =================
   function setView(name) {
     state.view = name;
-    ['drill', 'done', 'writing', 'typing', 'article-history', 'weak-words', 'books', 'stats', 'words', 'favs'].forEach(function (v) {
+    ['drill', 'done', 'writing', 'typing', 'article-history', 'weak-words', 'books', 'stats', 'typing-history', 'words', 'favs'].forEach(function (v) {
       var node = el('view-' + v);
       if (node) node.classList.toggle('is-active', v === name);
     });
@@ -1570,6 +1570,8 @@
     var pts = monthSeries(month, function (k) { return map[k] || 0; });
     el('wordsLatest').textContent = pts.length ? pts[pts.length - 1].v + ' 个' : '';
     renderChart(document.querySelector('.chart[data-series="words"]'), pts, 0, 'var(--ok)', ' 个');
+
+    renderTypingZone();
   }
 
   // ---------- 当月折线浮层 ----------
@@ -1624,6 +1626,116 @@
     renderChart(el('monthPopChart'), pts, 0, isWords ? 'var(--ok)' : 'var(--accent)', isWords ? ' 个' : ' 分钟');
   }
 
+  // ---------- 打字成绩（英/中分开） ----------
+  var typingTab = 'en';
+  var histLang = 'all';
+
+  function typingRecords() {
+    try {
+      var raw = JSON.parse(localStorage.getItem('reviewwords.typingRecords.v1') || '[]');
+      return Array.isArray(raw) ? raw : [];
+    } catch (e) { return []; }
+  }
+
+  function recordSpeed(x) {
+    if (typeof x.speed === 'number') return x.speed;
+    return x.wpm || 0;
+  }
+
+  function typingFor(lang) {
+    return typingRecords().filter(function (x) { return (x.lang || 'en') === lang; });
+  }
+
+  function renderTypingZone() {
+    var list = typingFor(typingTab);
+    var n = list.length, sumSpeed = 0, sumAcc = 0, sumErr = 0;
+    list.forEach(function (x) {
+      sumSpeed += recordSpeed(x);
+      sumAcc += x.accuracy || 0;
+      sumErr += x.errors || 0;
+    });
+
+    var unit = typingTab === 'en' ? 'WPM' : '字/分';
+    el('typingSessions').textContent = n;
+    el('typingAvgSpeed').innerHTML = (n ? Math.round(sumSpeed / n) : 0) + '<small>' + unit + '</small>';
+    el('typingAvgAcc').innerHTML = (n ? Math.round(sumAcc / n * 100) : 0) + '<small>%</small>';
+    el('typingTotalErrors').textContent = sumErr;
+    el('typingChartUnit').textContent = unit;
+
+    // 当月每天的平均速度（这天没练就是 0）
+    var month = todayKey().slice(0, 7);
+    var byDay = {};
+    list.forEach(function (x) {
+      if (!x.date || x.date.slice(0, 7) !== month) return;
+      (byDay[x.date] = byDay[x.date] || []).push(recordSpeed(x));
+    });
+    var pts = monthSeries(month, function (k) {
+      var arr = byDay[k];
+      if (!arr || !arr.length) return null;   // 这天没练就不画点，别补 0
+      var s = 0;
+      arr.forEach(function (v) { s += v; });
+      return Math.round(s / arr.length);
+    });
+    var last = 0;
+    for (var i = pts.length - 1; i >= 0; i--) {
+      if (pts[i].v != null) { last = pts[i].v; break; }
+    }
+    el('typingLatest').textContent = last ? last + ' ' + unit : '';
+    renderChart(el('typingChart'), pts, 0, 'var(--accent)', ' ' + unit);
+  }
+
+  // ---------- 打字练习记录页 ----------
+  function openTypingHistory() {
+    setView('typing-history');
+    renderTypingHistory();
+  }
+
+  function renderTypingHistory() {
+    var host = el('typingHistoryList');
+    if (!host) return;
+    var all = typingRecords().slice().sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
+    var list = histLang === 'all' ? all : all.filter(function (x) { return (x.lang || 'en') === histLang; });
+
+    var en = 0, zh = 0;
+    all.forEach(function (x) { if ((x.lang || 'en') === 'zh') zh++; else en++; });
+    el('typingHistSum').textContent = '共 ' + all.length + ' 次 · 英文 ' + en + ' · 中文 ' + zh;
+
+    if (!list.length) {
+      host.innerHTML = '<p class="typing-hist-empty">还没有练习记录，去作文训练练一篇试试。</p>';
+      return;
+    }
+
+    var html = '';
+    var lastDay = '';
+    list.forEach(function (x) {
+      var day = x.date || '';
+      if (day !== lastDay) {
+        lastDay = day;
+        html += '<div class="typing-hist-day">' + (day === todayKey() ? '今天' : day.slice(5)) + '</div>';
+      }
+      var d = new Date(x.at || 0);
+      var pad2 = function (v) { return (v < 10 ? '0' : '') + v; };
+      var time = x.at ? pad2(d.getHours()) + ':' + pad2(d.getMinutes()) : '';
+      var lang = (x.lang || 'en') === 'zh' ? 'zh' : 'en';
+      var unit = lang === 'zh' ? '字/分' : 'WPM';
+      var sec = Math.round((x.durationMs || 0) / 1000);
+      var dur = sec >= 60 ? Math.floor(sec / 60) + ' 分 ' + (sec % 60) + ' 秒' : sec + ' 秒';
+      html += '<div class="typing-hist-row">' +
+        '<div class="typing-hist-left">' +
+          (time ? '<span class="typing-hist-time">' + time + '</span>' : '') +
+          '<span class="typing-hist-lang ' + lang + '">' + (lang === 'zh' ? '中文' : '英文') + '</span>' +
+          '<span class="typing-hist-dur">练了 ' + dur + '</span>' +
+        '</div>' +
+        '<div class="typing-hist-right">' +
+          '<span><b>' + recordSpeed(x) + '</b> ' + unit + '</span>' +
+          '<span>准确 <b>' + Math.round((x.accuracy || 0) * 100) + '%</b></span>' +
+          '<span>差异 <b>' + (x.errors || 0) + '</b> 处</span>' +
+        '</div>' +
+      '</div>';
+    });
+    host.innerHTML = html;
+  }
+
   var chartSeq = 0;
 
   // 纵轴刻度：步长取 1/2/5 ×10ⁿ 里第一个够用的整数档，顶端补到步长的整数倍。
@@ -1668,22 +1780,31 @@
     var iw = W - PL - PR, ih = Math.max(20, H - PT - PB);
 
     var dataMax = 0;
-    pts.forEach(function (p) { if (p.v > dataMax) dataMax = p.v; });
+    pts.forEach(function (p) { if (p.v != null && p.v > dataMax) dataMax = p.v; });
     var scale = chartScale(dataMax, fixedMax);
     var maxV = scale.top;
     var X = function (i) { return pts.length === 1 ? PL + iw / 2 : PL + (iw * i) / (pts.length - 1); };
     var Y = function (v) { return PT + ih - (Math.min(v, maxV) / maxV) * ih; };
 
-    var line = '';
+    // v 为 null 表示那天没数据：跳过这个点，线从两端直接连过去，不补假的 0
+    var seq = [];
     pts.forEach(function (p, i) {
-      line += (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(p.v).toFixed(1) + ' ';
+      if (p.v != null) seq.push({ i: i, v: p.v });
     });
+    if (!seq.length) {
+      host.innerHTML = '<div class="empty-note">还没有数据，先练几个词</div>';
+      return;
+    }
 
-    var area = line + 'L' + X(pts.length - 1).toFixed(1) + ' ' + (PT + ih) +
-      ' L' + X(0).toFixed(1) + ' ' + (PT + ih) + ' Z';
+    var line = '';
+    seq.forEach(function (q, k) {
+      line += (k ? 'L' : 'M') + X(q.i).toFixed(1) + ' ' + Y(q.v).toFixed(1) + ' ';
+    });
+    var area = line + 'L' + X(seq[seq.length - 1].i).toFixed(1) + ' ' + (PT + ih) +
+      ' L' + X(seq[0].i).toFixed(1) + ' ' + (PT + ih) + ' Z';
 
-    var dots = pts.map(function (p, i) {
-      return '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(p.v).toFixed(1) +
+    var dots = seq.map(function (q) {
+      return '<circle cx="' + X(q.i).toFixed(1) + '" cy="' + Y(q.v).toFixed(1) +
         '" r="2.7" fill="var(--surface)" stroke="' + color + '" stroke-width="1.6" />';
     }).join('');
     var grid = '';
@@ -1764,6 +1885,7 @@
     i = Math.max(0, Math.min(n - 1, i));
 
     var p = c.pts[i];
+    if (p.v == null) { hideChartTip(host); return; }
     var px = c.X(i), py = c.Y(p.v);
     var tip = host.querySelector('.chart-tip');
     if (!tip) {
@@ -2679,6 +2801,35 @@
       if (!inChart) hideAllChartTips();
     }, true);
 
+    // 统计页：打字区英/中切换
+    var typingSegBtns = document.querySelectorAll('#view-stats [data-typing-stat]');
+    typingSegBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        typingTab = btn.dataset.typingStat === 'zh' ? 'zh' : 'en';
+        typingSegBtns.forEach(function (b) { b.classList.toggle('is-active', b === btn); });
+        renderTypingZone();
+      });
+    });
+
+    // 点「练习次数」进打字记录页
+    if (el('typingSessionsCard')) {
+      el('typingSessionsCard').addEventListener('click', openTypingHistory);
+      el('typingSessionsCard').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openTypingHistory(); }
+      });
+    }
+    if (el('btnTypingHistoryBack')) {
+      el('btnTypingHistoryBack').addEventListener('click', function () { setView('stats'); });
+      var histBtns = document.querySelectorAll('[data-hist-lang]');
+      histBtns.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          histLang = btn.dataset.histLang;
+          histBtns.forEach(function (b) { b.classList.toggle('is-active', b === btn); });
+          renderTypingHistory();
+        });
+      });
+    }
+
     // 右上角「熟悉」：这个词算过了，点一下标成已完成，以后不再出现
     var masterBtn = el('btnDrillMaster');
     if (masterBtn) {
@@ -2986,6 +3137,8 @@
       typingComposing = false;
       writingInput.disabled = false; writingInput.value = ''; writingStartedAt = Date.now();
       window.__rwTypingStarted = writingStartedAt;
+      // 提交成绩要用「这次真正在练的那段字」和语言，不能再拿英文原文去对中文
+      window.__rwTyping = { lang: typingLang, source: writingSource, startedAt: writingStartedAt };
       // 背词页留下的「下一步敲哪个键」高亮和状态文字别带到打字页
       clearHint();
       if (el('kbState')) el('kbState').textContent = '等待输入';

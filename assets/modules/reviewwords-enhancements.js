@@ -341,11 +341,10 @@ function restore(file){
  var reader=new FileReader();reader.onload=function(){try{var d=JSON.parse(String(reader.result||''));if(d.format!=='review-words-backup'||!d.items)throw new Error('不是有效的 Review Words 备份文件');if(!confirm('恢复将覆盖备份中同名的数据键，建议先导出当前备份。确定继续吗？'))return;Object.keys(d.items).forEach(function(k){if(k!==AI_SETTINGS&&/^(wordtype\.v1|reviewwords\.)/.test(k))localStorage.setItem(k,String(d.items[k]));});$('backupStatus').textContent='恢复成功，页面即将重新载入。';setTimeout(function(){location.reload();},500);}catch(e){$('backupStatus').textContent='恢复失败：'+e.message;}};reader.readAsText(file,'UTF-8');
 }
 function editDistance(a,b){var prev=Array.from({length:b.length+1},function(_,i){return i;}),cur=[];for(var i=1;i<=a.length;i++){cur=[i];for(var j=1;j<=b.length;j++)cur[j]=Math.min(cur[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));prev=cur;}return prev[b.length];}
-function renderTypingStats(){var list=get('reviewwords.typingRecords.v1',[]);var n=list.length,avgW=n?Math.round(list.reduce(function(s,x){return s+(x.wpm||0);},0)/n):0,avgA=n?Math.round(list.reduce(function(s,x){return s+(x.accuracy||0);},0)/n*100):0,errs=list.reduce(function(s,x){return s+(x.errors||0);},0);if($('typingSessions'))$('typingSessions').textContent=n;if($('typingAvgWpm'))$('typingAvgWpm').textContent=avgW;if($('typingAvgAcc'))$('typingAvgAcc').textContent=avgA+'%';if($('typingTotalErrors'))$('typingTotalErrors').textContent=errs;if($('typingRecent')){$('typingRecent').innerHTML='';list.slice(0,8).forEach(function(x){var row=document.createElement('div');row.className='article-history-item';var t=document.createElement('span');t.textContent=x.date+' · '+x.mode+' · '+x.wpm+' WPM · '+Math.round(x.accuracy*100)+'% · '+x.errors+' 处差异';row.appendChild(t);$('typingRecent').appendChild(row);});if(!n)$('typingRecent').textContent='完成作文训练后，这里会显示成绩。';}}
 function bind(){
  if(!$('weakWordList'))return;
  var cfg=readAISettings();if(cfg.baseUrl)$('aiBaseUrl').value=cfg.baseUrl;if(cfg.apiKey)$('aiApiKey').value=cfg.apiKey;if(cfg.model)$('aiModel').value=cfg.model;
- renderWeak();renderTypingStats();
+ renderWeak();
  // 区间与默认数量只在常量里维护，这里一次性写进说明文案
  if($('weakPickerTipText'))$('weakPickerTipText').innerHTML='建议每次选 <strong>'+rangeText()+'</strong> 个词（推荐 '+sweetText()+'）。目标词过多时模型容易漏词、需要重试，反而更费 token；最多可选 '+HARD_MAX+' 个。';
  if($('btnWeakAutoPick'))$('btnWeakAutoPick').textContent='按优先级自动选 '+DEFAULT_PICK+' 个';
@@ -357,8 +356,31 @@ function bind(){
  document.querySelectorAll('[data-group-none]').forEach(function(b){b.addEventListener('click',function(){setPickerGroup(b.dataset.groupNone,false);});});
  $('articleSource').addEventListener('input',function(){fitArticleTextareas();if($('articleWordCount'))$('articleWordCount').textContent=(($('articleSource').value.match(/\b[\w'-]+\b/g)||[]).length)+' 词';});$('articleTranslation').addEventListener('input',fitArticleTextareas);$('btnGenerateArticle').addEventListener('click',generate);$('btnSaveAISettings').addEventListener('click',function(){try{saveAISettings(true);}catch(e){}});$('btnTestAISettings').addEventListener('click',testAISettings);$('btnShowHistory').addEventListener('click',function(){renderHistory();switchInternalView('article-history');});if($('btnHistoryBack'))$('btnHistoryBack').addEventListener('click',function(){switchInternalView('writing');});if($('historySelectAll'))$('historySelectAll').addEventListener('change',function(){var checks=document.querySelectorAll('.history-article-check');Array.prototype.forEach.call(checks,function(cb){cb.checked=$('historySelectAll').checked;var row=cb.closest('.article-history-item');if(row)selectedHistory[row.dataset.historyKey]=cb.checked;});updateHistorySelection();});if($('btnDeleteSelectedArticles'))$('btnDeleteSelectedArticles').addEventListener('click',deleteSelectedHistory);
  $('btnExportBackup').addEventListener('click',backup);$('backupFile').addEventListener('change',function(){if(this.files[0])restore(this.files[0]);});
- $('btnSubmitWriting').addEventListener('click',function(){var source=$('articleSource').value,typed=$('writingInput').value;if(!source)return;var dist=editDistance(source.toLowerCase(),typed.toLowerCase()),max=Math.max(source.length,typed.length);var mins=Math.max((Date.now()-Number(window.__rwTypingStarted||Date.now()))/60000,1/60000);var rec=get('reviewwords.typingRecords.v1',[]);var accuracy=max?Math.max(0,1-dist/max):0;var correctChars=Math.max(0,source.length-dist);rec.unshift({bookId:active(),date:today(),mode:document.querySelector('[data-typing-mode].is-active')?.dataset.typingMode||'strict',accuracy:accuracy,errors:dist,wpm:Math.round(correctChars/5/mins),durationMs:mins*60000,articleId:articles()[0]?.id||null,article:source.slice(0,120)});localStorage.setItem('reviewwords.typingRecords.v1',JSON.stringify(rec.slice(0,500)));renderTypingStats();},true);
- document.querySelectorAll('.nav-btn[data-view="writing"]').forEach(function(b){b.addEventListener('click',function(){renderWeak();syncNav('writing');});});document.querySelectorAll('.nav-btn[data-view="stats"]').forEach(function(b){b.addEventListener('click',renderTypingStats);});
+ $('btnSubmitWriting').addEventListener('click',function(){
+  var ctx=window.__rwTyping||{};
+  var source=String(ctx.source||'').trim();
+  var typed=String($('writingInput').value||'');
+  if(!source||!typed.trim())return;                       // 空着就别记了
+  var started=Number(ctx.startedAt||window.__rwTypingStarted||0);
+  var ms=Date.now()-(started||Date.now());
+  if(ms<3000)return;                                      // 不到三秒的一律不记
+  var lang=ctx.lang==='zh'?'zh':'en';
+  var mins=Math.max(ms/60000,1/60000);
+  var dist=editDistance(source.toLowerCase(),typed.toLowerCase());
+  var maxLen=Math.max(source.length,typed.length);
+  var accuracy=maxLen?Math.max(0,1-dist/maxLen):0;
+  var correct=Math.max(0,source.length-dist);
+  var speed=lang==='zh'?Math.round(correct/mins):Math.round(correct/5/mins);
+  var modeBtn=document.querySelector('[data-typing-mode].is-active');
+  var rec=get('reviewwords.typingRecords.v1',[]);
+  rec.unshift({bookId:active(),date:today(),at:Date.now(),lang:lang,
+    mode:(modeBtn&&modeBtn.dataset.typingMode)||'strict',
+    accuracy:accuracy,errors:dist,chars:typed.length,
+    speed:speed,unit:lang==='zh'?'cpm':'wpm',wpm:speed,
+    durationMs:ms,articleId:(articles()[0]||{}).id||null,article:source.slice(0,120)});
+  localStorage.setItem('reviewwords.typingRecords.v1',JSON.stringify(rec.slice(0,500)));
+},true);
+ document.querySelectorAll('.nav-btn[data-view="writing"]').forEach(function(b){b.addEventListener('click',function(){renderWeak();syncNav('writing');});});
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();
