@@ -15,7 +15,7 @@
     </span>
     <span class="brand-copy">
       <strong>考研单词学习</strong>
-      <small>红宝书 · 记忆与打字</small>
+      <small>记忆 · 打字 · 查词</small>
     </span>
   </div>
   <nav class="nav" aria-label="主导航">
@@ -259,47 +259,35 @@
     </div>
   </section>
 
-  <!-- ============ 词库 ============ -->
+  <!-- ============ 词库：查词词典 ============ -->
   <section class="view" id="view-words">
     <div class="page">
-      <h2 class="page-title">词库</h2>
-      <p class="page-sub" id="wordsSub">《2024 考研英语词汇 红宝书》，按原书词根顺序排列。</p>
+      <div class="dict-head">
+        <h2 class="page-title">词库</h2>
+        <span class="dict-count" id="wordCount"></span>
+      </div>
 
       <div class="word-tools">
         <input id="wordSearch" type="text" autocomplete="off" spellcheck="false"
-               placeholder="搜索单词或中文释义">
-        <span class="word-count" id="wordCount"></span>
+               placeholder="搜英文或中文，比如 abandon / 放弃">
       </div>
+
+      <div class="letter-bar" id="letterBar" aria-label="按首字母查看"></div>
 
       <div class="table-card">
         <table class="word-table">
           <thead>
-            <tr><th style="width:30%">单词</th><th style="width:22%">音标</th><th style="width:26%">要打出的中文</th><th style="width:14%">状态</th><th style="width:8%">详细</th></tr>
+            <tr>
+              <th class="col-w">单词</th>
+              <th class="col-p">音标</th>
+              <th class="col-a">中文释义</th>
+              <th class="col-s">我的词书</th>
+              <th class="col-d">详细</th>
+            </tr>
           </thead>
           <tbody id="wordTableBody"></tbody>
         </table>
-      </div>
-
-      <div class="word-more">
-        <button class="ghost-btn" id="btnMoreWords" style="padding:7px 18px;font-size:12.5px">显示更多</button>
-      </div>
-
-      <div class="import-box" id="importBox">
-        <button class="import-toggle" id="importToggle" type="button">
-          <span class="chart-title">导入你自己的词表</span>
-          <span class="import-caret">展开</span>
-        </button>
-        <div class="import-body">
-          <textarea id="importText" placeholder="apple | /ˈæpəl/ | n. 苹果；苹果树
-abandon | /əˈbændən/ | v. 放弃；抛弃
-
-一行一个词，分隔符用 | 或逗号，也可以直接从 Excel 复制四列贴进来。"></textarea>
-          <div class="import-actions">
-            <button class="primary-btn" id="btnImport" style="padding:9px 20px;font-size:13px">导入</button>
-            <button class="ghost-btn" id="btnImportDemo" style="padding:8px 16px">填一段示例</button>
-            <span class="import-hint" id="importHint"></span>
-          </div>
-        </div>
+        <p class="dict-empty" id="dictEmpty" hidden></p>
       </div>
     </div>
   </section>

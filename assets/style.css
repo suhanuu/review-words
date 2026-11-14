@@ -1522,7 +1522,7 @@ button {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 .word-tools input {
   flex: 1;
@@ -1542,18 +1542,51 @@ button {
   box-shadow: 0 0 0 3px var(--accent-ring);
 }
 .word-tools input::placeholder { color: var(--faint); }
-.word-count {
+/* 标题行：左边「词库」，右边词数 */
+.dict-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+.dict-count {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--faint);
-  white-space: nowrap;
   letter-spacing: 0.05em;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
-.word-more { margin-top: 16px; }
-.word-more .ghost-btn[hidden] { display: none; }
 
-/* 表格卡片：让词库像一本摊开的账本 */
+/* 首字母快捷条：点一下只看这个字母开头的词，再点一次取消 */
+.letter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin: -2px 0 14px;
+}
+.letter-btn {
+  min-width: 25px;
+  height: 25px;
+  padding: 0 5px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 0.16s var(--ease), background-color 0.16s var(--ease), border-color 0.16s var(--ease);
+}
+.letter-btn:hover { color: var(--text); background: var(--accent-soft); }
+.letter-btn.is-active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent-ring);
+}
+
+/* 表格卡片：让词库像一本摊开的词典 */
 .table-card {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -1565,6 +1598,7 @@ button {
 
 .word-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
   font-size: 13px;
@@ -1578,13 +1612,19 @@ button {
   padding: 14px 10px 12px 0;
   border-bottom: 1px solid var(--line-strong);
 }
+.word-table th.col-w { width: 23%; }
+.word-table th.col-p { width: 18%; }
+.word-table th.col-a { width: 36%; }
+.word-table th.col-s { width: 15%; }
+.word-table th.col-d { width: 8%; }
 .word-table td {
-  padding: 11px 10px 11px 0;
+  padding: 9px 10px 9px 0;
   border-bottom: 1px solid var(--line);
   color: var(--muted);
   vertical-align: baseline;
   transition: background-color 0.16s var(--ease);
 }
+.word-table tbody tr { cursor: pointer; }
 .word-table tbody tr:last-child td { border-bottom: none; }
 .word-table tr:hover td { background: rgba(23, 22, 15, 0.022); }
 [data-theme="dark"] .word-table tr:hover td { background: rgba(255, 255, 255, 0.032); }
@@ -1593,13 +1633,61 @@ button {
   font-size: 15.5px;
   color: var(--text);
   letter-spacing: 0.005em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .word-table td.p {
   font-family: var(--font-mono);
   font-size: 11.5px;
   letter-spacing: 0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.word-table td.a { color: var(--text-soft); }
+.word-table td.a {
+  color: var(--text-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.word-table td.s { white-space: nowrap; }
+
+/* 「加进词书」：词库里的词不在当前词书时显示 */
+.row-add {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.16s var(--ease), border-color 0.16s var(--ease), background-color 0.16s var(--ease);
+}
+.row-add:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* 搜不到 / 首次加载 */
+.dict-empty {
+  padding: 48px 12px 56px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--faint);
+  letter-spacing: 0.02em;
+}
+.word-table .dict-loading {
+  padding: 56px 12px 62px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--faint);
+  letter-spacing: 0.02em;
+}
 
 .badge {
   display: inline-block;
@@ -1621,69 +1709,6 @@ button {
   background: var(--bad-soft);
   color: var(--bad);
   border-color: transparent;
-}
-
-.import-box {
-  margin-top: 46px;
-  padding: 24px 24px 22px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  box-shadow: var(--shadow-sm), 0 1px 0 var(--hairline) inset;
-}
-/* 折叠头：一屏布局下把高度优先让给词表 */
-.import-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  width: 100%;
-  padding: 0;
-  background: none;
-  border: 0;
-  cursor: pointer;
-  text-align: left;
-}
-.import-caret {
-  font-size: 11px;
-  color: var(--faint);
-  letter-spacing: 0.08em;
-  transition: color 0.2s var(--ease);
-}
-.import-toggle:hover .import-caret { color: var(--accent); }
-.import-box.is-open .import-toggle { margin-bottom: 10px; }
-.import-box:not(.is-open) .import-body { display: none; }
-.import-box textarea {
-  width: 100%;
-  min-height: 128px;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
-  padding: 13px 15px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1.85;
-  color: var(--text);
-  outline: none;
-  resize: vertical;
-  transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
-}
-.import-box textarea:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-ring);
-}
-.import-actions {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  margin-top: 14px;
-  flex-wrap: wrap;
-}
-.import-hint {
-  font-size: 11.5px;
-  color: var(--faint);
-  font-family: var(--font-mono);
-  letter-spacing: 0.03em;
 }
 
 /* ============================================================
@@ -1844,11 +1869,33 @@ button {
   .word { font-size: clamp(40px, 12vw, 64px); }
   .answer { font-size: clamp(22px, 5.6vw, 28px); }
   .chart-block { padding: 18px 16px 12px; }
-  .import-box { padding: 18px; }
-  .table-card { padding: 4px 12px; overflow-x: auto; }
-  .word-table { min-width: 620px; }
+  .table-card { padding: 4px 12px; overflow-x: hidden; }
   .word-tools { align-items: stretch; flex-direction: column; gap: 8px; }
-  .word-count { text-align: right; }
+
+  /* 手机上横着放不下五列：藏掉音标（点「详细」能看到），其余按比例铺满 */
+  .word-table { min-width: 0; }
+  .word-table th.col-p,
+  .word-table td.p { display: none; }
+  .word-table th.col-w { width: 28%; }
+  .word-table th.col-a { width: 32%; }
+  .word-table th.col-s { width: 26%; }
+  .word-table th.col-d { width: 14%; }
+  .word-table td { padding: 9px 6px 9px 0; }
+  .word-table .row-detail {
+    padding: 3px 6px;
+    font-size: 10.5px;
+    white-space: nowrap;
+  }
+
+  /* 首字母条压成一行，可左右滑动 */
+  .letter-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin-bottom: 10px;
+    scrollbar-width: none;
+  }
+  .letter-bar::-webkit-scrollbar { display: none; }
+  .letter-btn { flex: 0 0 auto; }
 }
 
 @media (max-width: 480px) {
@@ -1983,18 +2030,8 @@ button {
     z-index: 2;
     background: var(--surface);
   }
-  #view-words .word-more { flex: 0 0 auto; margin-top: 8px; }
-  #view-words .import-box {
-    flex: 0 0 auto;
-    margin-top: 10px;
-    padding: 12px 18px;
-  }
-  #view-words .import-box textarea {
-    height: 54px;
-    min-height: 54px;
-    line-height: 1.6;
-    margin-top: 8px;
-  }
+  #view-words .dict-head { flex: 0 0 auto; }
+  #view-words .letter-bar { flex: 0 0 auto; margin: 0 0 10px; }
 
   /* ---------- 完成页 ---------- */
   #view-done .done {
@@ -2024,8 +2061,6 @@ button {
   #view-stats .stat-card .num { font-size: 20px; }
   #view-stats .chart-block { padding: 10px 16px 8px; }
   #view-stats .chart-head { margin-bottom: 5px; }
-  #view-words .import-box { margin-top: 8px; padding: 8px 14px; }
-  #view-words .import-box textarea { height: 44px; min-height: 44px; }
   #view-done .done-title { margin-bottom: 18px; font-size: clamp(24px, 3vw, 32px); }
   #view-done .done-stats { margin-bottom: 20px; }
   #view-done .done-stat { padding: 14px 18px; }
@@ -2792,8 +2827,7 @@ body.is-typing-screen .main { min-height: 100vh; }
   .word-table { font-size: 14px; }
   .word-table th { font-size: var(--fs-xs); }
   .word-table td.p { font-size: 13px; }
-  .word-count { font-size: var(--fs-xs); }
-  .detail-btn,
+    .detail-btn,
   .row-detail { font-size: var(--fs-xs); }
 
   /* 数字卡与图表 */
@@ -2820,7 +2854,6 @@ body.is-typing-screen .main { min-height: 100vh; }
   .weak-pool-note,
   .ai-security-note,
   .ai-settings-summary,
-  .import-hint,
   .book-import-hint,
   .fav-empty-desc,
   .writing-status,
@@ -2849,9 +2882,7 @@ body.is-typing-screen .main { min-height: 100vh; }
   .weak-word-chip { font-size: 13px; }
   .weak-word-chip small { font-size: 12px; }
   .book-card p,
-  .book-switch,
-  .import-caret,
-  .import-box textarea { font-size: var(--fs-xs); }
+  .book-switch { font-size: var(--fs-xs); }
 
   /* ---------- 3. 间距 ---------- */
   .page-sub { margin-bottom: var(--sp-4); }
@@ -2946,8 +2977,7 @@ body.is-typing-screen .main { min-height: 100vh; }
   /* 列表行里的小按钮不要撑高行高 */
   .article-history-item .ghost-btn,
   .fav-row .ghost-btn,
-  .word-more .ghost-btn { min-height: 32px; padding: 0 14px; }
-
+  
   /* 顶部导航：固定 32px 高，文字垂直居中，点击区域变大 */
   .nav-btn {
     display: inline-flex;

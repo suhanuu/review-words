@@ -5,6 +5,9 @@ _data/re/
 # 生成物 assets/detail/ 才是网站要用的，需要提交
 _data/dicts/
 
+# 词典原始 CSV（66MB，_data/build-dict.js 生成 assets/dict.js 用，不进仓库）
+_data/ecdict.csv
+
 # 参考用的第三方开源仓库（只阅读，不是本站代码）
 英语单词背诵github/
 
