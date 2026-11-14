@@ -300,6 +300,41 @@ abandon | /əˈbændən/ | v. 放弃；抛弃
 
 </main>
 
+<!-- ============ 手机底部导航（≤720px 显示） ============ -->
+<nav class="tabbar" id="tabbar" aria-label="底部导航">
+  <button class="tab-item nav-btn" type="button" data-view="drill">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h9.5A2.5 2.5 0 0 1 17 7v12.5H7.5A2.5 2.5 0 0 1 5 17z"/><path d="M8 8h6M8 11h6"/></svg>
+    <span>学习</span>
+  </button>
+  <button class="tab-item nav-btn" type="button" data-view="writing">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L18 10l-4-4L4 16z"/><path d="M14 6l4 4"/></svg>
+    <span>作文</span>
+  </button>
+  <button class="tab-item nav-btn" type="button" data-view="stats">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V10M12 19V5M19 19v-6"/></svg>
+    <span>统计</span>
+  </button>
+  <button class="tab-item" type="button" id="btnMore" aria-expanded="false" aria-controls="moreSheet">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>
+    <span>更多</span>
+  </button>
+</nav>
+
+<div class="more-mask" id="moreMask"></div>
+<section class="more-sheet" id="moreSheet" aria-label="更多入口" aria-hidden="true">
+  <div class="more-sheet-head">
+    <strong>更多</strong>
+    <button class="icon-btn" type="button" id="btnMoreClose" aria-label="关闭更多">✕</button>
+  </div>
+  <div class="more-grid">
+    <button class="more-item" type="button" data-goto="books">书架</button>
+    <button class="more-item" type="button" data-goto="words">词库</button>
+    <button class="more-item" type="button" data-goto="favs">收藏</button>
+    <button class="more-item" type="button" id="moreSettings">设置</button>
+    <button class="more-item" type="button" id="moreTheme">切换深浅色</button>
+  </div>
+</section>
+
 <!-- ============ 单词详细资料 ============ -->
 <div class="detail-mask" id="detailMask"></div>
 <section class="detail-sheet" id="detailSheet" aria-hidden="true" role="dialog" aria-label="单词详细资料">

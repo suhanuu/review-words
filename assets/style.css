@@ -5373,3 +5373,180 @@ input[type="file"]::file-selector-button:hover {
 .rate:active { transform: translateY(0); }
 [data-theme="dark"] .rate:hover { color: var(--accent); }
 
+/* ============================================================
+   UI 改版 · 第 3 步：手机底部导航
+   ——————————————————————————————————————————————
+   只作用在 ≤720px：顶部导航和右上角两个图标收起，换成底部 4 个 tab
+   （学习 / 作文 / 统计 / 更多）；书架、词库、收藏、设置、主题进「更多」面板。
+   三个页面 tab 复用 .nav-btn[data-view]，所以 app.js 原有的点击绑定
+   和选中态同步自动生效，不需要改 app.js。
+   ============================================================ */
+
+.tabbar { display: none; }
+
+@media (max-width: 720px) {
+
+  .nav { display: none; }
+  .topbar-right { display: none; }
+  .topbar { padding: 0 14px; gap: 12px; }
+
+  /* 顶部空出来了，把站名放回来（原来 480 以下藏掉给导航让位） */
+  .brand-copy { display: flex; }
+  .brand-copy strong { font-size: 13px; letter-spacing: 0.06em; }
+  .brand-copy small { display: none; }
+  .brand-mark { width: 30px; height: 30px; border-radius: 9px; }
+
+  /* 给底部导航让出空间，内容不被遮住 */
+  .main { min-height: calc(100vh - 60px - 56px); }
+  .drill { min-height: calc(100vh - 60px - 56px); }
+  .page { padding-bottom: 104px; }
+  #view-stats .page,
+  #view-words .page,
+  #view-favs .page { padding-bottom: 104px; }
+
+  .tabbar {
+    display: flex;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 30;
+    height: calc(56px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--bg-elevated);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    backdrop-filter: blur(20px) saturate(150%);
+    border-top: 1px solid var(--line);
+  }
+
+  /* 全屏打字页不显示底部导航（它有自己的返回按钮） */
+  body.is-typing-screen .tabbar { display: none; }
+
+  /* 四个 tab：清掉 nav-btn 的胶囊样式 */
+  .tabbar .nav-btn,
+  .tabbar .tab-item {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 44px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 4px 0 6px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    color: var(--muted);
+    transition: color 0.18s var(--ease);
+  }
+  .tabbar .nav-btn svg,
+  .tabbar .tab-item svg {
+    width: 21px;
+    height: 21px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .tabbar .nav-btn.is-active,
+  .tabbar .tab-item.is-active {
+    color: var(--accent-deep);
+    background: transparent;
+    box-shadow: none;
+  }
+  .tabbar .nav-btn.is-active span,
+  .tabbar .tab-item.is-active span { font-weight: 600; }
+
+  /* 当前页指示：顶部一条 2px 短线 */
+  .tabbar .nav-btn.is-active::before,
+  .tabbar .tab-item.is-active::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 26px;
+    height: 2px;
+    transform: translateX(-50%);
+    border-radius: 0 0 2px 2px;
+    background: var(--accent);
+  }
+  [data-theme="dark"] .tabbar .nav-btn.is-active,
+  [data-theme="dark"] .tabbar .tab-item.is-active { color: var(--accent); }
+}
+
+/* ---------- 「更多」面板：只在手机上存在 ---------- */
+.more-mask,
+.more-sheet { display: none; }
+
+@media (max-width: 720px) {
+  .more-mask {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 38;
+    background: rgba(14, 15, 17, 0.28);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.24s var(--ease);
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+  }
+  .more-mask.open { opacity: 1; pointer-events: auto; }
+
+  .more-sheet {
+    display: block;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 39;
+    padding: 10px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -24px 60px -30px rgba(14, 15, 17, 0.45);
+    transform: translateY(110%);
+    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .more-sheet.open { transform: translateY(0); }
+}
+
+.more-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 2px 12px;
+}
+.more-sheet-head strong {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+.more-sheet-head .icon-btn { width: 44px; height: 44px; }
+.more-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.more-item {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: 13.5px var(--font-sans);
+  letter-spacing: 0.02em;
+  transition: border-color 0.18s var(--ease), color 0.18s var(--ease), background-color 0.18s var(--ease);
+}
+.more-item:hover { border-color: var(--accent); color: var(--accent-deep); }
+.more-item:active { background: var(--accent-soft); }
+.more-item#moreTheme { grid-column: 1 / -1; }
+
+body.more-open { overflow: hidden; }
+
