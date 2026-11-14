@@ -214,13 +214,12 @@
   <!-- ============ 书架 ============ -->
   <section class="view" id="view-books">
     <div class="page">
-      <h2 class="page-title">我的书架</h2>
-      <p class="page-sub">每本词书将拥有独立的学习进度、复习计划和统计。当前版本先保护原红宝书数据，书架与多词书数据隔离将在下一阶段接入。</p>
-      <div class="bookshelf-toolbar">
-        <label class="book-import-label">词书名称<input id="newBookName" type="text" maxlength="60" placeholder="例如：大学英语四级"></label>
-        <label class="book-import-label">导入词表（CSV / TXT）<input id="newBookFile" type="file" accept=".csv,.txt,.tsv,text/plain,text/csv"></label>
-        <button class="primary-btn" id="btnCreateBook" type="button">创建并导入词书</button>
-        <p class="book-import-hint" id="bookImportHint">每行格式：单词 | 音标 | 中文释义。也支持逗号或 Tab 分隔。切换词书后，学习记录、复习计划和收藏互相独立。</p>
+      <div class="bookshelf-head">
+        <div>
+          <h2 class="page-title">我的书架</h2>
+          <p class="page-sub">每本词书都有独立的学习记录、复习计划和收藏，切换词书不会重置。</p>
+        </div>
+        <button class="primary-btn" id="btnNewBook" type="button">+ 新建词书</button>
       </div>
       <div class="bookshelf-grid" id="bookshelfGrid"></div>
     </div>
@@ -362,6 +361,26 @@ abandon | /əˈbændən/ | v. 放弃；抛弃
     <button class="more-item" type="button" id="moreTheme">切换深浅色</button>
   </div>
 </section>
+
+<!-- ============ 新建词书弹层 ============ -->
+<div class="modal-mask" id="newBookMask"></div>
+<div class="modal" id="newBookModal" role="dialog" aria-modal="true" aria-labelledby="newBookModalTitle" aria-hidden="true">
+  <div class="modal-head">
+    <strong id="newBookModalTitle">新建词书</strong>
+    <button class="icon-btn" id="btnNewBookClose" type="button" aria-label="关闭">✕</button>
+  </div>
+  <label class="modal-field">词书名称
+    <input id="newBookName" type="text" maxlength="60" placeholder="例如：大学英语四级">
+  </label>
+  <label class="modal-field">导入词表（CSV / TXT）
+    <input id="newBookFile" type="file" accept=".csv,.txt,.tsv,text/plain,text/csv">
+  </label>
+  <p class="modal-hint" id="bookImportHint">每行格式：单词 | 音标 | 中文释义。也支持逗号或 Tab 分隔。</p>
+  <div class="modal-actions">
+    <button class="ghost-btn" id="btnNewBookCancel" type="button">取消</button>
+    <button class="primary-btn" id="btnCreateBook" type="button">创建并导入</button>
+  </div>
+</div>
 
 <!-- ============ 单词详细资料 ============ -->
 <div class="detail-mask" id="detailMask"></div>

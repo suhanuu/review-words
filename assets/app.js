@@ -906,6 +906,7 @@
     if (name === 'stats') renderStats();
     if (name === 'words') renderWords(true);
     if (name === 'favs') renderFavs();
+    if (name === 'books') renderBookshelf();
     // 键盘和手部提示只属于作文训练，不再出现在背词页。
     showKeyboard(name === 'typing');
     document.body.classList.toggle('is-typing-screen', name === 'typing');
@@ -1974,23 +1975,169 @@
   // ================= 事件绑定 =================
 
   // ================= 多词书管理（本地优先） =================
+  function bookArchive(book) {
+    var raw = localStorage.getItem(STORE_KEY + ':book:' + book.id);
+    if (!raw && book.id === DEFAULT_BOOK_ID) raw = localStorage.getItem(STORE_KEY); // 老数据兜底
+    var data = {};
+    try { data = JSON.parse(raw || '{}') || {}; } catch (e) { data = {}; }
+    return data;
+  }
+
+  function bookStats(book) {
+    var data = bookArchive(book), records = data.records || {};
+    var words = book.kind === 'builtin'
+      ? (data.custom || []).concat(window.WORD_BANK || [])
+      : (data.custom || []);
+    var learned = 0, mastered = 0;
+    for (var i = 0; i < words.length; i++) {
+      var r = records[words[i] && words[i].w];
+      if (r && r.seen > 0) {
+        learned++;
+        if (r.last === 3) mastered++;
+      }
+    }
+    return { learned: learned, mastered: mastered, total: words.length || book.wordCount || 0 };
+  }
+
+  function fmtDate(ts) {
+    var d = new Date(Number(ts) || Date.now());
+    if (isNaN(d.getTime())) d = new Date();
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
+
+  var renamingId = null, deletingId = null;
+
   function renderBookshelf() {
     var grid = el('bookshelfGrid'); if (!grid) return; grid.innerHTML = '';
     books.forEach(function (book) {
-      var current = book.id === activeBookId, card = document.createElement('article');
-      card.className = 'book-card' + (current ? ' is-current' : '');
-      var cover = document.createElement('div'); cover.className = 'book-cover'; cover.textContent = (book.name || '词').slice(0, 1);
-      var info = document.createElement('div'), title = document.createElement('strong'), desc = document.createElement('p'), tag = document.createElement('span');
-      title.textContent = book.name; desc.textContent = (book.kind === 'builtin' ? '内置词库' : '自定义词书') + ' · ' + (book.wordCount || 0) + ' 词';
-      tag.className = 'book-tag'; tag.textContent = current ? '当前学习词书' : '独立学习档案';
-      info.appendChild(title); info.appendChild(desc); info.appendChild(tag);
-      if (!current) {
-        var b = document.createElement('button'); b.type = 'button'; b.className = 'ghost-btn book-switch'; b.textContent = '切换到这本';
-        b.addEventListener('click', function () { localStorage.setItem(ACTIVE_BOOK_KEY, book.id); location.reload(); }); info.appendChild(b);
+      var current = book.id === activeBookId;
+      var stats = bookStats(book);
+      var pct = stats.total ? Math.min(100, (stats.learned / stats.total) * 100) : 0;
+      var renaming = book.id === renamingId;
+      var deleting = book.id === deletingId;
+
+      var card = document.createElement('article');
+      card.className = 'book-card' + (current ? ' is-current' : '') + (deleting ? ' is-deleting' : '');
+
+      var top = document.createElement('div'); top.className = 'book-card-top';
+      var cover = document.createElement('div'); cover.className = 'book-cover'; cover.textContent = String(book.name || '词').replace(/[0-9\s·.\-—]/g, '').slice(0, 1) || '词';
+      var meta = document.createElement('div'); meta.className = 'book-card-meta';
+      if (renaming) {
+        var input = document.createElement('input');
+        input.type = 'text'; input.className = 'book-rename-input';
+        input.value = book.name; input.maxLength = 60;
+        input.setAttribute('aria-label', '新的词书名称');
+        input.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); commitRename(book, input.value); }
+          if (e.key === 'Escape') { e.preventDefault(); cancelRename(); }
+        });
+        meta.appendChild(input);
+      } else {
+        var title = document.createElement('strong'); title.textContent = book.name;
+        meta.appendChild(title);
       }
-      card.appendChild(cover); card.appendChild(info); grid.appendChild(card);
+      var sub = document.createElement('span'); sub.className = 'book-card-sub';
+      sub.textContent = (book.kind === 'builtin' ? '内置词库' : '自定义词书') + ' · 创建于 ' + fmtDate(book.createdAt);
+      meta.appendChild(sub);
+      top.appendChild(cover); top.appendChild(meta);
+      if (current) {
+        var badge = document.createElement('span'); badge.className = 'book-badge'; badge.textContent = '当前学习';
+        top.appendChild(badge);
+      }
+      card.appendChild(top);
+
+      var prog = document.createElement('div'); prog.className = 'book-progress';
+      var bar = document.createElement('div'); bar.className = 'book-progress-bar';
+      var fill = document.createElement('i'); fill.style.width = pct.toFixed(1) + '%'; bar.appendChild(fill);
+      var line = document.createElement('div'); line.className = 'book-progress-text';
+      var left = document.createElement('span'); left.textContent = '已背 ' + stats.learned + ' / ' + stats.total;
+      var right = document.createElement('span'); right.textContent = '很熟 ' + stats.mastered;
+      line.appendChild(left); line.appendChild(right);
+      prog.appendChild(bar); prog.appendChild(line);
+      card.appendChild(prog);
+
+      var actions = document.createElement('div'); actions.className = 'book-card-actions';
+      if (renaming) {
+        var save = document.createElement('button'); save.type = 'button'; save.className = 'ghost-btn'; save.textContent = '保存';
+        save.addEventListener('click', function () { commitRename(book, input.value); });
+        var cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'ghost-btn'; cancel.textContent = '取消';
+        cancel.addEventListener('click', cancelRename);
+        actions.appendChild(save); actions.appendChild(cancel);
+      } else if (deleting) {
+        actions.className = 'book-card-actions is-confirm';
+        var warn = document.createElement('span'); warn.className = 'book-confirm-text'; warn.textContent = '删除后无法恢复';
+        var ok = document.createElement('button'); ok.type = 'button'; ok.className = 'ghost-btn is-danger'; ok.textContent = '确定删除';
+        ok.addEventListener('click', function () { confirmDelete(book); });
+        var no = document.createElement('button'); no.type = 'button'; no.className = 'ghost-btn'; no.textContent = '取消';
+        no.addEventListener('click', cancelDelete);
+        actions.appendChild(warn); actions.appendChild(ok); actions.appendChild(no);
+      } else {
+        if (!current) {
+          var sw = document.createElement('button'); sw.type = 'button'; sw.className = 'ghost-btn'; sw.textContent = '切换到这本';
+          sw.addEventListener('click', function () { localStorage.setItem(ACTIVE_BOOK_KEY, book.id); location.reload(); });
+          actions.appendChild(sw);
+        }
+        var rn = document.createElement('button'); rn.type = 'button'; rn.className = 'ghost-btn'; rn.textContent = '重命名';
+        rn.addEventListener('click', function () { startRename(book); });
+        actions.appendChild(rn);
+        if (book.kind !== 'builtin') {
+          var del = document.createElement('button'); del.type = 'button'; del.className = 'ghost-btn is-danger'; del.textContent = '删除';
+          del.addEventListener('click', function () { startDelete(book); });
+          actions.appendChild(del);
+        }
+      }
+      card.appendChild(actions);
+      grid.appendChild(card);
     });
+    if (!books.length) grid.textContent = '还没有词书。';
+    if (renamingId) {
+      var focusInput = grid.querySelector('.book-rename-input');
+      if (focusInput) { focusInput.focus(); focusInput.select(); }
+    }
   }
+
+  function startRename(book) { renamingId = book.id; deletingId = null; renderBookshelf(); }
+  function cancelRename() { renamingId = null; renderBookshelf(); }
+  function commitRename(book, value) {
+    var name = String(value || '').trim();
+    renamingId = null;
+    if (name && name !== book.name) {
+      book.name = name;
+      localStorage.setItem(BOOKS_KEY, JSON.stringify(books));
+    }
+    renderBookshelf();
+  }
+
+  function startDelete(book) { deletingId = book.id; renamingId = null; renderBookshelf(); }
+  function cancelDelete() { deletingId = null; renderBookshelf(); }
+  function confirmDelete(book) {
+    if (book.kind === 'builtin') return;
+    deletingId = null;
+    books = books.filter(function (b) { return b.id !== book.id; });
+    localStorage.setItem(BOOKS_KEY, JSON.stringify(books));
+    try { localStorage.removeItem(STORE_KEY + ':book:' + book.id); } catch (e) {}
+    if (activeBookId === book.id) { localStorage.setItem(ACTIVE_BOOK_KEY, DEFAULT_BOOK_ID); location.reload(); return; }
+    renderBookshelf();
+  }
+
+  function openNewBook() {
+    var modal = el('newBookModal'), mask = el('newBookMask');
+    if (!modal || !mask) return;
+    mask.classList.add('open');
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    var hint = el('bookImportHint'); if (hint) hint.textContent = '每行格式：单词 | 音标 | 中文释义。也支持逗号或 Tab 分隔。';
+    setTimeout(function () { var n = el('newBookName'); if (n) n.focus(); }, 60);
+  }
+
+  function closeNewBook() {
+    var modal = el('newBookModal'), mask = el('newBookMask');
+    if (!modal || !mask) return;
+    mask.classList.remove('open');
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
   function createBookFromFile() {
     var name = (el('newBookName').value || '').trim(), file = el('newBookFile').files && el('newBookFile').files[0], hint = el('bookImportHint');
     if (!name) { hint.textContent = '请先填写词书名称。'; return; }
@@ -2015,6 +2162,15 @@
 
   function bind() {
     if (el('btnCreateBook')) el('btnCreateBook').addEventListener('click', createBookFromFile);
+    if (el('btnNewBook')) el('btnNewBook').addEventListener('click', openNewBook);
+    if (el('btnNewBookClose')) el('btnNewBookClose').addEventListener('click', closeNewBook);
+    if (el('btnNewBookCancel')) el('btnNewBookCancel').addEventListener('click', closeNewBook);
+    if (el('newBookMask')) el('newBookMask').addEventListener('click', closeNewBook);
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      var m = el('newBookModal');
+      if (m && m.classList.contains('open')) closeNewBook();
+    });
     document.querySelectorAll('.nav-btn').forEach(function (b) {
       b.addEventListener('click', function () {
         if (b.dataset.view === 'drill') {
