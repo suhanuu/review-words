@@ -5550,3 +5550,64 @@ input[type="file"]::file-selector-button:hover {
 
 body.more-open { overflow: hidden; }
 
+/* ============================================================
+   学习页：释义与「下一个单词」的位置固定
+   1) 释义字号收到 26px（词性标签跟着 .72em 一起缩）；
+   2) 揭晓后释义区不再按内容撑高，和看词阶段同一高度，长释义框内滚动，
+      这样换词、换状态时下面的东西一律不动；
+   3) 「下一个单词」占动作区固定的第二行，就在自评三选项（忘了/模糊/很熟）
+      正下方；不管释义几行，它都停在同一坐标，不再上下跳。
+   ============================================================ */
+@media (min-width: 861px) {
+  /* 26px 是按截图标注定的；窗口更窄时按 1.95vw 收一点，最窄不低于 21px */
+  .drill .meaning-entry { font-size: clamp(21px, 1.95vw, 26px); }
+  .drill.is-reveal .meaning-entry { font-size: clamp(21px, 1.95vw, 26px); }
+
+  /* 释义区固定 176px：原来随视口 16vh 在 104–150 之间变（768 高的笔记本只有 123px），
+     三个词性都放不下。176px 能整块放下四行 26px 释义（词库里 99% 的词够用），
+     再长的就在框内滚动 */
+  .drill .meaning-block { --meaning-h: 176px; }
+
+  /* 释义本身不参与压缩：内容比框高时整块往下溢出并出现滚动，
+     而不是被压扁后最后几行被裁掉 */
+  .drill.is-reveal .meaning-block > .answer { flex: 0 0 auto; }
+
+  /* 揭晓后也保持 --meaning-h 的固定高度；safe center 让释义在框内居中，
+     真的放不下时退回顶部对齐，不会把第一行裁掉 */
+  .drill.is-reveal .meaning-block {
+    height: var(--meaning-h);
+    max-height: var(--meaning-h);
+    justify-content: safe center;
+    padding: 2px 0;
+    /* 内容放不下时框内可滚；滚动条尽量细，不挡释义 */
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+  /* 老浏览器走 ::-webkit-scrollbar：同样只留一条细滚动条 */
+  .drill.is-reveal .meaning-block::-webkit-scrollbar {
+    display: block;
+    width: 6px;
+  }
+  .drill.is-reveal .meaning-block::-webkit-scrollbar-thumb {
+    border-radius: 99px;
+    background: var(--line-strong);
+  }
+  .drill.is-reveal .meaning-block::-webkit-scrollbar-track { background: transparent; }
+  /* 没展开的补充释义是透明占位，留着只会把释义往上推，直接让它不占位 */
+  .drill .full-def:not(.show) { display: none; }
+
+  /* 动作区固定两行：第一行自评，第二行「下一个单词」 */
+  .drill .action-zone,
+  .drill.is-reveal .action-zone {
+    height: 104px;
+    margin-top: 6px;
+  }
+  .drill .meaning-next-btn {
+    position: absolute;
+    left: 50%;
+    top: 58px;
+    transform: translateX(-50%);
+  }
+  .drill .meaning-next-btn:hover { transform: translateX(-50%) translateY(-1px); }
+  .drill .meaning-next-btn:active { transform: translateX(-50%); }
+}
