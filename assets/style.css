@@ -5667,6 +5667,10 @@ body.more-open { overflow: hidden; }
 .weak-picker-empty { margin-top: 20px; }
 
 .weak-picker-bar {
+  /* 吸底：词表再长也能随时确认，不用先滚到底 */
+  position: sticky;
+  bottom: 12px;
+  z-index: 6;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -5676,6 +5680,7 @@ body.more-open { overflow: hidden; }
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   background: var(--surface);
+  box-shadow: 0 -12px 28px -22px rgba(14, 15, 17, 0.5);
 }
 .weak-picker-bar #weakPickerCount { font-size: var(--fs-body, 15px); font-weight: 500; }
 .weak-picker-bar #weakPickerHint {
@@ -5685,7 +5690,7 @@ body.more-open { overflow: hidden; }
   line-height: 1.6;
 }
 .weak-picker-bar .primary-btn { margin-left: auto; }
-.weak-picker-bar.is-warn { border-color: var(--warn); background: var(--warn-soft); }
+.weak-picker-bar.is-warn { border-color: var(--warn); background: linear-gradient(var(--warn-soft), var(--warn-soft)), var(--surface); }
 .weak-picker-bar.is-warn #weakPickerHint { color: var(--warn); }
 .weak-picker-bar.is-low { border-color: var(--line-strong); }
 
@@ -5702,11 +5707,24 @@ body.more-open { overflow: hidden; }
   #view-weak-words .weak-picker-page { min-height: 100%; padding-bottom: 36px; }
 }
 @media (max-width: 860px) {
-  #view-weak-words.is-active { overflow-x: hidden; overflow-y: visible; }
+  /* 这里不能写 overflow-x:hidden + overflow-y:visible：
+     两者混用会让 y 被算成 auto，整块变成不滚动的容器，吸底确认条就失效了 */
+  #view-weak-words.is-active { overflow: visible; }
 }
 @media (max-width: 720px) {
   .weak-picker-group { padding: 14px; }
   .weak-picker-group-head .ghost-btn:nth-of-type(1) { margin-left: 0; }
   .weak-picker-tip .ghost-btn, .weak-picker-bar .primary-btn { margin-left: 0; width: 100%; }
   .weak-picker-bar #weakPickerHint { flex-basis: 100%; }
+
+  /* 卡片头：标题与入口按钮同一行，计数独占第二行，避免计数被折成两行 */
+  .weak-pool-card .writing-card-head #weakPoolCount { order: 3; flex: 1 0 100%; text-align: left; }
+  .weak-pool-card .writing-card-head #btnOpenWeakPicker { margin-left: auto; }
+
+  /* 确认条吸底，抬起到底部导航上方；页面底部留出条+导航的高度 */
+  #view-weak-words .weak-picker-page { padding-bottom: 96px; }
+  .weak-picker-bar {
+    margin-top: 16px;
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 8px);
+  }
 }

@@ -116,7 +116,7 @@
     <div class="page writing-page">
       <h2 class="page-title">作文训练</h2>
       <p class="page-sub">把薄弱词汇放进真实语境。先阅读英文原文和中文翻译，再进入独立的全屏打字练习。</p>
-      <section class="writing-card weak-pool-card"><div class="writing-card-head"><strong>今日薄弱词汇</strong><span id="weakPoolCount" class="writing-status">整理中</span><button class="ghost-btn" id="btnOpenWeakPicker" type="button">查看 / 编辑选择</button></div><div id="weakWordList" class="weak-word-list"></div><p class="weak-pool-note" id="weakPoolNote">默认按忘记、模糊的优先级选 10 个词；点「查看 / 编辑选择」调整，建议每次 6–12 个。</p>
+      <section class="writing-card weak-pool-card"><div class="writing-card-head"><strong>今日薄弱词汇</strong><span id="weakPoolCount" class="writing-status">整理中</span><button class="ghost-btn" id="btnOpenWeakPicker" type="button">查看 / 选择</button></div><div id="weakWordList" class="weak-word-list"></div><p class="weak-pool-note" id="weakPoolNote">默认按忘了、模糊的优先级选 10 个词；点「查看 / 选择」调整，建议每次 6–12 个。</p>
         <details class="ai-settings" id="aiSettingsPanel">
           <summary>AI API 设置 <span class="ai-settings-summary">配置你自己的 API 服务</span></summary>
           <div class="ai-settings-fields">
@@ -191,18 +191,18 @@
       </div>
       <p class="page-sub">按来源选词，确认后回到作文训练生成文章。收藏词请在「我的收藏」页查看。</p>
       <div class="weak-picker-tip" id="weakPickerTip">
-        <span>建议每次选 <strong>6–12</strong> 个词（推荐 8–10）。目标词过多时模型容易漏词、需要重试，反而更费 token；最多可选 24 个。</span>
+        <span id="weakPickerTipText">建议每次选 <strong>6–12</strong> 个词（推荐 8–10）。目标词过多时模型容易漏词、需要重试，反而更费 token；最多可选 24 个。</span>
         <button type="button" class="ghost-btn" id="btnWeakAutoPick">按优先级自动选 10 个</button>
       </div>
       <section class="weak-picker-group">
-        <div class="weak-picker-group-head"><strong>忘记</strong><span id="weakGroupForgotCount"></span><button type="button" class="ghost-btn" data-group-all="forgot">全选本组</button><button type="button" class="ghost-btn" data-group-none="forgot">清空本组</button></div>
+        <div class="weak-picker-group-head"><strong>忘了</strong><span id="weakGroupForgotCount"></span><button type="button" class="ghost-btn" data-group-all="forgot">全选本组</button><button type="button" class="ghost-btn" data-group-none="forgot">清空本组</button></div>
         <div class="weak-word-list" id="weakGroupForgot"></div>
       </section>
       <section class="weak-picker-group">
         <div class="weak-picker-group-head"><strong>模糊</strong><span id="weakGroupFuzzyCount"></span><button type="button" class="ghost-btn" data-group-all="fuzzy">全选本组</button><button type="button" class="ghost-btn" data-group-none="fuzzy">清空本组</button></div>
         <div class="weak-word-list" id="weakGroupFuzzy"></div>
       </section>
-      <p class="weak-picker-empty" id="weakPickerEmpty" hidden>还没有「忘记」或「模糊」的词。先去学习页评价几个单词，再回来选词。</p>
+      <p class="weak-picker-empty" id="weakPickerEmpty" hidden>还没有「忘了」或「模糊」的词。先去学习页评价几个单词，再回来选词。</p>
       <div class="weak-picker-bar" id="weakPickerBar">
         <span id="weakPickerCount">已选 0 个</span>
         <span id="weakPickerHint"></span>

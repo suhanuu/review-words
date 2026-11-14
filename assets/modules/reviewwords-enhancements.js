@@ -2,7 +2,10 @@
 'use strict';
 var $=function(id){return document.getElementById(id);};
 var BOOKS_KEY='reviewwords.books.v1', ACTIVE_KEY='reviewwords.activeBook.v1', PREFIX='wordtype.v1:book:', ARTICLES='reviewwords.articles.v1', TASKS='reviewwords.dailyTasks.v1', AI_SETTINGS='reviewwords.aiSettings.v1', SELECTION='reviewwords.weakSelection.v1';
-var RECOMMEND_MIN=6, RECOMMEND_MAX=12, HARD_MAX=24, DEFAULT_PICK=10;
+var RECOMMEND_MIN=6, RECOMMEND_MAX=12, SWEET_MIN=8, SWEET_MAX=10, HARD_MAX=24, DEFAULT_PICK=10;
+// 文案只在这里拼：以后调整区间，页面上的说明、计数、确认弹窗会一起变
+function rangeText(){return RECOMMEND_MIN+'–'+RECOMMEND_MAX;}
+function sweetText(){return SWEET_MIN+'–'+SWEET_MAX;}
 function get(k,d){try{return JSON.parse(localStorage.getItem(k)||'null')||d;}catch(e){return d;}}
 function active(){return localStorage.getItem(ACTIVE_KEY)||'redbook-2024';}
 function archive(){return get(PREFIX+active(),{});}
@@ -52,16 +55,16 @@ function renderWeak(){
   var x=byWord[w]||{word:w,group:'fuzzy'};
   var lab=document.createElement('label');lab.className='weak-word-chip is-selected';
   var span=document.createElement('span');span.textContent=x.word;
-  var small=document.createElement('small');small.textContent=x.group==='forgot'?'忘记':'模糊';
+  var small=document.createElement('small');small.textContent=x.group==='forgot'?'忘了':'模糊';
   lab.append(span,small);host.appendChild(lab);
  });
- if(!chosen.length)host.textContent='暂未选择目标词，点「查看 / 编辑选择」开始。';
+ if(!chosen.length)host.textContent='暂未选择目标词，点「查看 / 选择」开始。';
  var fresh=pool.filter(function(x){return chosen.indexOf(x.word)<0;}).length;
- $('weakPoolCount').textContent='已选 '+chosen.length+' / '+pool.length+' 个词 · 建议 6–12';
+ $('weakPoolCount').textContent='已选 '+chosen.length+' / '+pool.length+' 个词 · 建议 '+rangeText();
  var note=$('weakPoolNote');
  if(note)note.textContent=chosen.length
-  ? '本次生成只使用上面的 '+chosen.length+' 个词；点「查看 / 编辑选择」调整。'+(fresh?'另有 '+fresh+' 个新薄弱词未选。':'')
-  : '还没有选择目标词，点「查看 / 编辑选择」开始选词。';
+  ? '本次生成只使用上面的 '+chosen.length+' 个词；点「查看 / 选择」调整。'+(fresh?'另有 '+fresh+' 个新薄弱词未选。':'')
+  : '还没有选择目标词，点「查看 / 选择」开始选词。';
 }
 
 function syncNav(name){document.querySelectorAll('.nav-btn[data-view]').forEach(function(b){b.classList.toggle('is-active',b.dataset.view===name);});}
@@ -101,7 +104,17 @@ function renderWeakPicker(){
  updatePickerBar();
 }
 function openWeakPicker(){renderWeakPicker();switchInternalView('weak-words');syncNav('writing');}
-function backWeakPicker(){draft=getSelection().slice();switchInternalView('writing');syncNav('writing');renderWeak();}
+function sameSet(a,b){
+ if(a.length!==b.length)return false;
+ var x=a.slice().sort(),y=b.slice().sort();
+ for(var i=0;i<x.length;i++){if(x[i]!==y[i])return false;}
+ return true;
+}
+function backWeakPicker(){
+ var saved=getSelection();
+ if(!sameSet(draft,saved)&&!window.confirm('还有勾选没确认，返回会丢掉这些改动。确定返回吗？'))return;
+ draft=saved.slice();switchInternalView('writing');syncNav('writing');renderWeak();
+}
 function setPickerGroup(group,on){
  var wordsInGroup=weakGroups()[group].map(function(x){return x.word;});
  draft=draft.filter(function(w){return wordsInGroup.indexOf(w)<0;});
@@ -267,7 +280,7 @@ async function generate(){
  var chosenWords=getSelection();
  if(!chosenWords.length){$('aiStatus').textContent='还没有选择目标词。';setGenerationProgress('error','请先选择目标词');openWeakPicker();return;}
  if(chosenWords.length>HARD_MAX){$('aiStatus').textContent='目标词过多。';setGenerationProgress('error','最多 '+HARD_MAX+' 个目标词，请先减少');openWeakPicker();return;}
- if(chosenWords.length>RECOMMEND_MAX&&!window.confirm('本次选择了 '+chosenWords.length+' 个目标词，超过建议的 6–12 个。目标词越多，模型越容易漏词、需要重试，会明显增加 token 消耗。仍要继续生成吗？')){setGenerationProgress('idle','');return;}
+ if(chosenWords.length>RECOMMEND_MAX&&!window.confirm('本次选择了 '+chosenWords.length+' 个目标词，超过建议的 '+rangeText()+' 个。目标词越多，模型越容易漏词、需要重试，会明显增加 token 消耗。仍要继续生成吗？')){setGenerationProgress('idle','');return;}
  var chosen=chosenWords.map(function(w){return {word:w};});
  var settings;try{settings=validateAISettings(readAISettings());}catch(e){$('aiStatus').textContent='请先打开「AI API 设置」并保存配置：'+e.message;setGenerationProgress('error','配置错误：'+e.message);var panel=$('aiSettingsPanel');if(panel)panel.open=true;return;}
  $('aiStatus').textContent='正在生成并校验文章……';setGenerationProgress('loading','正在生成作文（'+chosen.length+' 个目标词）…');$('btnGenerateArticle').disabled=true;
@@ -301,10 +314,12 @@ async function generate(){
   var wc=(String(data.content).match(/\b[\w'-]+\b/g)||[]).length;
   if(wc<100||wc>190)throw new Error('文章长度为 '+wc+' 词，未达到约 150 词要求，请重试');
  var a=saveCurrentArticle({id:'article-'+Date.now(),bookId:active(),date:today(),title:data.title||'Daily weak-word writing',content:String(data.content),translation:String(data.translation),targetWords:chosen.map(function(x){return x.word;}),difficulty:difficulty,wordCount:wc,createdAt:new Date().toISOString(),provider:settings.model});
- // 本批词生成成功后移出选择集，方便接着选下一批
+ // 本批词生成成功后移出选择集，方便接着选下一批；用 toast 说明去向，避免以为词丢了
  showArticle(a);
  saveSelection(getSelection().filter(function(w){return chosenWords.indexOf(w)<0;}));
  renderWeak();
+ var restCount=getSelection().length;
+ showToast('本批 '+chosenWords.length+' 个词已完成'+(restCount?'，还剩 '+restCount+' 个待选':'，今日薄弱词已全部完成'));
  $('aiStatus').textContent='生成成功';setGenerationProgress('success','生成成功 · '+wc+' 词');
   var tasks=get(TASKS,{}),k=active()+':'+today();tasks[k]={bookId:active(),date:today(),status:'已生成',articleId:a.id,createdAt:Date.now()};localStorage.setItem(TASKS,JSON.stringify(tasks));
  }catch(e){$('aiStatus').textContent='生成失败：'+e.message;setGenerationProgress('error','生成失败：'+e.message);}
@@ -324,6 +339,9 @@ function bind(){
  if(!$('weakWordList'))return;
  var cfg=readAISettings();if(cfg.baseUrl)$('aiBaseUrl').value=cfg.baseUrl;if(cfg.apiKey)$('aiApiKey').value=cfg.apiKey;if(cfg.model)$('aiModel').value=cfg.model;
  renderWeak();renderTypingStats();
+ // 区间与默认数量只在常量里维护，这里一次性写进说明文案
+ if($('weakPickerTipText'))$('weakPickerTipText').innerHTML='建议每次选 <strong>'+rangeText()+'</strong> 个词（推荐 '+sweetText()+'）。目标词过多时模型容易漏词、需要重试，反而更费 token；最多可选 '+HARD_MAX+' 个。';
+ if($('btnWeakAutoPick'))$('btnWeakAutoPick').textContent='按优先级自动选 '+DEFAULT_PICK+' 个';
  $('btnOpenWeakPicker').addEventListener('click',openWeakPicker);
  if($('btnWeakPickerBack'))$('btnWeakPickerBack').addEventListener('click',backWeakPicker);
  if($('btnWeakAutoPick'))$('btnWeakAutoPick').addEventListener('click',autoPick);
