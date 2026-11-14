@@ -936,6 +936,8 @@
     var lock = name === 'drill';
     document.documentElement.classList.toggle('is-drill-locked', lock);
     document.body.classList.toggle('is-drill-locked', lock);
+    // 「今天学了多久」只在学习页计时，切到别的页面就停表
+    if (lock) watchBegin(); else watchEnd();
     if (!lock) window.scrollTo(0, 0);
     // 切走再回来时星标要跟上（收藏页里取消过收藏，学习页的星标也得灭掉）
     syncFavUI();
@@ -964,6 +966,39 @@
   function stopTimer() {
     if (timerId) { clearInterval(timerId); timerId = null; }
   }
+
+  // ================= 学习时长秒表 =================
+  // 「今天学了多久」按真实停留时间算：进学习页开始，离开页面、切走标签页、
+  // 关页面就结算，每 30 秒也结算一次，避免崩了丢一大段。
+  var watchStart = 0;
+
+  function watchFlush() {
+    if (!watchStart) return;
+    var now = Date.now();
+    var delta = (now - watchStart) / 1000;
+    if (delta > 0) {
+      dayEntry().seconds += delta;
+      save();
+    }
+    watchStart = now;
+  }
+
+  function watchBegin() {
+    if (!watchStart) watchStart = Date.now();
+  }
+
+  function watchEnd() {
+    if (!watchStart) return;
+    watchFlush();
+    watchStart = 0;
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) watchEnd();
+    else if (state.view === 'drill') watchBegin();
+  });
+  window.addEventListener('pagehide', watchEnd);
+  setInterval(watchFlush, 30000);
 
   // 右上角那个小胶囊：点一下把词标成「已完成」，以后不再出现
   function renderMasterBtn() {
@@ -1375,7 +1410,6 @@
     d.words += 1;
     if (!reviewOnly) {
       d.chars += Array.from(w.a).length;
-      d.seconds += Math.max(1, (Date.now() - state.wordStart) / 1000);
     }
     if (reviewOnly ? grade === 3 : (ok && state.errors === 0 && state.mistakes === 0)) d.clean += 1;
     if (wasNew) d.newWords += 1;
@@ -1461,43 +1495,160 @@
   }
 
   // ================= 统计 =================
-  function renderStats() {
-    var keys = Object.keys(db.days).sort();
-    var tw = 0, tc = 0, tch = 0, ts = 0;
-    keys.forEach(function (k) {
-      var d = db.days[k];
-      tw += d.words; tc += d.clean; tch += d.chars; ts += d.seconds;
-    });
+  // 背词区只看四个数：今日/累计背熟了多少词、今天/一共学了多久。
+  // 「背熟」= 连续熟悉 3 次（rec.masteredAt 记第一次达到的时刻，所以累计只增不减）。
+  // 时长走学习页的秒表（watchBegin / watchEnd），不是按每个词累加。
+  function statSecondsOn(key) {
+    var d = db.days[key];
+    return d ? (d.seconds || 0) : 0;
+  }
 
-    var mastered = 0;
+  function statSecondsTotal() {
+    var s = 0;
+    Object.keys(db.days).forEach(function (k) { s += db.days[k].seconds || 0; });
+    return s;
+  }
+
+  // 每天背熟了几个词，一次扫完记录，按天分组
+  function masteredByDay() {
+    var map = {};
     Object.keys(db.records).forEach(function (k) {
-      if (db.records[k].seen > 0) mastered++;
+      var at = db.records[k].masteredAt;
+      if (!at) return;
+      var key = dayKeyOf(at);
+      map[key] = (map[key] || 0) + 1;
+    });
+    return map;
+  }
+
+  // 把某个自然月拆成一天一个点；当月只画到今天，未来的日子不画
+  function monthSeries(month, valueOf) {
+    var y = Number(month.slice(0, 4));
+    var m = Number(month.slice(5, 7));
+    var days = new Date(y, m, 0).getDate();
+    var today = todayKey();
+    var out = [];
+    for (var i = 1; i <= days; i++) {
+      var k = month + '-' + pad(i);
+      if (k > today) break;
+      out.push({ k: k, v: valueOf(k) });
+    }
+    return out;
+  }
+
+  function minutesText(sec) {
+    var m = Math.round((sec || 0) / 60);
+    if (m < 60) return m + '<small>分钟</small>';
+    return (Math.round(m / 6) / 10) + '<small>小时</small>';
+  }
+
+  function hoursText(sec) {
+    var m = Math.round((sec || 0) / 60);
+    if (m < 60) return m + '<small>分钟</small>';
+    var h = m / 60;
+    return (h < 10 ? Math.round(h * 10) / 10 : Math.round(h)) + '<small>小时</small>';
+  }
+
+  function durationLabel(mins) {
+    mins = Math.round(mins || 0);
+    if (mins < 60) return mins + ' 分钟';
+    var h = Math.floor(mins / 60), rest = mins % 60;
+    return h + ' 小时' + (rest ? ' ' + rest + ' 分' : '');
+  }
+
+  function renderStats() {
+    watchFlush();                       // 先把还没结算的这段时长算进去
+    var today = todayKey();
+    var month = today.slice(0, 7);
+
+    el('statWordsToday').textContent = masteredOn(today);
+    el('statWordsTotal').textContent = masteredTotal();
+    el('statTimeToday').innerHTML = minutesText(statSecondsOn(today));
+    el('statTimeTotal').innerHTML = hoursText(statSecondsTotal());
+
+    var map = masteredByDay();
+    var pts = monthSeries(month, function (k) { return map[k] || 0; });
+    el('wordsLatest').textContent = pts.length ? pts[pts.length - 1].v + ' 个' : '';
+    renderChart(document.querySelector('.chart[data-series="words"]'), pts, 0, 'var(--ok)', ' 个');
+  }
+
+  // ---------- 当月折线浮层 ----------
+  var popKind = 'words';
+  var popMonth = '';
+
+  function openMonthPop(kind) {
+    popKind = kind;
+    popMonth = todayKey().slice(0, 7);
+    el('monthPop').hidden = false;
+    renderMonthPop();
+  }
+
+  function closeMonthPop() {
+    el('monthPop').hidden = true;
+  }
+
+  function shiftMonth(delta) {
+    var y = Number(popMonth.slice(0, 4));
+    var m = Number(popMonth.slice(5, 7)) - 1 + delta;
+    var d = new Date(y, m, 1);
+    var next = d.getFullYear() + '-' + pad(d.getMonth() + 1);
+    if (next > todayKey().slice(0, 7)) return;   // 未来没有数据，不许翻
+    popMonth = next;
+    renderMonthPop();
+  }
+
+  function renderMonthPop() {
+    var isWords = popKind === 'words';
+    var map = isWords ? masteredByDay() : null;
+    var pts = monthSeries(popMonth, function (k) {
+      return isWords ? (map[k] || 0) : Math.round(statSecondsOn(k) / 60);
     });
 
-    el('statWords').textContent = tw;
-    el('statAcc').innerHTML = (tw ? Math.round((tc / tw) * 100) : 0) + '<small>%</small>';
-    el('statCpm').innerHTML = (ts ? Math.round(tch / (ts / 60)) : 0) + '<small>字/分</small>';
-    el('statMastered').textContent = mastered;
+    el('monthPopTitle').textContent = isWords ? '单词/个' : '时间/分钟';
+    el('monthLabel').textContent = Number(popMonth.slice(5, 7)) + ' 月';
+    el('monthPopSub').textContent = popMonth.replace('-', ' 年 ') + ' 月';
+    el('monthNext').disabled = popMonth >= todayKey().slice(0, 7);
 
-    var recent = keys.slice(-14);
-
-    var accPts = recent.map(function (k) {
-      var d = db.days[k];
-      return { k: k, v: d.words ? (d.clean / d.words) * 100 : 0 };
+    var total = 0, best = null;
+    pts.forEach(function (p) {
+      total += p.v;
+      if (!best || p.v > best.v) best = p;
     });
-    var cpmPts = recent.map(function (k) {
-      var d = db.days[k];
-      return { k: k, v: d.seconds ? d.chars / (d.seconds / 60) : 0 };
-    });
+    var avg = pts.length ? Math.round((total / pts.length) * 10) / 10 : 0;
 
-    el('accLatest').textContent = accPts.length ? Math.round(accPts[accPts.length - 1].v) + '%' : '';
-    el('cpmLatest').textContent = cpmPts.length ? Math.round(cpmPts[cpmPts.length - 1].v) + ' 字/分' : '';
+    el('monthPopFoot').innerHTML =
+      '<span>合计 <b>' + (isWords ? total + ' 个' : durationLabel(total)) + '</b></span>' +
+      '<span>日均 <b>' + avg + (isWords ? ' 个' : ' 分钟') + '</b></span>' +
+      '<span>最高 <b>' + (best && best.v ? best.k.slice(5) + ' · ' + best.v + (isWords ? ' 个' : ' 分钟') : '—') + '</b></span>';
 
-    renderChart(document.querySelector('.chart[data-series="acc"]'), accPts, 100, 'var(--ok)', '');
-    renderChart(document.querySelector('.chart[data-series="cpm"]'), cpmPts, 0, 'var(--muted)', '');
+    renderChart(el('monthPopChart'), pts, 0, isWords ? 'var(--ok)' : 'var(--accent)', isWords ? ' 个' : ' 分钟');
   }
 
   var chartSeq = 0;
+
+  // 纵轴刻度：步长取 1/2/5 ×10ⁿ 里第一个够用的整数档，顶端补到步长的整数倍。
+  // 关键是「刻度线画在它标的值上」——以前标签是按比例四舍五入的，
+  // 标着 2 的那条线其实在 1.77，点看起来就浮在线外面。
+  function chartScale(dataMax, fixedMax) {
+    if (fixedMax) {
+      return {
+        top: fixedMax,
+        step: fixedMax / 2,
+        fmt: function (v) { return Math.round(v); }
+      };
+    }
+    var top0 = Math.max(dataMax * 1.1, 1);
+    var raw = top0 / 4;
+    var pow = Math.pow(10, Math.floor(Math.log(raw) / Math.LN10));
+    var n = raw / pow;
+    var step = Math.max(1, (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * pow);
+    var top = Math.max(step, Math.ceil(top0 / step) * step);
+    return {
+      top: top,
+      step: step,
+      fmt: function (v) { return step >= 1 ? Math.round(v) : Math.round(v * 10) / 10; }
+    };
+  }
 
   function renderChart(host, pts, fixedMax, color, unit) {
     if (!host) return;
@@ -1516,7 +1667,10 @@
     var PB = Math.min(26, Math.round(H * 0.18)) + 2;
     var iw = W - PL - PR, ih = Math.max(20, H - PT - PB);
 
-    var maxV = fixedMax || Math.max.apply(null, pts.map(function (p) { return p.v; }).concat([1])) * 1.18;
+    var dataMax = 0;
+    pts.forEach(function (p) { if (p.v > dataMax) dataMax = p.v; });
+    var scale = chartScale(dataMax, fixedMax);
+    var maxV = scale.top;
     var X = function (i) { return pts.length === 1 ? PL + iw / 2 : PL + (iw * i) / (pts.length - 1); };
     var Y = function (v) { return PT + ih - (Math.min(v, maxV) / maxV) * ih; };
 
@@ -1532,16 +1686,15 @@
       return '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(p.v).toFixed(1) +
         '" r="2.7" fill="var(--surface)" stroke="' + color + '" stroke-width="1.6" />';
     }).join('');
-
     var grid = '';
-    [0, 0.5, 1].forEach(function (t) {
-      var y = PT + ih - t * ih;
-      grid += '<line x1="' + PL + '" y1="' + y + '" x2="' + (W - PR) + '" y2="' + y +
+    for (var gv = 0; gv <= maxV + 1e-6; gv += scale.step) {
+      var gy = Y(gv);
+      grid += '<line x1="' + PL + '" y1="' + gy + '" x2="' + (W - PR) + '" y2="' + gy +
         '" stroke="var(--line)" stroke-width="1" />';
-      grid += '<text x="' + (PL - 8) + '" y="' + (y + 4) + '" text-anchor="end" ' +
+      grid += '<text x="' + (PL - 8) + '" y="' + (gy + 4) + '" text-anchor="end" ' +
         'font-size="10" font-family="ui-monospace, Menlo, Consolas, monospace" fill="var(--faint)">' +
-        Math.round(maxV * t) + '</text>';
-    });
+        scale.fmt(gv) + '</text>';
+    }
 
     var labels = '';
     var step = pts.length > 1 ? Math.ceil(pts.length / 5) : 1;
@@ -1560,6 +1713,29 @@
         pts[i].k.slice(5) + '</text>';
     });
 
+    host.__chart = {
+      pts: pts,
+      X: X,
+      Y: Y,
+      pl: PL,
+      iw: iw,
+      unit: unit || ''
+    };
+    if (!host.__tipBound) {
+      host.__tipBound = true;
+      // 桌面：鼠标划过就跟着走；手机：点一下显示，点别处收起来
+      host.addEventListener('pointermove', function (ev) {
+        if (ev.pointerType === 'mouse') showChartTip(host, ev);
+      });
+      host.addEventListener('pointerdown', function (ev) {
+        if (ev.pointerType === 'mouse') return;
+        showChartTip(host, ev);
+      });
+      host.addEventListener('pointerleave', function (ev) {
+        if (ev.pointerType === 'mouse') hideChartTip(host);
+      });
+    }
+
     host.innerHTML =
       '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" ' +
       'style="width:100%;height:100%;display:block">' +
@@ -1572,7 +1748,52 @@
       '<path d="' + line + '" fill="none" stroke="' + color + '" stroke-width="1.6" ' +
       'stroke-linejoin="round" stroke-linecap="round" />' +
       dots + labels +
+      '<circle class="chart-cursor" cx="0" cy="0" r="3.8" fill="none" stroke="' + color +
+      '" stroke-width="2" opacity="0" />' +
       '</svg>';
+  }
+
+  // 图上悬停：吸到最近的那一天，显示日期和值
+  function showChartTip(host, ev) {
+    var c = host.__chart;
+    if (!c || !c.pts.length) return;
+    var rect = host.getBoundingClientRect();
+    var x = ev.clientX - rect.left;
+    var n = c.pts.length;
+    var i = n === 1 ? 0 : Math.round((x - c.pl) / c.iw * (n - 1));
+    i = Math.max(0, Math.min(n - 1, i));
+
+    var p = c.pts[i];
+    var px = c.X(i), py = c.Y(p.v);
+    var tip = host.querySelector('.chart-tip');
+    if (!tip) {
+      tip = document.createElement('div');
+      tip.className = 'chart-tip';
+      host.appendChild(tip);
+    }
+    tip.textContent = p.k.slice(5) + ' · ' + p.v + c.unit;
+    tip.style.left = px + 'px';
+    tip.style.top = Math.max(2, py - 9) + 'px';
+    tip.classList.add('is-on');
+
+    var cur = host.querySelector('.chart-cursor');
+    if (cur) {
+      cur.setAttribute('cx', px.toFixed(1));
+      cur.setAttribute('cy', py.toFixed(1));
+      cur.setAttribute('opacity', '1');
+    }
+  }
+
+  function hideChartTip(host) {
+    var tip = host.querySelector('.chart-tip');
+    if (tip) tip.classList.remove('is-on');
+    var cur = host.querySelector('.chart-cursor');
+    if (cur) cur.setAttribute('opacity', '0');
+  }
+
+  function hideAllChartTips() {
+    document.querySelectorAll('.chart-tip.is-on').forEach(function (t) { t.classList.remove('is-on'); });
+    document.querySelectorAll('.chart-cursor').forEach(function (c) { c.setAttribute('opacity', '0'); });
   }
 
   // 窗口尺寸变化后图表要按新的剩余高度重新出图，否则 SVG 会被拉伸
@@ -1582,7 +1803,10 @@
     if (!vs || !vs.classList.contains('is-active')) return;
     if (chartResizeTimer) clearTimeout(chartResizeTimer);
     chartResizeTimer = setTimeout(function () {
-      if (vs.classList.contains('is-active')) renderStats();
+      if (vs.classList.contains('is-active')) {
+        renderStats();
+        if (!el('monthPop').hidden) renderMonthPop();
+      }
     }, 160);
   });
 
@@ -2429,6 +2653,31 @@
       e.stopPropagation();
       nextFromReveal();
     });
+
+    // 统计页：点「今日单词 / 今日时长」弹当月折线
+    document.querySelectorAll('#view-stats [data-pop]').forEach(function (card) {
+      card.addEventListener('click', function () { openMonthPop(card.dataset.pop); });
+      card.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMonthPop(card.dataset.pop); }
+      });
+    });
+    if (el('monthClose')) {
+      el('monthClose').addEventListener('click', closeMonthPop);
+      el('monthPop').addEventListener('click', function (e) {
+        if (e.target && e.target.id === 'monthPop') closeMonthPop();
+      });
+      el('monthPrev').addEventListener('click', function () { shiftMonth(-1); });
+      el('monthNext').addEventListener('click', function () { shiftMonth(1); });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !el('monthPop').hidden) closeMonthPop();
+      });
+    }
+
+    // 手机：点图以外的地方就把图上的数字提示收起来
+    document.addEventListener('pointerdown', function (e) {
+      var inChart = e.target && e.target.closest && e.target.closest('.chart, .month-pop-chart');
+      if (!inChart) hideAllChartTips();
+    }, true);
 
     // 右上角「熟悉」：这个词算过了，点一下标成已完成，以后不再出现
     var masterBtn = el('btnDrillMaster');

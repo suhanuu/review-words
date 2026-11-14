@@ -1550,6 +1550,115 @@ button {
   letter-spacing: 0.03em;
 }
 
+/* 统计卡可点：数字下面点开当月折线 */
+.stat-card.is-pop { cursor: pointer; }
+.stat-card.is-pop:hover .lbl-go { color: var(--accent-deep); }
+.lbl-go { color: var(--faint); margin-left: 7px; letter-spacing: 0.02em; }
+
+/* 折线图悬停提示：跟着最近的那个点走 */
+.chart { position: relative; }
+.chart-cursor { pointer-events: none; }
+.chart-tip {
+  position: absolute;
+  z-index: 3;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: var(--text);
+  color: var(--bg);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s var(--ease);
+}
+.chart-tip.is-on { opacity: 1; }
+
+/* 当月折线浮层 */
+.month-pop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: rgba(23, 22, 15, 0.26);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+.month-pop[hidden] { display: none; }
+[data-theme="dark"] .month-pop { background: rgba(0, 0, 0, 0.55); }
+.month-pop-card {
+  width: min(640px, calc(100vw - 40px));
+  padding: 18px 20px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+}
+.month-pop-head { display: flex; align-items: flex-start; gap: 14px; }
+.month-pop-title { font-size: 13.5px; letter-spacing: 0.04em; }
+.month-pop-sub { margin-top: 3px; font-size: 11px; color: var(--muted); letter-spacing: 0.03em; }
+.month-pop-month {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.month-pop-month button {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-2);
+  color: var(--muted);
+  line-height: 1;
+}
+.month-pop-month button:hover:not(:disabled) { color: var(--text); border-color: var(--line-strong); }
+.month-pop-month button:disabled { opacity: 0.4; cursor: default; }
+.month-pop-month .month-pop-close {
+  margin-left: 4px;
+  border-color: transparent;
+  background: transparent;
+  font-size: 15px;
+}
+.month-pop-month .month-pop-close:hover { background: var(--surface-2); }
+.month-pop-chart { position: relative; height: 190px; margin: 12px 0 6px; }
+.month-pop-chart svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.month-pop-foot {
+  display: flex;
+  gap: 18px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.03em;
+}
+.month-pop-foot b { color: var(--text-soft); font-weight: 500; }
+
+@media (max-width: 720px) {
+  .month-pop-card { padding: 14px 16px 10px; }
+  .month-pop-chart { height: 150px; }
+  .month-pop-foot { gap: 12px; font-size: 10.5px; flex-wrap: wrap; }
+}
+
+/* 统计页里的作文成绩先压扁占位：完整的打字区（英/中分开 + 记录页）下一版再做 */
+#view-stats .typing-results-card { margin: 0; padding: 12px 16px 10px; }
+#view-stats .typing-results-card h3 { margin: 0 0 8px; font-size: 12px; letter-spacing: 0.08em; }
+#view-stats .typing-results-card .stat-cards { margin-bottom: 0; gap: 10px; }
+#view-stats .typing-results-card .stat-card { padding: 10px 14px 8px; }
+#view-stats .typing-results-card .num { font-size: 19px; }
+#view-stats .typing-results-card .article-history { display: none; }
+#view-stats .chart-row { min-height: 150px; }
+
 /* ============================================================
    词库页
    ============================================================ */

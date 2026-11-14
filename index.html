@@ -235,28 +235,41 @@
       <p class="page-sub">练字的成果和背词的进度，分开看。</p>
 
       <div class="stat-cards">
-        <div class="stat-card"><div class="num" id="statWords">0</div><div class="lbl">累计完成词数</div></div>
-        <div class="stat-card"><div class="num" id="statAcc">0<small>%</small></div><div class="lbl">历史自评很熟率</div></div>
-        <div class="stat-card"><div class="num" id="statCpm">0<small>字/分</small></div><div class="lbl">平均打字速度</div></div>
-        <div class="stat-card"><div class="num" id="statMastered">0</div><div class="lbl">已进入复习的词</div></div>
+        <div class="stat-card is-pop" data-pop="words" role="button" tabindex="0"><div class="num" id="statWordsToday">0</div><div class="lbl">今日单词<span class="lbl-go">看本月 ›</span></div></div>
+        <div class="stat-card"><div class="num" id="statWordsTotal">0</div><div class="lbl">累计单词</div></div>
+        <div class="stat-card is-pop" data-pop="minutes" role="button" tabindex="0"><div class="num" id="statTimeToday">0<small>分钟</small></div><div class="lbl">今日时长<span class="lbl-go">看本月 ›</span></div></div>
+        <div class="stat-card"><div class="num" id="statTimeTotal">0<small>小时</small></div><div class="lbl">累计时长</div></div>
       </div>
 
-      <section class="data-tools-card typing-results-card"><h3>作文打字成绩</h3><div class="stat-cards"><div class="stat-card"><div class="num" id="typingSessions">0</div><div class="lbl">练习次数</div></div><div class="stat-card"><div class="num" id="typingAvgWpm">0</div><div class="lbl">平均 WPM</div></div><div class="stat-card"><div class="num" id="typingAvgAcc">0%</div><div class="lbl">平均准确率</div></div><div class="stat-card"><div class="num" id="typingTotalErrors">0</div><div class="lbl">累计差异数</div></div></div><div id="typingRecent" class="article-history"></div></section>
       <div class="chart-row">
         <div class="chart-block">
           <div class="chart-head">
-            <div class="chart-title">每日自评很熟率</div>
-            <div class="chart-latest" id="accLatest"></div>
+            <div class="chart-title">单词/个</div>
+            <div class="chart-latest" id="wordsLatest"></div>
           </div>
-          <div class="chart" data-series="acc"></div>
+          <div class="chart" data-series="words"></div>
         </div>
+      </div>
 
-        <div class="chart-block">
-          <div class="chart-head">
-            <div class="chart-title">作文打字速度 · WPM（待接入）</div>
-            <div class="chart-latest" id="cpmLatest"></div>
+      <section class="data-tools-card typing-results-card"><h3>作文打字成绩</h3><div class="stat-cards"><div class="stat-card"><div class="num" id="typingSessions">0</div><div class="lbl">练习次数</div></div><div class="stat-card"><div class="num" id="typingAvgWpm">0</div><div class="lbl">平均 WPM</div></div><div class="stat-card"><div class="num" id="typingAvgAcc">0%</div><div class="lbl">平均准确率</div></div><div class="stat-card"><div class="num" id="typingTotalErrors">0</div><div class="lbl">累计差异数</div></div></div><div id="typingRecent" class="article-history"></div></section>
+
+      <!-- 点「今日单词 / 今日时长」弹出来的当月折线 -->
+      <div class="month-pop" id="monthPop" hidden>
+        <div class="month-pop-card" role="dialog" aria-modal="true" aria-labelledby="monthPopTitle">
+          <div class="month-pop-head">
+            <div>
+              <div class="month-pop-title" id="monthPopTitle">单词/个</div>
+              <div class="month-pop-sub" id="monthPopSub"></div>
+            </div>
+            <div class="month-pop-month">
+              <button type="button" id="monthPrev" aria-label="上个月">‹</button>
+              <span id="monthLabel">11 月</span>
+              <button type="button" id="monthNext" aria-label="下个月">›</button>
+              <button type="button" class="month-pop-close" id="monthClose" aria-label="关闭">×</button>
+            </div>
           </div>
-          <div class="chart" data-series="cpm"></div>
+          <div class="month-pop-chart" id="monthPopChart"></div>
+          <div class="month-pop-foot" id="monthPopFoot"></div>
         </div>
       </div>
     </div>

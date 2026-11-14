@@ -164,7 +164,10 @@ try {
   check('忘了 → step 0', rec && rec.step === 0, JSON.stringify(rec && rec.step));
   check('忘了 → 15 分钟', rec && Math.abs(rec.iv - 15 * 60000) < 1000, JSON.stringify(rec && rec.iv));
 
-  // 4) 老数据迁移：塞一条老格式记录再刷新
+  // 4) 老数据迁移：先离开 app（不然离开时的自动保存会把注入的数据冲掉），
+  //    在同一个源的空页面上塞一条老格式记录，再回来让 app 读它。
+  await cdp.eval("location.href = '/docs/mockups/stats-sketch.html'");
+  await waitFor(() => cdp.eval('location.pathname.indexOf("stats-sketch") >= 0 && document.readyState === "complete"'));
   await cdp.eval(`(() => {
     const key = Object.keys(localStorage).find(k => k.indexOf('wordtype.v1') === 0 && k.indexOf(':book:') > 0);
     const db = JSON.parse(localStorage.getItem(key) || '{}');
@@ -172,8 +175,7 @@ try {
     localStorage.setItem(key, JSON.stringify(db));
     return 'ok';
   })()`);
-  await cdp.eval('location.reload()');
-  await sleep(500);
+  await cdp.eval("location.href = '/'");
   await waitFor(() => cdp.eval('!!(window.__review && document.getElementById("wordText").textContent)'));
   const migrated = await cdp.eval(recOf('apple'));
   check('老记录 1.5 天 → step 3', migrated && migrated.step === 3, JSON.stringify(migrated && migrated.step));
