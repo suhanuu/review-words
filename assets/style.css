@@ -2614,7 +2614,14 @@ body.is-typing-screen .main { min-height: 100vh; }
 #view-typing.is-active { display:block; }
 .typing-screen-content { grid-template-columns:minmax(0,1fr); }
 .typing-source-panel { display:flex; flex-direction:column; gap:16px; }
-.typing-source-panel .typing-prompt { max-height:none; overflow:visible; min-height:120px; padding:20px; border-radius:12px; background:var(--surface-2); color:var(--text); font:clamp(17px,1.7vw,22px)/2 var(--font-mono); white-space:pre-wrap; overflow-wrap:anywhere; }
+/* 原文只留一个 4 行的窗口（4 行 × 2 倍行距 + 上下留白），内容超出部分藏起来，
+   由 app.js 在每次输入后把当前这一行顶到第一行，形成打字机式上滚。 */
+.typing-source-panel .typing-prompt { position:relative; height:calc(8em + 40px); max-height:none; min-height:0; overflow-y:auto; overflow-x:hidden; padding:20px; border-radius:12px; background:var(--surface-2); color:var(--text); font:clamp(17px,1.7vw,22px)/2 var(--font-mono); white-space:pre-wrap; overflow-wrap:anywhere;
+  /* 细滚动条：既能自己滚着看全文，又不挡字 */
+  scrollbar-width:thin; scrollbar-color:var(--line-strong, var(--line)) transparent;
+  /* 上下淡出：上面是刚滚过去的那一行、下面是还没打到的字（遮罩跟着窗口走，不随内容滚动） */
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 22px,#000 calc(100% - 30px),transparent 100%);
+  mask-image:linear-gradient(to bottom,transparent 0,#000 22px,#000 calc(100% - 30px),transparent 100%); }
 .typing-char { white-space:pre-wrap; border-radius:3px; }
 .typing-char.is-correct { color:#219653; }
 .typing-char.is-wrong { color:#dc3545; background:rgba(220,53,69,.10); }
@@ -2622,15 +2629,24 @@ body.is-typing-screen .main { min-height: 100vh; }
 .typing-live-metrics { color:var(--muted); font-size:12px; font-weight:400; }
 .typing-live-metrics b { color:var(--text); font-variant-numeric:tabular-nums; }
 .typing-screen .writing-keyboard { order:2; width:100%; }
-.typing-screen .keyboard-panel { width:min(100%,900px); margin:0 auto; }
 .typing-input-holder { padding:0; border:0; box-shadow:none; background:transparent; }
 .typing-capture-input { position:fixed !important; left:-10000px !important; top:0 !important; width:2px !important; height:2px !important; min-height:2px !important; opacity:0 !important; }
 .typing-screen-actions { justify-content:center; }
+/* 键盘保持原来那块（按键原尺寸 + 手部示意图）；宽度用键盘原本的设计宽度 664，
+   手部线条是按这个宽度调的，拉宽了指尖就会离开键位。大屏上整块等比放大到约 900 宽，
+   键和手一起缩放，对齐关系不变。 */
+.typing-screen .keyboard-panel { width:min(100%,664px); margin:0 auto; }
+@media (min-width:1100px) { .typing-screen .keyboard-panel { zoom:1.35; } }
+/* 原文窗口的滚动条：细一点，不挤字 */
+.typing-prompt::-webkit-scrollbar { width:6px; }
+.typing-prompt::-webkit-scrollbar-track { background:transparent; }
+.typing-prompt::-webkit-scrollbar-thumb { background:var(--line); border-radius:999px; }
+.typing-prompt::-webkit-scrollbar-thumb:hover { background:var(--muted); }
 @media(max-width:680px) {
  .ai-controls #btnShowHistory { margin-left:0; }
  .article-history-list .article-history-item { align-items:center; }
  .history-delete-selected { margin-left:0; }
- .typing-source-panel .typing-prompt { font-size:15px; line-height:1.85; padding:14px; }
+ .typing-source-panel .typing-prompt { height:calc(6em + 28px); padding:14px; font-size:15px; line-height:2; }
  .typing-live-metrics { display:block; line-height:1.8; }
 }
 .article-source-preview { width:100%; min-height:118px; padding:12px 14px; border:1px solid var(--line); border-radius:12px; color:var(--text); background:var(--surface-2); font:15px/1.9 var(--font-sans); white-space:pre-wrap; overflow-wrap:anywhere; }

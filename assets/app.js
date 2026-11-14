@@ -2535,12 +2535,76 @@
     var writingStartedAt = 0;
     var writingSource = '';
     var writingInput = el('writingInput');
-    function renderTypingPrompt(typed) {
+
+    // 校验一律忽略大小写：原文照原样显示，比较时两边都转小写。
+    function sameChar(a, b) {
+      return a != null && b != null && String(a).toLowerCase() === String(b).toLowerCase();
+    }
+
+    // 方向键、Home/End、翻页键在打字页没意义：它们会把光标从末尾挪走，
+    // 下一个字母就插到句子中间，后面整段错位、显示成大片的红。
+    // 这里直接拦掉，光标永远钉在末尾。
+    var TYPING_CURSOR_KEYS = {
+      ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1,
+      Home: 1, End: 1, PageUp: 1, PageDown: 1, Insert: 1, Delete: 1
+    };
+
+    // 打字页里焦点一旦跑掉（点页面、拖滚动条之后），空格会变成浏览器的「翻页」键，
+    // 结果既翻了页、字也没进输入框。这里兜住：在打字页一敲键就把焦点抓回输入框，
+    // 空格永远不翻页——焦点本来丢了的话，手动补一个空格，手感不断。
+    document.addEventListener('keydown', function (e) {
+      if (state.view !== 'typing') return;
+      var inp = el('writingInput');
+      if (!inp || inp.disabled) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (TYPING_CURSOR_KEYS[e.key]) {
+        e.preventDefault();
+        if (document.activeElement === inp) inp.setSelectionRange(inp.value.length, inp.value.length);
+        return;
+      }
+      if (e.key === 'Tab' || e.key === 'Escape' || e.key === 'Shift') return;
+      if (document.activeElement === inp) return;
+      if (e.key === ' ' || e.code === 'Space') {
+        e.preventDefault();
+        inp.focus();
+        inp.value += ' ';
+        inp.dispatchEvent(new Event('input', { bubbles: true }));
+        return;
+      }
+      // 其他可打字的键（字母、退格、回车）同样把焦点抓回来
+      if (e.key && (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Enter')) inp.focus();
+    }, true);
+
+    // 当前这一行顶到窗口第一行（打字机式上滚）。
+    // 用「当前字符相对第一个字符的纵向距离」当滚动目标，不自己算行高，
+    // 所以字号/行距被浏览器放大（手机字体缩放）也不会偏。
+    // 内容坐标不受滚动动画影响，连续敲键测得的位置是稳的。
+    function keepCursorOnTopLine(host) {
+      var chars = host.querySelectorAll('.typing-char');
+      if (!chars.length) return;
+      var node = host.querySelector('.typing-char.is-current');
+      if (!node) node = chars[chars.length - 1];
+      var box = host.getBoundingClientRect();
+      var scroll = host.scrollTop;
+      var curY = node.getBoundingClientRect().top - box.top + scroll;
+      var firstY = chars[0].getBoundingClientRect().top - box.top + scroll;
+      var target = Math.max(0, Math.round(curY - firstY));
+      if (Math.abs(target - scroll) < 1) return;
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      // 手动滚远了再回到当前输入位置：直接跳过去，别慢慢滑一大段
+      var far = Math.abs(target - scroll) > 200;
+      if (host.scrollTo) host.scrollTo({ top: target, behavior: (reduce || far) ? 'auto' : 'smooth' });
+      else host.scrollTop = target;
+    }
+
+    function renderTypingPrompt(typed, keepScroll) {
       var host = el('typingPrompt'); if (!host) return;
+      // 重建字符节点会让 scrollTop 归零，先记住再写回去，避免每敲一键就闪回顶部
+      var prevScroll = host.scrollTop;
       host.innerHTML = '';
       for (var i = 0; i < writingSource.length; i++) {
         var span = document.createElement('span'); span.className = 'typing-char';
-        if (i < typed.length) span.classList.add(typed[i] === writingSource[i] ? 'is-correct' : 'is-wrong');
+        if (i < typed.length) span.classList.add(sameChar(typed[i], writingSource[i]) ? 'is-correct' : 'is-wrong');
         else if (i === typed.length) span.classList.add('is-current');
         span.textContent = writingSource[i]; host.appendChild(span);
       }
@@ -2549,23 +2613,35 @@
           var extra = document.createElement('span'); extra.className = 'typing-char is-wrong'; extra.textContent = typed[j]; host.appendChild(extra);
         }
       }
+      host.scrollTop = prevScroll;
+      if (!keepScroll) keepCursorOnTopLine(host);
     }
     el('btnStartWriting').addEventListener('click', function () {
       writingSource = el('articleSource').value.trim();
       if (!writingSource) { el('articleStatus').textContent = '请先生成或填写文章'; return; }
       writingInput.disabled = false; writingInput.value = ''; writingStartedAt = Date.now();
+      window.__rwTypingStarted = writingStartedAt;
+      // 背词页留下的「下一步敲哪个键」高亮和状态文字别带到打字页
+      clearHint();
+      if (el('kbState')) el('kbState').textContent = '等待输入';
       renderTypingPrompt('');
+      if (el('typingPrompt')) el('typingPrompt').scrollTop = 0;
       el('typingState').textContent = '开始输入';
       el('articleStatus').textContent = '练习中';
       el('writingErrors').textContent = '0'; el('writingWpm').textContent = '0'; el('writingAccuracy').textContent = '—';
       setView('typing'); writingInput.focus();
     });
     writingInput.addEventListener('input', function () {
+      // 兜底：插入点必须停在末尾，任何方式把光标挪走都在这里拽回来，
+      // 避免下一个字母插进句子中间、后面整段错位。
+      if (writingInput.selectionStart !== writingInput.value.length || writingInput.selectionEnd !== writingInput.value.length) {
+        try { writingInput.setSelectionRange(writingInput.value.length, writingInput.value.length); } catch (err) {}
+      }
       var typed = writingInput.value;
       renderTypingPrompt(typed);
       var mins = Math.max((Date.now() - writingStartedAt) / 60000, 1 / 60000);
       var correct = 0, errors = 0;
-      for (var i = 0; i < typed.length; i++) { if (typed[i] === writingSource[i]) correct++; else errors++; }
+      for (var i = 0; i < typed.length; i++) { if (sameChar(typed[i], writingSource[i])) correct++; else errors++; }
       el('writingErrors').textContent = String(errors + Math.max(0, writingSource.length - typed.length) * 0);
       el('writingWpm').textContent = String(Math.round((correct / 5) / mins));
       el('writingAccuracy').textContent = typed.length ? Math.round(correct / typed.length * 100) + '%' : '—';
@@ -2580,13 +2656,14 @@
     el('btnSubmitWriting').addEventListener('click', function () {
       if (!writingSource) return;
       var typed = writingInput.value, errors = 0, max = Math.max(typed.length, writingSource.length), correct = 0;
-      for (var i = 0; i < max; i++) { if (typed[i] !== writingSource[i]) errors++; else if (i < typed.length) correct++; }
+      for (var i = 0; i < max; i++) { if (!sameChar(typed[i], writingSource[i])) errors++; else if (i < typed.length) correct++; }
       el('writingErrors').textContent = String(errors);
       el('writingAccuracy').textContent = (max ? Math.round(correct / max * 100) : 0) + '%';
       el('typingState').textContent = errors ? '已提交 · 有差异' : '已完成 · 完全一致';
       el('articleStatus').textContent = '本次练习已提交';
       writingInput.disabled = true;
-      renderTypingPrompt(typed);
+      // 提交后停在原地看结果，不要因为重绘把窗口滚到文末
+      renderTypingPrompt(typed, true);
     });
 
     // 词库：首字母快捷条 + 搜索 + 滚到底自动续批
