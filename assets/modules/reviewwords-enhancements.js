@@ -1,24 +1,118 @@
 (function(){
 'use strict';
 var $=function(id){return document.getElementById(id);};
-var BOOKS_KEY='reviewwords.books.v1', ACTIVE_KEY='reviewwords.activeBook.v1', PREFIX='wordtype.v1:book:', ARTICLES='reviewwords.articles.v1', TASKS='reviewwords.dailyTasks.v1', AI_SETTINGS='reviewwords.aiSettings.v1';
+var BOOKS_KEY='reviewwords.books.v1', ACTIVE_KEY='reviewwords.activeBook.v1', PREFIX='wordtype.v1:book:', ARTICLES='reviewwords.articles.v1', TASKS='reviewwords.dailyTasks.v1', AI_SETTINGS='reviewwords.aiSettings.v1', SELECTION='reviewwords.weakSelection.v1';
+var RECOMMEND_MIN=6, RECOMMEND_MAX=12, HARD_MAX=24, DEFAULT_PICK=10;
 function get(k,d){try{return JSON.parse(localStorage.getItem(k)||'null')||d;}catch(e){return d;}}
 function active(){return localStorage.getItem(ACTIVE_KEY)||'redbook-2024';}
 function archive(){return get(PREFIX+active(),{});}
 function words(){var b=archive(), list=active()==='redbook-2024'?(window.WORD_BANK||[]).concat(b.custom||[]):(b.custom||[]);var m={};list.forEach(function(w){if(w&&w.w)m[w.w]=w;});return m;}
 function weak(){
- var d=archive(), rec=d.records||{}, fav=d.favs||{}, all=words(), map={};
- Object.keys(rec).forEach(function(w){var r=rec[w]||{};if(r.last===1||(r.forgot||0)>0)map[w]={word:w,rank:3,source:['忘记'],meaning:(all[w]||{}).m||''};else if(r.last===2)map[w]={word:w,rank:2,source:['模糊'],meaning:(all[w]||{}).m||''};});
- Object.keys(fav).forEach(function(w){if(!map[w])map[w]={word:w,rank:1,source:['收藏'],meaning:(all[w]||{}).m||''};else map[w].source.push('收藏');});
+ var d=archive(), rec=d.records||{}, all=words(), map={};
+ Object.keys(rec).forEach(function(w){var r=rec[w]||{};
+  if(r.last===1||(r.forgot||0)>0) map[w]={word:w,group:'forgot',rank:3,meaning:(all[w]||{}).m||''};
+  else if(r.last===2) map[w]={word:w,group:'fuzzy',rank:2,meaning:(all[w]||{}).m||''};
+ });
+ // 仅收藏的词不进入选词池：收藏由「我的收藏」页承载
  return Object.keys(map).map(function(k){return map[k];}).sort(function(a,b){return b.rank-a.rank||a.word.localeCompare(b.word);});
 }
-var selected={};
+function weakGroups(){
+ var out={forgot:[],fuzzy:[]};
+ weak().forEach(function(x){out[x.group].push(x);});
+ return out;
+}
+function selectionMap(){var m=get(SELECTION,{});return (m&&typeof m==='object'&&!Array.isArray(m))?m:{};}
+function saveSelectionMap(m){localStorage.setItem(SELECTION,JSON.stringify(m));}
+function defaultSelection(){return weak().slice(0,DEFAULT_PICK).map(function(x){return x.word;});}
+// 三态：未初始化（无键 / null）自动选 10；用户清空（[]）不回填；池变动只做 prune
+function getSelection(){
+ var m=selectionMap(),k=active();
+ if(!Object.prototype.hasOwnProperty.call(m,k)||m[k]===null){
+  var init=defaultSelection();
+  if(!init.length)return [];           // 池为空时保持未初始化，等有词后再自动选
+  m[k]=init;saveSelectionMap(m);return init.slice();
+ }
+ var saved=Array.isArray(m[k])?m[k].slice():[],pool=Object.create(null);
+ weak().forEach(function(x){pool[x.word]=true;});
+ var pruned=saved.filter(function(w){return !!pool[w];});
+ if(pruned.length!==saved.length){m[k]=pruned;saveSelectionMap(m);}
+ return pruned;
+}
+function saveSelection(list){var m=selectionMap();m[active()]=list.slice();saveSelectionMap(m);}
+
 var selectedHistory={};
+var draft=[];
+
 function renderWeak(){
- var host=$('weakWordList');if(!host)return;host.innerHTML='';var list=weak();
- list.forEach(function(x){if(selected[x.word]===undefined)selected[x.word]=true;var lab=document.createElement('label');lab.className='weak-word-chip';var cb=document.createElement('input');cb.type='checkbox';cb.checked=!!selected[x.word];cb.addEventListener('change',function(){selected[x.word]=cb.checked;});var span=document.createElement('span');span.textContent=x.word;var small=document.createElement('small');small.textContent=x.source.join(' / ');lab.append(cb,span,small);host.appendChild(lab);});
- $('weakPoolCount').textContent=list.length+' 个词 · '+list.filter(function(x){return selected[x.word]!==false;}).length+' 个已选';
- if(!list.length)host.textContent='暂时没有薄弱词。先去学习页评价几个单词，或收藏想巩固的词。';
+ var host=$('weakWordList');if(!host)return;
+ host.innerHTML='';
+ var chosen=getSelection(),pool=weak(),byWord={};
+ pool.forEach(function(x){byWord[x.word]=x;});
+ chosen.forEach(function(w){
+  var x=byWord[w]||{word:w,group:'fuzzy'};
+  var lab=document.createElement('label');lab.className='weak-word-chip is-selected';
+  var span=document.createElement('span');span.textContent=x.word;
+  var small=document.createElement('small');small.textContent=x.group==='forgot'?'忘记':'模糊';
+  lab.append(span,small);host.appendChild(lab);
+ });
+ if(!chosen.length)host.textContent='暂未选择目标词，点「查看 / 编辑选择」开始。';
+ var fresh=pool.filter(function(x){return chosen.indexOf(x.word)<0;}).length;
+ $('weakPoolCount').textContent='已选 '+chosen.length+' / '+pool.length+' 个词 · 建议 6–12';
+ var note=$('weakPoolNote');
+ if(note)note.textContent=chosen.length
+  ? '本次生成只使用上面的 '+chosen.length+' 个词；点「查看 / 编辑选择」调整。'+(fresh?'另有 '+fresh+' 个新薄弱词未选。':'')
+  : '还没有选择目标词，点「查看 / 编辑选择」开始选词。';
+}
+
+function syncNav(name){document.querySelectorAll('.nav-btn[data-view]').forEach(function(b){b.classList.toggle('is-active',b.dataset.view===name);});}
+function pickerGroup(hostId,countId,group){
+ var host=$(hostId);if(!host)return;
+ host.innerHTML='';
+ var items=weakGroups()[group];
+ items.forEach(function(x){
+  var lab=document.createElement('label');lab.className='weak-word-chip';
+  var cb=document.createElement('input');cb.type='checkbox';cb.checked=draft.indexOf(x.word)>=0;
+  cb.addEventListener('change',function(){
+   var i=draft.indexOf(x.word);
+   if(cb.checked&&i<0)draft.push(x.word);
+   else if(!cb.checked&&i>=0)draft.splice(i,1);
+   updatePickerBar();
+  });
+  var span=document.createElement('span');span.textContent=x.word;
+  lab.append(cb,span);host.appendChild(lab);
+ });
+ if(!items.length){var p=document.createElement('p');p.className='weak-picker-group-empty';p.textContent='这一组暂时没有词。';host.appendChild(p);}
+ if($(countId))$(countId).textContent=items.length+' 个词';
+}
+function renderPickerGroups(){pickerGroup('weakGroupForgot','weakGroupForgotCount','forgot');pickerGroup('weakGroupFuzzy','weakGroupFuzzyCount','fuzzy');}
+function updatePickerBar(){
+ var n=draft.length,bar=$('weakPickerBar'),tip=$('weakPickerTip'),count=$('weakPickerCount'),hint=$('weakPickerHint');
+ var state=n>RECOMMEND_MAX?'warn':(n>0&&n<RECOMMEND_MIN?'low':'ok');
+ [bar,tip].forEach(function(node){if(!node)return;node.classList.remove('is-ok','is-low','is-warn');node.classList.add('is-'+state);});
+ if(count)count.textContent='已选 '+n+' 个';
+ if(hint)hint.textContent=n>RECOMMEND_MAX
+  ? '超过建议区间，生成前会再确认一次；目标词多容易漏词、需要重试，更费 token。'
+  : (n>0&&n<RECOMMEND_MIN?'选得偏少，练习强度可能不足（仍可生成）。':(n?'在建议区间内。':'请先选择目标词。'));
+}
+function renderWeakPicker(){
+ draft=getSelection().slice();
+ renderPickerGroups();
+ var empty=$('weakPickerEmpty');if(empty)empty.hidden=weak().length>0;
+ updatePickerBar();
+}
+function openWeakPicker(){renderWeakPicker();switchInternalView('weak-words');syncNav('writing');}
+function backWeakPicker(){draft=getSelection().slice();switchInternalView('writing');syncNav('writing');renderWeak();}
+function setPickerGroup(group,on){
+ var wordsInGroup=weakGroups()[group].map(function(x){return x.word;});
+ draft=draft.filter(function(w){return wordsInGroup.indexOf(w)<0;});
+ if(on)wordsInGroup.forEach(function(w){if(draft.indexOf(w)<0)draft.push(w);});
+ renderPickerGroups();updatePickerBar();
+}
+function autoPick(){draft=defaultSelection();renderPickerGroups();updatePickerBar();}
+function confirmWeakPicker(){
+ if(draft.length>HARD_MAX){showToast('最多只能选 '+HARD_MAX+' 个目标词，请先减少。',true);return;}
+ saveSelection(draft);renderWeak();switchInternalView('writing');syncNav('writing');
+ showToast('已保存 '+draft.length+' 个目标词');
 }
 function articles(){return get(ARTICLES,[]);}
 function saveArticles(a){localStorage.setItem(ARTICLES,JSON.stringify(a));}
@@ -27,7 +121,7 @@ function fitArticleTextareas(){['articleSource','articleTranslation'].forEach(fu
 function escapeHTML(s){return String(s).replace(/[&<>\"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c];});}
 function renderHighlightedArticle(content,targetWords){var safe=escapeHTML(content);(targetWords||[]).filter(Boolean).sort(function(a,b){return b.length-a.length;}).forEach(function(word){var escaped=escapeHTML(word).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');safe=safe.replace(new RegExp('(^|[^A-Za-z])('+escaped+')(?=[^A-Za-z]|$)','gi'),function(_,pre,hit){return pre+'<mark class=\"target-word-mark\">'+hit+'</mark>';});});return safe;}
 function showArticle(a){$('articleSource').value=a.content||'';$('articleTranslation').value=a.translation||'';var preview=$('articleSourcePreview');if(preview){preview.innerHTML=renderHighlightedArticle(a.content||'',a.targetWords||[]);preview.hidden=false;$('articleSource').hidden=true;} $('articleStatus').textContent='已载入文章'+(a.difficulty?' · '+(a.difficulty==='cet4'?'四级 CET-4':a.difficulty==='cet6'?'六级 CET-6':a.difficulty):'');if($('articleWordCount'))$('articleWordCount').textContent=(a.wordCount||((a.content||'').match(/\b[\w'-]+\b/g)||[]).length)+' 词';fitArticleTextareas();}
-function switchInternalView(name){document.querySelectorAll('.view').forEach(function(v){v.classList.toggle('is-active',v.id==='view-'+name);});document.body.classList.toggle('is-typing-screen',name==='typing');document.documentElement.classList.remove('is-drill-locked');document.body.classList.remove('is-drill-locked');window.scrollTo(0,0);var activeView=$('view-'+name);if(activeView&&name==='article-history'){activeView.scrollTop=0;}}
+function switchInternalView(name){document.querySelectorAll('.view').forEach(function(v){v.classList.toggle('is-active',v.id==='view-'+name);});document.body.classList.toggle('is-typing-screen',name==='typing');document.documentElement.classList.remove('is-drill-locked');document.body.classList.remove('is-drill-locked');window.scrollTo(0,0);var activeView=$('view-'+name);if(activeView&&(name==='article-history'||name==='weak-words')){activeView.scrollTop=0;}}
 function historyKey(article,index){return article&&article.id?String(article.id):'legacy-'+index;}
 function updateHistorySelection(){
  var list=articles(),checks=Array.prototype.slice.call(document.querySelectorAll('.history-article-check'));
@@ -62,7 +156,6 @@ function showToast(message,isError){var node=$('rwToast');if(!node){node=documen
 function setGenerationProgress(state,message){var box=$('aiProgress');var text=$('aiProgressText');if(!box)return;box.classList.remove('is-idle','is-loading','is-success','is-error');box.classList.add('is-'+state);if(text)text.textContent=message||'';box.setAttribute('aria-label',message||'作文生成状态');}
 
 function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-function prepareTask(){var tasks=get(TASKS,{}),k=active()+':'+today();if(!tasks[k])tasks[k]={bookId:active(),date:today(),status:'待生成',createdAt:Date.now()};localStorage.setItem(TASKS,JSON.stringify(tasks));$('dailyTaskStatus').textContent='今日任务：'+tasks[k].status+'（不会自动调用 AI）';}
 function readAISettings(){return get(AI_SETTINGS,{});}
 function endpointFor(base){
  var u=new URL(base);
@@ -171,10 +264,13 @@ async function testAISettings(){
  finally{$('btnTestAISettings').disabled=false;}
 }
 async function generate(){
- var chosen=weak().filter(function(x){return selected[x.word]!==false;}).slice(0,24);
- if(!chosen.length){$('aiStatus').textContent='没有选中的薄弱词。';setGenerationProgress('error','请先选择目标词');return;}
+ var chosenWords=getSelection();
+ if(!chosenWords.length){$('aiStatus').textContent='还没有选择目标词。';setGenerationProgress('error','请先选择目标词');openWeakPicker();return;}
+ if(chosenWords.length>HARD_MAX){$('aiStatus').textContent='目标词过多。';setGenerationProgress('error','最多 '+HARD_MAX+' 个目标词，请先减少');openWeakPicker();return;}
+ if(chosenWords.length>RECOMMEND_MAX&&!window.confirm('本次选择了 '+chosenWords.length+' 个目标词，超过建议的 6–12 个。目标词越多，模型越容易漏词、需要重试，会明显增加 token 消耗。仍要继续生成吗？')){setGenerationProgress('idle','');return;}
+ var chosen=chosenWords.map(function(w){return {word:w};});
  var settings;try{settings=validateAISettings(readAISettings());}catch(e){$('aiStatus').textContent='请先打开「AI API 设置」并保存配置：'+e.message;setGenerationProgress('error','配置错误：'+e.message);var panel=$('aiSettingsPanel');if(panel)panel.open=true;return;}
- $('aiStatus').textContent='正在生成并校验文章……';setGenerationProgress('loading','正在生成作文…');$('btnGenerateArticle').disabled=true;
+ $('aiStatus').textContent='正在生成并校验文章……';setGenerationProgress('loading','正在生成作文（'+chosen.length+' 个目标词）…');$('btnGenerateArticle').disabled=true;
  try{
   var difficulty=$('aiDifficulty').value;
   var levelText=difficulty==='cet4'?'College English Test Band 4 (CET-4), use common intermediate vocabulary and clear sentence structures':'College English Test Band 6 (CET-6), use more varied vocabulary, richer sentence structures and stronger logical connections';
@@ -204,8 +300,12 @@ async function generate(){
   if(missing.length)throw new Error('文章未覆盖全部目标词：'+missing.map(function(x){return x.word;}).join(', '));
   var wc=(String(data.content).match(/\b[\w'-]+\b/g)||[]).length;
   if(wc<100||wc>190)throw new Error('文章长度为 '+wc+' 词，未达到约 150 词要求，请重试');
-  var a=saveCurrentArticle({id:'article-'+Date.now(),bookId:active(),date:today(),title:data.title||'Daily weak-word writing',content:String(data.content),translation:String(data.translation),targetWords:chosen.map(function(x){return x.word;}),difficulty:difficulty,wordCount:wc,createdAt:new Date().toISOString(),provider:settings.model});
-  showArticle(a);chosen.forEach(function(x){selected[x.word]=false;});renderWeak();$('aiStatus').textContent='生成成功';setGenerationProgress('success','生成成功 · '+wc+' 词');
+ var a=saveCurrentArticle({id:'article-'+Date.now(),bookId:active(),date:today(),title:data.title||'Daily weak-word writing',content:String(data.content),translation:String(data.translation),targetWords:chosen.map(function(x){return x.word;}),difficulty:difficulty,wordCount:wc,createdAt:new Date().toISOString(),provider:settings.model});
+ // 本批词生成成功后移出选择集，方便接着选下一批
+ showArticle(a);
+ saveSelection(getSelection().filter(function(w){return chosenWords.indexOf(w)<0;}));
+ renderWeak();
+ $('aiStatus').textContent='生成成功';setGenerationProgress('success','生成成功 · '+wc+' 词');
   var tasks=get(TASKS,{}),k=active()+':'+today();tasks[k]={bookId:active(),date:today(),status:'已生成',articleId:a.id,createdAt:Date.now()};localStorage.setItem(TASKS,JSON.stringify(tasks));
  }catch(e){$('aiStatus').textContent='生成失败：'+e.message;setGenerationProgress('error','生成失败：'+e.message);}
  finally{$('btnGenerateArticle').disabled=false;}
@@ -223,10 +323,17 @@ function renderTypingStats(){var list=get('reviewwords.typingRecords.v1',[]);var
 function bind(){
  if(!$('weakWordList'))return;
  var cfg=readAISettings();if(cfg.baseUrl)$('aiBaseUrl').value=cfg.baseUrl;if(cfg.apiKey)$('aiApiKey').value=cfg.apiKey;if(cfg.model)$('aiModel').value=cfg.model;
- renderWeak();renderTypingStats();$('articleSource').addEventListener('input',function(){fitArticleTextareas();if($('articleWordCount'))$('articleWordCount').textContent=(($('articleSource').value.match(/\b[\w'-]+\b/g)||[]).length)+' 词';});$('articleTranslation').addEventListener('input',fitArticleTextareas);$('btnGenerateArticle').addEventListener('click',generate);$('btnSaveAISettings').addEventListener('click',function(){try{saveAISettings(true);}catch(e){}});$('btnTestAISettings').addEventListener('click',testAISettings);$('btnShowHistory').addEventListener('click',function(){renderHistory();switchInternalView('article-history');});if($('btnHistoryBack'))$('btnHistoryBack').addEventListener('click',function(){switchInternalView('writing');});if($('historySelectAll'))$('historySelectAll').addEventListener('change',function(){var checks=document.querySelectorAll('.history-article-check');Array.prototype.forEach.call(checks,function(cb){cb.checked=$('historySelectAll').checked;var row=cb.closest('.article-history-item');if(row)selectedHistory[row.dataset.historyKey]=cb.checked;});updateHistorySelection();});if($('btnDeleteSelectedArticles'))$('btnDeleteSelectedArticles').addEventListener('click',deleteSelectedHistory);
+ renderWeak();renderTypingStats();
+ $('btnOpenWeakPicker').addEventListener('click',openWeakPicker);
+ if($('btnWeakPickerBack'))$('btnWeakPickerBack').addEventListener('click',backWeakPicker);
+ if($('btnWeakAutoPick'))$('btnWeakAutoPick').addEventListener('click',autoPick);
+ if($('btnWeakConfirm'))$('btnWeakConfirm').addEventListener('click',confirmWeakPicker);
+ document.querySelectorAll('[data-group-all]').forEach(function(b){b.addEventListener('click',function(){setPickerGroup(b.dataset.groupAll,true);});});
+ document.querySelectorAll('[data-group-none]').forEach(function(b){b.addEventListener('click',function(){setPickerGroup(b.dataset.groupNone,false);});});
+ $('articleSource').addEventListener('input',function(){fitArticleTextareas();if($('articleWordCount'))$('articleWordCount').textContent=(($('articleSource').value.match(/\b[\w'-]+\b/g)||[]).length)+' 词';});$('articleTranslation').addEventListener('input',fitArticleTextareas);$('btnGenerateArticle').addEventListener('click',generate);$('btnSaveAISettings').addEventListener('click',function(){try{saveAISettings(true);}catch(e){}});$('btnTestAISettings').addEventListener('click',testAISettings);$('btnShowHistory').addEventListener('click',function(){renderHistory();switchInternalView('article-history');});if($('btnHistoryBack'))$('btnHistoryBack').addEventListener('click',function(){switchInternalView('writing');});if($('historySelectAll'))$('historySelectAll').addEventListener('change',function(){var checks=document.querySelectorAll('.history-article-check');Array.prototype.forEach.call(checks,function(cb){cb.checked=$('historySelectAll').checked;var row=cb.closest('.article-history-item');if(row)selectedHistory[row.dataset.historyKey]=cb.checked;});updateHistorySelection();});if($('btnDeleteSelectedArticles'))$('btnDeleteSelectedArticles').addEventListener('click',deleteSelectedHistory);
  $('btnExportBackup').addEventListener('click',backup);$('backupFile').addEventListener('change',function(){if(this.files[0])restore(this.files[0]);});
  $('btnSubmitWriting').addEventListener('click',function(){var source=$('articleSource').value,typed=$('writingInput').value;if(!source)return;var dist=editDistance(source,typed),max=Math.max(source.length,typed.length);var mins=Math.max((Date.now()-Number(window.__rwTypingStarted||Date.now()))/60000,1/60000);var rec=get('reviewwords.typingRecords.v1',[]);var accuracy=max?Math.max(0,1-dist/max):0;var correctChars=Math.max(0,source.length-dist);rec.unshift({bookId:active(),date:today(),mode:document.querySelector('[data-typing-mode].is-active')?.dataset.typingMode||'strict',accuracy:accuracy,errors:dist,wpm:Math.round(correctChars/5/mins),durationMs:mins*60000,articleId:articles()[0]?.id||null,article:source.slice(0,120)});localStorage.setItem('reviewwords.typingRecords.v1',JSON.stringify(rec.slice(0,500)));renderTypingStats();},true);
- document.querySelectorAll('.nav-btn[data-view="writing"]').forEach(function(b){b.addEventListener('click',renderWeak);});document.querySelectorAll('.nav-btn[data-view="stats"]').forEach(function(b){b.addEventListener('click',renderTypingStats);});
+ document.querySelectorAll('.nav-btn[data-view="writing"]').forEach(function(b){b.addEventListener('click',function(){renderWeak();syncNav('writing');});});document.querySelectorAll('.nav-btn[data-view="stats"]').forEach(function(b){b.addEventListener('click',renderTypingStats);});
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();

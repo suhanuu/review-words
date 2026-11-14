@@ -896,7 +896,7 @@
   // ================= 视图切换 =================
   function setView(name) {
     state.view = name;
-    ['drill', 'done', 'writing', 'typing', 'article-history', 'books', 'stats', 'words', 'favs'].forEach(function (v) {
+    ['drill', 'done', 'writing', 'typing', 'article-history', 'weak-words', 'books', 'stats', 'words', 'favs'].forEach(function (v) {
       var node = el('view-' + v);
       if (node) node.classList.toggle('is-active', v === name);
     });
