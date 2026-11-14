@@ -14,6 +14,9 @@ _data/ecdict.csv
 # 浏览器 / CDP 临时配置
 _data/re/.profile*/
 
+# 设计稿截图（本地看版式用，加起来好几 MB；草图 html 本身留着）
+docs/mockups/shots/
+
 # 系统杂项
 .DS_Store
 Thumbs.db

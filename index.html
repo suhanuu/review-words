@@ -47,6 +47,9 @@
           <span class="due-stat" id="dueStat">待复习 0</span>
           <div class="drill-bar"><i id="drillBar"></i></div>
           <span class="timer" id="drillTimer">00:00</span>
+          <button class="drill-master" id="btnDrillMaster" type="button" title="点一下直接算很熟，跳过剩下的次数">
+            <span id="drillMasterLabel">熟悉</span>
+          </button>
         </div>
 
         <div class="stage">
@@ -75,7 +78,7 @@
           <div class="rate-row" id="rateRow">
             <button class="rate" data-grade="1"><kbd>J</kbd>忘了</button>
             <button class="rate" data-grade="2"><kbd>K</kbd>模糊</button>
-            <button class="rate" data-grade="3"><kbd>L</kbd>很熟</button>
+            <button class="rate" data-grade="3"><kbd>L</kbd>熟悉</button>
           </div>
           <button class="meaning-next-btn" id="btnMeaningNext" type="button" hidden>下一个单词 <span aria-hidden="true">→</span></button>
 
@@ -99,7 +102,7 @@
       <h2 class="done-title" id="doneTitle">整本书记过的词都在复习间隔里</h2>
       <div class="done-stats">
         <div class="done-stat"><div class="num" id="doneWords">0</div><div class="lbl">今天过词</div></div>
-        <div class="done-stat"><div class="num" id="doneAcc">0<small>%</small></div><div class="lbl">自评很熟</div></div>
+        <div class="done-stat"><div class="num" id="doneAcc">0<small>个</small></div><div class="lbl">今日很熟</div></div>
         <div class="done-stat"><div class="num" id="doneCpm">0<small>字/分</small></div><div class="lbl">作文打字速度（待接入）</div></div>
         <div class="done-stat"><div class="num" id="doneTime">0<small>分</small></div><div class="lbl">今天用时</div></div>
       </div>
@@ -452,6 +455,7 @@
 <script src="./assets/words.js"></script>
 <script src="./assets/hands.js"></script>
 <script src="./assets/vendor/pinyin-pro.js"></script>
+<script src="./assets/schedule.js"></script>
 <script src="./assets/modules/core/persistence-bootstrap.js"></script>
 </body>
 </html>

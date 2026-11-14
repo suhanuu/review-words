@@ -461,6 +461,41 @@ button {
   color: var(--faint);
 }
 
+/* 右上角「熟悉 2/3」：点一下把连续熟悉次数拉满，等于这一下就通过 */
+.drill-master {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-soft);
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  transition: border-color 0.18s var(--ease), background-color 0.18s var(--ease), color 0.18s var(--ease);
+}
+.drill-master:hover {
+  border-color: var(--accent-ring);
+  color: var(--accent-deep);
+  background: var(--accent-soft);
+}
+.drill-master.is-done {
+  color: var(--ok);
+  border-color: rgba(61, 122, 90, 0.34);
+  background: var(--ok-soft);
+  cursor: default;
+}
+.drill-master:disabled:not(.is-done) { opacity: 0.5; cursor: default; }
+
+@media (max-width: 720px) {
+  .drill-master { height: 26px; padding: 0 9px; font-size: 10.5px; }
+}
+
 .drill-bar {
   flex: 1;
   height: 4px;

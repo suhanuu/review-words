@@ -18,15 +18,11 @@
   var MIN = 60000;
   var DAY = 86400000;
 
-  // 动态间隔复习的参数（放这么靠前，是因为 load() 迁移旧数据时要用到 IV_MAX）
-  // 首次：忘了 15 分钟、模糊 20 分钟、很熟 1 天
-  // 之后：忘了重置 15 分钟；模糊 ×1.5（至少 1 小时）；很熟 ×2.2（至少 1 天）；最多 15 天
-  var IV_FORGOT = 15 * MIN;
-  var IV_FUZZY = 20 * MIN;
-  var IV_FAMILIAR = DAY;
-  var IV_FUZZY_MIN = 60 * MIN;
-  var IV_FAMILIAR_MIN = DAY;
-  var IV_MAX = 15 * DAY;
+  // 背词节奏（规则全在 assets/schedule.js，那边有单测）：
+  // 学习期 step 0–2：忘了 15 分钟、模糊 20 分钟、熟悉 1 天；
+  // 复习期 step 3–10：1/2/4/7/15/30/90/180 天，走完 180 天那档毕业。
+  var MASTERED = RWSchedule.MASTERED;
+  var LADDER_MAX = RWSchedule.LADDER_DAYS[RWSchedule.LADDER_DAYS.length - 1] * DAY;
   var DEFAULTS = {
     theme: 'light',
     sound: true,
@@ -50,7 +46,6 @@
     try { raw = JSON.parse(localStorage.getItem(storeKey()) || '{}') || {}; } catch (e) { raw = {}; }
     var recs = raw.records || {};
     // 兼容旧数据：把按「天」存的 due 换成时间戳
-    var cap = Date.now() + IV_MAX;
     Object.keys(recs).forEach(function (k) {
       var r = recs[k];
       if (r.dueAt === undefined) {
@@ -62,13 +57,23 @@
         delete r.due;
       }
       if (r.iv === undefined) r.iv = (r.interval || 0) * DAY;
-      // 新规则上限 15 天：老数据可能算到几个月之后，统一压回上限内，
-      // 否则这些词会长期不出现，和「逾期优先」的规则也对不上
-      if (r.iv > IV_MAX) r.iv = IV_MAX;
-      if (r.dueAt > cap) r.dueAt = cap;
       // 新增字段：累计忘记次数（老数据没有，从 0 起算，不清空任何已有内容）
       if (r.forgot === undefined) r.forgot = 0;
       delete r.interval;
+
+      // 新节奏只认 step：老数据的间隔按阶梯折算成台阶，之前的进度不清零；
+      // 已经在复习期的，到期时间按新阶梯重新对齐，免得被老间隔拖到几个月后。
+      if (r.step === undefined) {
+        r.step = RWSchedule.stepFromIv(r.iv);
+        if (r.step >= MASTERED) {
+          r.masteredAt = r.lastAt || r.dueAt || Date.now();
+          var delay = RWSchedule.delayFor(r.step);
+          r.iv = delay;
+          r.dueAt = (r.lastAt || Date.now()) + delay;
+        }
+      }
+      if (r.masteredAt === undefined) r.masteredAt = 0;
+      if (r.done === undefined) r.done = 0;
     });
     return {
       settings: Object.assign({}, DEFAULTS, raw.settings || {}),
@@ -84,22 +89,25 @@
     try { localStorage.setItem(storeKey(), JSON.stringify(db)); } catch (e) {}
   }
 
-  // 记录字段（复用旧的，不新建结构）：
+  // 记录字段（沿用旧结构，只多两个字段）：
   //   word          → db.records 的键
-  //   review_count  → seen
-  //   last_rating   → last
-  //   interval      → iv（毫秒；跨「天」时除以 DAY 即为 interval_days）
-  //   last_review_at→ lastAt
-  //   next_review_at→ dueAt
-  //   forget_count  → forgot
+  //   step          连续熟悉次数（0–10，11 = 毕业）
+  //   iv / dueAt    下次间隔（毫秒）与到期时刻
+  //   last / lastAt 上次评价等级与时刻（last：1 忘了 / 2 模糊 / 3 熟悉）
+  //   seen / wrong  复习次数与错误次数
+  //   forgot        累计忘记次数
+  //   masteredAt    第一次达到「很熟」的时刻（统计用，只增不减）
   function getRec(word) {
     if (!db.records[word]) {
-      db.records[word] = { ease: 2.5, reps: 0, iv: 0, dueAt: 0, last: 0, seen: 0, wrong: 0, lastAt: 0, forgot: 0 };
+      db.records[word] = { ease: 2.5, reps: 0, iv: 0, dueAt: 0, last: 0, seen: 0, wrong: 0, lastAt: 0, forgot: 0, step: 0, masteredAt: 0, done: 0 };
     }
     var r = db.records[word];
     if (r.dueAt === undefined) r.dueAt = 0;
     if (r.iv === undefined) r.iv = 0;
     if (r.forgot === undefined) r.forgot = 0;
+    if (r.step === undefined) r.step = 0;
+    if (r.masteredAt === undefined) r.masteredAt = 0;
+    if (r.done === undefined) r.done = 0;
     return r;
   }
 
@@ -134,6 +142,30 @@
     return db.days[k];
   }
 
+  // 时间戳 → 本地日期键（今天的键和 todayKey 一致）
+  function dayKeyOf(ts) {
+    var d = new Date(ts);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  // 「很熟」的词：masteredAt 是第一次攒满 3 次的时刻，只增不减
+  function masteredOn(key) {
+    var ks = Object.keys(db.records), n = 0;
+    for (var i = 0; i < ks.length; i++) {
+      var r = db.records[ks[i]];
+      if (r.masteredAt && dayKeyOf(r.masteredAt) === key) n++;
+    }
+    return n;
+  }
+
+  function masteredTotal() {
+    var ks = Object.keys(db.records), n = 0;
+    for (var i = 0; i < ks.length; i++) {
+      if (db.records[ks[i]].masteredAt) n++;
+    }
+    return n;
+  }
+
   function mmss(sec) {
     return pad(Math.floor(sec / 60)) + ':' + pad(sec % 60);
   }
@@ -152,39 +184,27 @@
     return Math.round(d / 30) + '个月';
   }
 
-  // ================= 动态间隔复习 =================
-  // 参数见文件头的 IV_* 常量。全部按「实际完成评价的时刻」起算，存时间戳，
-  // 不碰日期字符串，所以跨天、跨月、跨年、换时区都不会算错。
+  // ================= 背词节奏 =================
+  // 规则（学习期 / 复习阶梯 / 毕业）全在 assets/schedule.js，那边带单测；
+  // 这里只负责把结果落到记录上。全部按「实际完成评价的时刻」起算，存时间戳。
 
-  // 向上取整到分钟：30.0001 分钟这类零头不进位会越滚越偏
-  function ceilMinute(ms) {
-    return Math.ceil(ms / MIN) * MIN;
-  }
-
-  // 算出这次评价之后该隔多久再出现
-  function nextInterval(rec, grade) {
-    var first = !(rec.seen > 0);        // 第一次评价这个单词
-    var prev = rec.iv || 0;             // 上一次的复习间隔
-    var next;
-    if (grade === 1) {
-      next = IV_FORGOT;                 // 忘了：不论第几次都重置
-    } else if (grade === 2) {
-      next = first ? IV_FUZZY : Math.max(IV_FUZZY_MIN, ceilMinute(prev * 1.5));
-    } else {
-      next = first ? IV_FAMILIAR : Math.max(IV_FAMILIAR_MIN, ceilMinute(prev * 2.2));
-    }
-    return Math.min(next, IV_MAX);
-  }
-
-  // 写入一条复习记录：interval / next_review_at / last_rating / last_review_at
-  // 复用现有字段：iv = interval_days、dueAt = next_review_at、
-  // last = last_rating、lastAt = last_review_at、seen = review_count、forgot = forget_count
+  // 写入一条复习记录
   function applyGrade(rec, grade) {
     var now = Date.now();
-    rec.iv = nextInterval(rec, grade);
-    rec.dueAt = now + rec.iv;
+    var plan = RWSchedule.next(rec.step || 0, grade);
+    rec.step = plan.step;
     rec.last = grade;
     rec.lastAt = now;
+    if (plan.graduated) {
+      rec.done = 1;
+      rec.iv = 0;
+      rec.dueAt = 0;            // 毕业：不再进队列
+    } else {
+      rec.done = 0;
+      rec.iv = plan.delay;
+      rec.dueAt = now + plan.delay;
+    }
+    if (rec.step >= MASTERED && !rec.masteredAt) rec.masteredAt = now;
     if (grade === 1) rec.forgot = (rec.forgot || 0) + 1;
   }
 
@@ -196,7 +216,7 @@
     var ws = allWords(), out = [];
     for (var i = 0; i < ws.length; i++) {
       var r = db.records[ws[i].w];
-      if (r && r.seen > 0 && r.dueAt <= now) {
+      if (r && r.seen > 0 && !r.done && r.dueAt <= now) {
         out.push({ w: ws[i], at: r.dueAt });
       }
     }
@@ -213,7 +233,7 @@
     var ks = Object.keys(db.records), n = 0;
     for (var i = 0; i < ks.length; i++) {
       var r = db.records[ks[i]];
-      if (r.seen > 0 && r.dueAt <= now && ks[i] !== cur) n++;
+      if (r.seen > 0 && !r.done && r.dueAt <= now && ks[i] !== cur) n++;
     }
     return n;
   }
@@ -226,7 +246,7 @@
     var ks = Object.keys(db.records), n = 0;
     for (var i = 0; i < ks.length; i++) {
       var r = db.records[ks[i]];
-      if (r.seen > 0 && r.dueAt > 0 && now - r.dueAt > DAY && ks[i] !== cur) n++;
+      if (r.seen > 0 && !r.done && r.dueAt > 0 && now - r.dueAt > DAY && ks[i] !== cur) n++;
     }
     return n;
   }
@@ -239,7 +259,7 @@
     var ks = Object.keys(db.records), best = 0;
     for (var i = 0; i < ks.length; i++) {
       var r = db.records[ks[i]];
-      if (r.seen > 0 && r.dueAt > now && (!best || r.dueAt < best)) best = r.dueAt;
+      if (r.seen > 0 && !r.done && r.dueAt > now && (!best || r.dueAt < best)) best = r.dueAt;
     }
     return best ? best - now : 0;
   }
@@ -248,7 +268,8 @@
   function countdownText(ms) {
     if (ms < MIN) return '不到 1 分钟后';
     if (ms < 60 * MIN) return Math.ceil(ms / MIN) + ' 分钟后';
-    if (ms < DAY) return Math.ceil(ms / (60 * MIN)) + ' 小时后';
+    // 差一点点不到一整天就报「1 天后」，别出现「24 小时后」这种别扭说法
+    if (ms < DAY * 0.95) return Math.ceil(ms / (60 * MIN)) + ' 小时后';
     var d = ms / DAY;
     return (d < 10 ? Math.ceil(d * 10) / 10 : Math.ceil(d)) + ' 天后';
   }
@@ -281,7 +302,7 @@
   function reviewBatch(n) {
     var ws = allWords().filter(function (w) {
       var r = db.records[w.w];
-      return r && r.seen > 0;
+      return r && r.seen > 0 && !r.done;
     });
     ws.sort(function (a, b) {
       return (db.records[a.w].dueAt || 0) - (db.records[b.w].dueAt || 0);
@@ -944,6 +965,20 @@
     if (timerId) { clearInterval(timerId); timerId = null; }
   }
 
+  // 右上角那个小胶囊：点一下把词标成「已完成」，以后不再出现
+  function renderMasterBtn() {
+    var btn = el('btnDrillMaster');
+    if (!btn) return;
+    var rec = state.current ? db.records[state.current.w] : null;
+    var done = !!(rec && rec.done);
+    var label = el('drillMasterLabel');
+    if (label) label.textContent = done ? '已完成 ✓' : '熟悉';
+    btn.classList.toggle('is-done', done);
+    // 揭晓释义那会儿已经评过分了，这时候再点没有意义
+    btn.disabled = done || state.phase !== 'recall';
+    btn.title = done ? '这个词已经标记完成，不会再出现' : '点一下标记为已完成，这个词以后不再出现';
+  }
+
   function loadWord(w, mode) {
     state.current = w;
     state.origin = mode || 'new';
@@ -985,6 +1020,7 @@
     setFeedback('');
     renderAnswer();
     renderProgress();
+    renderMasterBtn();
     syncFavUI();
     el('hints').textContent = hintText(w, state.origin);
 
@@ -995,7 +1031,7 @@
   // 提示语随取词来源变化：复习的词告诉用户隔了多久、有没有逾期
   function hintText(w, mode) {
     var tail = '　·　R 重听发音';
-    var rate = 'J 忘了　·　K 模糊　·　L 很熟';
+    var rate = 'J 忘了　·　K 模糊　·　L 熟悉';
     if (mode === 'due') {
       var r = db.records[w.w];
       var gap = r && r.lastAt ? humanGap(Date.now() - r.lastAt) : '';
@@ -1217,17 +1253,11 @@
     }).join('');
   }
 
-  // 背词只做熟悉度判断。先保存复习记录，再停留在当前词上展示中文释义。
-  function rate(g) {
-    if (state.phase !== 'recall') return;
-    state.grade = g;
-    finish(true, g, true, true);
-
-    // 揭晓释义；详细词根、搭配和例句仍由原有「详细释义」抽屉按需加载。
+  // 揭晓中文释义。复习记录照旧在后台写，这一屏不展示间隔和底层数字。
+  function revealMeaning() {
     document.querySelector('.drill').classList.remove('is-recall');
     document.querySelector('.drill').classList.add('is-reveal');
     renderMeaning();
-    // 用户只需要看到单词意思；复习等级和间隔继续在后台记录，不在揭晓区显示。
     el('fullDef').classList.remove('show');
     el('rateFeedback').hidden = true;
     el('rateFeedback').textContent = '';
@@ -1236,6 +1266,50 @@
     el('btnMeaningNext').hidden = false;
     el('btnMeaningNext').focus();
     el('hints').textContent = '空格 / 回车 下一个单词　·　R 重听发音';
+    renderMasterBtn();
+  }
+
+  // 背词只做熟悉度判断：先存记录，再揭晓释义
+  function rate(g) {
+    if (state.phase !== 'recall') return;
+    state.grade = g;
+    finish(true, g, true, true);
+    revealMeaning();
+  }
+
+  // 右上角「熟悉」：这个词算过了，标成已完成，以后不再出现。
+  // 想反悔只能在设置里重置这本词书（整本学习记录一起清掉）。
+  function markDone() {
+    if (state.phase !== 'recall' || !state.current) return;
+    state.phase = 'judged';
+    updateHint();
+
+    var w = state.current;
+    var rec = getRec(w.w);
+    var now = Date.now();
+    var wasNew = rec.seen === 0;
+
+    rec.done = 1;
+    rec.skip = 1;
+    rec.doneAt = now;
+    rec.iv = 0;
+    rec.dueAt = 0;                 // 不进复习队列
+    rec.step = Math.max(rec.step || 0, MASTERED);
+    if (!rec.masteredAt) rec.masteredAt = now;
+    rec.seen += 1;
+    rec.last = 3;
+    rec.lastAt = now;
+
+    var d = dayEntry();
+    d.words += 1;
+    d.clean += 1;
+    if (wasNew) d.newWords += 1;
+
+    save();
+    renderProgress();
+    renderMasterBtn();
+    revealMeaning();
+    beep(660, 0.07, 'sine', 0.04);
   }
 
   function submit() {
@@ -1292,7 +1366,7 @@
     var grade = forcedGrade || state.grade || 2;
     if (db.settings.hideAnswer && state.errors > 0) grade = Math.min(grade, 2);
 
-    // applyGrade 内部写 iv / dueAt / last / lastAt / forgot，这里不再重复写时间
+    // applyGrade 内部写 step / iv / dueAt / last / lastAt / forgot，这里不再重复写时间
     applyGrade(rec, grade);
     rec.seen += 1;
     if (reviewOnly ? grade < 3 : (!ok || state.errors > 0 || state.mistakes > 0)) rec.wrong += 1;
@@ -1308,6 +1382,7 @@
 
     save();
     renderProgress();
+    renderMasterBtn();
 
     // 评价完立刻把这个词推进未来的队列，本轮不会再出现
     var gap = ivText(rec.iv);
@@ -1353,7 +1428,7 @@
     stopTimer();
     var d = dayEntry();
     var cpm = d.seconds ? Math.round(d.chars / (d.seconds / 60)) : 0;
-    var acc = d.words ? Math.round((d.clean / d.words) * 100) : 0;
+    var masteredToday = masteredOn(todayKey());
 
     // 下一次有词要复习是什么时候，给个明确的期待
     var nextAt = 0;
@@ -1367,7 +1442,7 @@
 
     el('doneTitle').textContent = '这一轮结束了 · ' + tip;
     el('doneWords').textContent = d.words;
-    el('doneAcc').innerHTML = acc + '<small>%</small>';
+    el('doneAcc').innerHTML = masteredToday + '<small>个</small>';
     el('doneCpm').innerHTML = cpm + '<small>字/分</small>';
     el('doneTime').innerHTML = Math.max(1, Math.round(d.seconds / 60)) + '<small>分</small>';
 
@@ -2355,6 +2430,15 @@
       nextFromReveal();
     });
 
+    // 右上角「熟悉」：这个词算过了，点一下标成已完成，以后不再出现
+    var masterBtn = el('btnDrillMaster');
+    if (masterBtn) {
+      masterBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        markDone();
+      });
+    }
+
     // 收藏当前词：再点一次取消
     el('btnFav').addEventListener('click', function (e) {
       e.stopPropagation();
@@ -2782,17 +2866,19 @@
     });
   }
 
-  // 回归脚本用：把间隔计算与队列查询暴露出来，便于逐条核对验收场景
+  // 回归脚本用：把节奏计算与队列查询暴露出来，便于逐条核对验收场景
   window.__review = {
-    nextInterval: nextInterval,
+    schedule: RWSchedule,
     applyGrade: applyGrade,
+    masteredOn: masteredOn,
+    masteredTotal: masteredTotal,
     duePool: duePool,
     pickNext: pickNext,
     ivText: ivText,
     dueCount: dueCount,
     overdueCount: overdueCount,
     nextDueIn: nextDueIn,
-    max: IV_MAX,
+    max: LADDER_MAX,
     DAY: DAY,
     MIN: MIN,
     // 收藏相关的只读接口，给回归脚本核对持久化与排序
@@ -2803,7 +2889,7 @@
 
   // ================= 启动 =================
   // 没有欢迎页也没有每日任务：打开就是接着上次的那个词
-  // 先把 load() 做过的迁移（补 forget_count、超长间隔压回 15 天）落盘一次，
+  // 先把 load() 做过的迁移（补 forget_count、老间隔折算成台阶）落盘一次，
   // 免得每次刷新都重算，也保证数据和内存里的状态一致
   save();
   buildKeyboard();

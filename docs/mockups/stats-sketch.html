@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>统计页草图 v1</title>
+<!-- 只读草图：复用真实样式表，不引用 app.js，不改动线上页面 -->
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  html, body { height: 100%; }
+  body { overflow: hidden; }
+
+  .sketch-main { height: calc(100vh - 72px); }
+  .sketch-main > .view { display: none; height: 100%; }
+  body[data-f="stats"] .f-stats,
+  body[data-f="pop"] .f-stats,
+  body[data-f="hist"] .f-hist { display: block; }
+
+  /* ---------- 分区标题 ---------- */
+  .zone-head {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 2px 0 10px;
+  }
+  .zone-head.is-first { margin-top: 0; }
+  .zone-name {
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    color: var(--accent-deep);
+    font-weight: 600;
+  }
+  .zone-rule { flex: 1 1 auto; height: 1px; background: var(--line); }
+  .zone-tag {
+    font-size: 10.5px;
+    letter-spacing: 0.09em;
+    color: var(--faint);
+    white-space: nowrap;
+  }
+  .zone-head .typing-lang-seg { margin-left: 0; }
+
+  /* ---------- 统计页：分区内的图 ---------- */
+  #view-stats .zone-chart { margin: 0 0 2px; padding: 12px 18px 6px; }
+  #view-stats .zone-chart .chart-head { margin-bottom: 6px; }
+  #view-stats .zone-chart .chart { flex: 1 1 0; min-height: 0; position: relative; }
+  #view-stats .zone-head + .stat-cards { margin-bottom: 10px; }
+  #view-stats .chart-block + .zone-head { margin-top: 14px; }
+  #view-stats .stat-cards.compact .stat-card { padding: 10px 15px 9px; }
+  #view-stats .stat-cards.compact .num { font-size: 20px; }
+  #view-stats .stat-card[data-pop] { cursor: pointer; }
+  .lbl-go { color: var(--faint); margin-left: 7px; letter-spacing: 0.02em; }
+
+  /* ---------- 当月浮层 ---------- */
+  .pop-mask {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: none;
+    place-items: center;
+    background: rgba(23, 22, 15, 0.26);
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+  }
+  body[data-f="pop"] .pop-mask { display: grid; }
+  .pop-card {
+    width: 640px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-lg);
+    padding: 18px 20px 12px;
+  }
+  .pop-head { display: flex; align-items: flex-start; gap: 14px; }
+  .pop-title { font-size: 13.5px; letter-spacing: 0.04em; }
+  .pop-sub { font-size: 11px; color: var(--muted); margin-top: 3px; letter-spacing: 0.03em; }
+  .pop-month {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+  .pop-month button {
+    width: 22px; height: 22px;
+    display: grid; place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    color: var(--muted);
+    background: var(--surface-2);
+  }
+  .pop-month button:hover { color: var(--text); border-color: var(--line-strong); }
+  .pop-close {
+    width: 24px; height: 24px;
+    margin-left: 4px;
+    border-radius: 7px;
+    color: var(--faint);
+    font-size: 15px;
+    line-height: 1;
+  }
+  .pop-close:hover { color: var(--text); background: var(--surface-2); }
+  .pop-chart { position: relative; height: 190px; margin: 12px 0 4px; }
+  .pop-chart svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .pop-foot {
+    display: flex;
+    gap: 18px;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.03em;
+    border-top: 1px solid var(--line);
+    padding-top: 9px;
+    font-family: var(--font-mono);
+  }
+  .pop-foot b { color: var(--text-soft); font-weight: 500; }
+
+  /* ---------- 记录页 ---------- */
+  .hist-page { max-width: 980px; margin: 0 auto; padding: 34px 32px 60px; }
+  .hist-head { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+  .hist-sub { font-size: 12px; color: var(--muted); margin: 0 0 18px; letter-spacing: 0.03em; }
+  .hist-tools { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+  .hist-sum { margin-left: auto; font-size: 11px; color: var(--faint); font-family: var(--font-mono); }
+  .hist-day {
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    color: var(--faint);
+    margin: 20px 0 9px;
+  }
+  .hist-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 13px 17px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--surface);
+    box-shadow: var(--shadow-xs);
+    margin-bottom: 8px;
+  }
+  .hist-left { display: flex; align-items: center; gap: 10px; }
+  .hist-time { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-soft); }
+  .hist-lang {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+  .hist-lang.en { color: var(--accent-deep); background: var(--accent-soft); }
+  .hist-lang.zh { color: var(--ok); background: var(--ok-soft); }
+  .hist-dur { font-size: 11px; color: var(--faint); }
+  .hist-right { font-family: var(--font-mono); font-size: 12px; color: var(--muted); display: flex; gap: 14px; }
+  .hist-right b { color: var(--text); font-weight: 500; font-size: 12.5px; }
+
+  .sketch-badge {
+    position: fixed;
+    left: 24px;
+    bottom: 16px;
+    z-index: 70;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--faint);
+    border: 1px dashed var(--line-strong);
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(255, 253, 248, 0.7);
+  }
+</style>
+</head>
+<body data-f="stats">
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M5 4.5h9.5A2.5 2.5 0 0 1 17 7v12.5H7.5A2.5 2.5 0 0 1 5 17z"/><path d="M8 8h6M8 11h6M8 14h3"/></svg>
+    </span>
+    <span class="brand-copy">
+      <strong>考研单词学习</strong>
+      <small>记忆 · 打字 · 查词</small>
+    </span>
+  </div>
+  <nav class="nav" aria-label="主导航">
+    <button class="nav-btn">学习</button>
+    <button class="nav-btn">作文训练</button>
+    <button class="nav-btn">书架</button>
+    <button class="nav-btn is-active">统计</button>
+    <button class="nav-btn">词库</button>
+    <button class="nav-btn">收藏</button>
+  </nav>
+</header>
+
+<main class="sketch-main">
+
+  <!-- ============ 统计 ============ -->
+  <section class="view f-stats" id="view-stats">
+    <div class="page">
+      <h2 class="page-title">统计</h2>
+      <p class="page-sub">背词看进度，打字看成绩，两边分开。</p>
+
+      <div class="zone-head is-first">
+        <span class="zone-name">背词</span>
+        <span class="zone-rule"></span>
+        <span class="zone-tag">单词按「很熟」算</span>
+      </div>
+
+      <div class="stat-cards">
+        <div class="stat-card" data-pop="words"><div class="num">12</div><div class="lbl">今日单词<span class="lbl-go">看本月 ›</span></div></div>
+        <div class="stat-card"><div class="num">96</div><div class="lbl">累计单词</div></div>
+        <div class="stat-card" data-pop="mins"><div class="num">18<small>分钟</small></div><div class="lbl">今日时长<span class="lbl-go">看本月 ›</span></div></div>
+        <div class="stat-card"><div class="num">4.6<small>小时</small></div><div class="lbl">累计时长</div></div>
+      </div>
+
+      <div class="chart-block zone-chart">
+        <div class="chart-head">
+          <div class="chart-title">每日自评很熟率 · 本月</div>
+          <div class="chart-latest">74%</div>
+        </div>
+        <div class="chart" id="chartAcc"></div>
+      </div>
+
+      <div class="zone-head">
+        <span class="zone-name">打字</span>
+        <span class="zone-rule"></span>
+        <div class="typing-lang-seg" role="group" aria-label="练习语言">
+          <button type="button" class="is-active">英文</button>
+          <button type="button">中文</button>
+        </div>
+      </div>
+
+      <div class="stat-cards compact">
+        <div class="stat-card"><div class="num linky">14</div><div class="lbl">练习次数<span class="lbl-go">查看记录 ›</span></div></div>
+        <div class="stat-card"><div class="num">23<small>WPM</small></div><div class="lbl">平均打字速度</div></div>
+        <div class="stat-card"><div class="num">96<small>%</small></div><div class="lbl">平均准确率</div></div>
+        <div class="stat-card"><div class="num">87</div><div class="lbl">累计差异数</div></div>
+      </div>
+
+      <div class="chart-block zone-chart">
+        <div class="chart-head">
+          <div class="chart-title">英文打字速度 · 本月</div>
+          <div class="chart-latest">23 WPM</div>
+        </div>
+        <div class="chart" id="chartWpm"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 当月浮层 ============ -->
+  <div class="pop-mask" id="popMask">
+    <div class="pop-card" role="dialog" aria-label="本月统计">
+      <div class="pop-head">
+        <div>
+          <div class="pop-title" id="popTitle">本月每天背熟了多少词</div>
+          <div class="pop-sub" id="popSub">2026 年 11 月 · 没背的那天画成 0</div>
+        </div>
+        <div class="pop-month">
+          <button type="button" aria-label="上个月">‹</button>
+          <span>11 月</span>
+          <button type="button" aria-label="下个月">›</button>
+          <button type="button" class="pop-close" aria-label="关闭">×</button>
+        </div>
+      </div>
+      <div class="pop-chart" id="popChart"></div>
+      <div class="pop-foot" id="popFoot">
+        <span>本月合计 <b>96</b> 词</span>
+        <span>日均 <b>6.9</b> 词</span>
+        <span>最高 <b>11-13</b> · 12 词</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 打字练习记录 ============ -->
+  <section class="view f-hist" id="view-typing-history">
+    <div class="hist-page">
+      <div class="hist-head">
+        <button type="button" class="ghost-btn">← 返回统计</button>
+        <h2 class="page-title">打字练习记录</h2>
+      </div>
+      <p class="hist-sub">英文按 WPM、中文按 字/分 分别记，一条一条能翻回去。</p>
+
+      <div class="hist-tools">
+        <div class="typing-lang-seg" role="group" aria-label="筛选">
+          <button type="button" class="is-active">全部</button>
+          <button type="button">英文</button>
+          <button type="button">中文</button>
+        </div>
+        <span class="hist-sum">共 5 次 · 英文 3 · 中文 2</span>
+      </div>
+
+      <div class="hist-day">今天</div>
+      <div class="hist-row">
+        <div class="hist-left">
+          <span class="hist-time">21:03</span>
+          <span class="hist-lang en">英文</span>
+          <span class="hist-dur">练了 2 分 10 秒</span>
+        </div>
+        <div class="hist-right"><span><b>23</b> WPM</span><span>准确 <b>96%</b></span><span>差异 <b>12</b> 处</span></div>
+      </div>
+
+      <div class="hist-day">11-13</div>
+      <div class="hist-row">
+        <div class="hist-left">
+          <span class="hist-time">20:15</span>
+          <span class="hist-lang zh">中文</span>
+          <span class="hist-dur">练了 3 分 05 秒</span>
+        </div>
+        <div class="hist-right"><span><b>41</b> 字/分</span><span>准确 <b>97%</b></span><span>差异 <b>9</b> 处</span></div>
+      </div>
+      <div class="hist-row">
+        <div class="hist-left">
+          <span class="hist-time">07:40</span>
+          <span class="hist-lang en">英文</span>
+          <span class="hist-dur">练了 1 分 48 秒</span>
+        </div>
+        <div class="hist-right"><span><b>21</b> WPM</span><span>准确 <b>94%</b></span><span>差异 <b>18</b> 处</span></div>
+      </div>
+
+      <div class="hist-day">11-12</div>
+      <div class="hist-row">
+        <div class="hist-left">
+          <span class="hist-time">22:10</span>
+          <span class="hist-lang en">英文</span>
+          <span class="hist-dur">练了 2 分 30 秒</span>
+        </div>
+        <div class="hist-right"><span><b>19</b> WPM</span><span>准确 <b>91%</b></span><span>差异 <b>26</b> 处</span></div>
+      </div>
+      <div class="hist-row">
+        <div class="hist-left">
+          <span class="hist-time">19:02</span>
+          <span class="hist-lang zh">中文</span>
+          <span class="hist-dur">练了 2 分 52 秒</span>
+        </div>
+        <div class="hist-right"><span><b>38</b> 字/分</span><span>准确 <b>95%</b></span><span>差异 <b>14</b> 处</span></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<span class="sketch-badge">草图 v1 · 数据为示例</span>
+
+<script>
+  document.body.dataset.f = new URLSearchParams(location.search).get('f') || 'stats';
+
+  // 和 app.js 里的 renderChart 同一套几何，保证草图跟真页面长得一样
+  function draw(host, values, fixedMax, color) {
+    if (!host) return;
+    var W = Math.max(260, Math.round(host.clientWidth || 640));
+    var H = Math.max(74, Math.round(host.clientHeight || 150));
+    var PL = 40, PR = 14;
+    var PT = Math.min(16, Math.round(H * 0.12)) + 2;
+    var PB = Math.min(26, Math.round(H * 0.18)) + 2;
+    var iw = W - PL - PR, ih = Math.max(20, H - PT - PB);
+
+    var maxV = fixedMax || Math.max.apply(null, values.concat([1])) * 1.18;
+    var X = function (i) { return values.length === 1 ? PL + iw / 2 : PL + (iw * i) / (values.length - 1); };
+    var Y = function (v) { return PT + ih - (Math.min(v, maxV) / maxV) * ih; };
+
+    var line = '';
+    values.forEach(function (v, i) { line += (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) + ' '; });
+    var area = line + 'L' + X(values.length - 1).toFixed(1) + ' ' + (PT + ih) + ' L' + X(0).toFixed(1) + ' ' + (PT + ih) + ' Z';
+
+    var dots = values.map(function (v, i) {
+      return '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(v).toFixed(1) + '" r="2.6" fill="var(--surface)" stroke="' +
+        color + '" stroke-width="1.5" />';
+    }).join('');
+
+    var grid = '';
+    [0, 0.5, 1].forEach(function (t) {
+      var y = PT + ih - t * ih;
+      grid += '<line x1="' + PL + '" y1="' + y + '" x2="' + (W - PR) + '" y2="' + y + '" stroke="var(--line)" stroke-width="1" />';
+      grid += '<text x="' + (PL - 8) + '" y="' + (y + 4) + '" text-anchor="end" font-size="10" ' +
+        'font-family="ui-monospace, Menlo, Consolas, monospace" fill="var(--faint)">' + Math.round(maxV * t) + '</text>';
+    });
+
+    var labels = '';
+    var step = Math.ceil(values.length / 5);
+    values.forEach(function (v, i) {
+      if (i % step === 0 || i === values.length - 1) {
+        labels += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10" ' +
+          'font-family="ui-monospace, Menlo, Consolas, monospace" fill="var(--faint)">' + (i + 1) + '</text>';
+      }
+    });
+
+    var gid = 'g' + host.id;
+    host.innerHTML =
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="width:100%;height:100%;display:block">' +
+      '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0%" stop-color="' + color + '" stop-opacity="0.11" />' +
+      '<stop offset="100%" stop-color="' + color + '" stop-opacity="0" /></linearGradient></defs>' +
+      grid +
+      '<path d="' + area + '" fill="url(#' + gid + ')" />' +
+      '<path d="' + line + '" fill="none" stroke="' + color + '" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />' +
+      dots + labels + '</svg>';
+  }
+
+  var acc = [62, 68, 61, 70, 74, 69, 72, 66, 71, 75, 70, 73, 76, 74];
+  var wpm = [14, 18, 16, 21, 19, 23, 20, 22, 18, 24, 21, 25, 22, 23];
+
+  var POP = {
+    words: {
+      title: '本月每天背熟了多少词',
+      sub: '2026 年 11 月 · 没背的那天画成 0',
+      series: [3, 5, 4, 8, 6, 0, 7, 9, 5, 11, 8, 6, 12, 12],
+      foot: '<span>本月合计 <b>96</b> 词</span><span>日均 <b>6.9</b> 词</span><span>最高 <b>11-13</b> · 12 词</span>'
+    },
+    mins: {
+      title: '本月每天背了多久',
+      sub: '2026 年 11 月 · 没背的那天画成 0',
+      series: [12, 18, 15, 25, 20, 0, 22, 28, 16, 32, 24, 18, 30, 18],
+      foot: '<span>本月合计 <b>4 小时 38 分</b></span><span>日均 <b>20 分钟</b></span><span>最高 <b>11-13</b> · 32 分钟</span>'
+    }
+  };
+
+  function renderAll() {
+    draw(document.getElementById('chartAcc'), acc, 100, 'var(--ok)');
+    draw(document.getElementById('chartWpm'), wpm, 0, 'var(--accent)');
+  }
+
+  function openPop(kind) {
+    var cfg = POP[kind];
+    document.getElementById('popTitle').textContent = cfg.title;
+    document.getElementById('popSub').textContent = cfg.sub;
+    document.getElementById('popFoot').innerHTML = cfg.foot;
+    document.querySelector('.pop-card').setAttribute('aria-label', cfg.title);
+    draw(document.getElementById('popChart'), cfg.series, 0, 'var(--accent)');
+    document.body.dataset.f = 'pop';
+    requestAnimationFrame(function () {
+      draw(document.getElementById('popChart'), cfg.series, 0, 'var(--accent)');
+    });
+  }
+
+  document.querySelectorAll('[data-pop]').forEach(function (node) {
+    node.addEventListener('click', function () { openPop(node.dataset.pop); });
+  });
+  document.getElementById('popMask').addEventListener('click', function (e) {
+    if (e.target.id === 'popMask' || e.target.classList.contains('pop-close')) {
+      document.body.dataset.f = 'stats';
+    }
+  });
+
+  renderAll();
+  window.addEventListener('resize', renderAll);
+
+  // 直接带 ?f=pop 打开时，按 kind 参数先画出来
+  if (document.body.dataset.f === 'pop') {
+    openPop(new URLSearchParams(location.search).get('kind') === 'mins' ? 'mins' : 'words');
+  }
+</script>
+</body>
+</html>
