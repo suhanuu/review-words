@@ -3893,3 +3893,37 @@ body.more-open { overflow: hidden; }
 .book-confirm-text { margin-right: auto; font-size: 12px; color: var(--bad); }
 /* 同一行卡片等高，避免一高一矮 */
 .bookshelf-grid { align-items: stretch; }
+
+/* ============================================================
+   学习页：释义固定框 + 操作行上移（2026-11-15 定稿）
+   1) 音标行下移 5px；
+   2) 释义放进固定 128px 的框里，上下各 10px，字号 18px、行距收窄，
+      四行释义能整块放下；五行以上框内滚动；
+   3) 自评三选项和「下一个单词」共用同一条固定操作行（按钮顶边 58 -> 0），
+      不随释义行数变化；
+   4) 底部补 66px 透明占位，把变矮的高度补回去，单词位置保持不动。
+   ============================================================ */
+@media (min-width: 861px) {
+  .drill .phonetic-row { margin-top: 5px; margin-bottom: 15px; }
+
+  .drill .meaning-block { --meaning-h: 128px; }
+  .drill.is-reveal .meaning-block {
+    height: 128px;
+    max-height: 128px;
+    padding: 10px 0;
+  }
+  .drill .meaning-entry,
+  .drill.is-reveal .meaning-entry { font-size: 18px; line-height: 1.3; }
+  .drill.is-reveal .answer { gap: 4px; }
+
+  .drill .action-zone,
+  .drill.is-reveal .action-zone { height: 64px; margin-top: 18px; }
+  .drill .meaning-next-btn { top: 0; }
+
+  .drill .stage::after {
+    content: "";
+    display: block;
+    flex: 0 0 auto;
+    height: 66px;
+  }
+}
