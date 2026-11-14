@@ -286,8 +286,15 @@ async function generate(){
  $('aiStatus').textContent='正在生成并校验文章……';setGenerationProgress('loading','正在生成作文（'+chosen.length+' 个目标词）…');$('btnGenerateArticle').disabled=true;
  try{
   var difficulty=$('aiDifficulty').value;
-  var levelText=difficulty==='cet4'?'College English Test Band 4 (CET-4), use common intermediate vocabulary and clear sentence structures':difficulty==='kaoyan'?'Chinese postgraduate entrance exam (Kaoyan) English, use advanced but natural academic vocabulary, longer and more complex sentence structures, and a clear argumentative thread':'College English Test Band 6 (CET-6), use more varied vocabulary, richer sentence structures and stronger logical connections';
-  var prompt='Write an original English learning passage of about 150 words at '+levelText+'. Naturally include EVERY target word exactly as written (same spelling; do not change inflection). Avoid a list-like style. Then provide a faithful Simplified Chinese translation. Return ONLY a single JSON object (no markdown, no code fence, no explanation) with keys title, content, translation, difficulty. Set difficulty to exactly "'+difficulty+'". Inside JSON strings use \\n for line breaks; never put a raw line break inside a string. Target words: '+chosen.map(function(x){return x.word;}).join(', ')+'.';
+  var levelText=difficulty==='cet4'
+    ?'College English Test Band 4 (CET-4) level: roughly 4,500-word vocabulary, everyday and campus topics, clear and simple sentence structures, no rare or archaic words'
+    :difficulty==='kaoyan'
+      ?'Chinese postgraduate entrance exam (Kaoyan) English level: roughly 5,500-6,000-word academic vocabulary, longer and more complex sentences with subordination, formal register, no first-person narration'
+      :'College English Test Band 6 (CET-6) level: roughly 6,000-word vocabulary, more varied wording, richer sentence structures and stronger logical links';
+  var structure=difficulty==='kaoyan'
+    ?' Write it as a three-paragraph argumentative essay with a fixed structure: paragraph 1 introduces the topic and states a clear thesis; paragraph 2 develops the thesis with one or two reasons and one concrete example; paragraph 3 restates the thesis and closes with a forward-looking sentence. Avoid "I think / in my opinion" and keep the voice objective and general.'
+    :'';
+  var prompt='Write an original English learning passage of about 150 words at '+levelText+'.'+structure+' Naturally include EVERY target word exactly as written (same spelling; do not change inflection). Avoid a list-like style. Then provide a faithful Simplified Chinese translation. Return ONLY a single JSON object (no markdown, no code fence, no explanation) with keys title, content, translation, difficulty. Set difficulty to exactly "'+difficulty+'". Inside JSON strings use \\n for line breaks; never put a raw line break inside a string. Target words: '+chosen.map(function(x){return x.word;}).join(', ')+'.';
   var messages=[{role:'system',content:'You are an English-learning writing assistant. Reply with one valid JSON object and nothing else.'},{role:'user',content:prompt}];
   var answer;
   // 部分服务商不支持 response_format；报错就退回普通模式
