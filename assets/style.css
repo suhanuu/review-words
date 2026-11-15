@@ -1803,8 +1803,7 @@ button {
   outline: none;
 }
 .goal-row input:focus { border-color: var(--accent); }
-.goal-hint { font-size: 11px; color: var(--muted); line-height: 1.6; margin: 0 0 14px; }
-.goal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.goal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
 @media (max-width: 720px) {
   .today-page { padding: 28px 18px 100px; }
   .today-grid { grid-template-columns: 1fr; gap: 12px; margin-top: 18px; }
@@ -4083,3 +4082,4 @@ body.more-open { overflow: hidden; }
     height: 66px;
   }
 }
+

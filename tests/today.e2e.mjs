@@ -132,7 +132,7 @@ try {
   await cdp.eval('document.getElementById("btnDoneToday").click()');
   await sleep(400);
   const todayBig = await cdp.eval('document.getElementById("todayLearnBig").textContent');
-  check('今天页显示今日已完成', /已完成|✓/.test(todayBig), todayBig);
+  check('今天页显示今日已完成 10 / 10', /已完成/.test(todayBig) && /10 \/ 10/.test(todayBig), todayBig);
   const learnBtn = await cdp.eval('document.getElementById("btnStartLearn").textContent');
   check('学习按钮变「再学 10 个」', /再学 10 个/.test(learnBtn), learnBtn);
 
@@ -215,8 +215,14 @@ try {
   check('收尾卡说复习清完了', /复习清完/.test(rt), rt);
 
   const doneAfterReview = await cdp.eval('window.__review.todayDone()');
-  check('复习过的也计入今日完成（+4，忘了那个不算）', doneAfterReview === doneBeforeReview + 4,
+  check('复习过的也计入今日单词（+5）', doneAfterReview === doneBeforeReview + 5,
     doneBeforeReview + ' -> ' + doneAfterReview);
+
+  // 今天页复习卡上要能看到「已复习 N 词」
+  await cdp.eval('document.getElementById("btnDoneToday").click()');
+  await sleep(400);
+  const reviewBigAfter = await cdp.eval('document.getElementById("todayReviewBig").textContent');
+  check('复习卡显示已复习词数', /已复习\s*\d+\s*词/.test(reviewBigAfter), reviewBigAfter);
 } catch (e) {
   fails++;
   console.error('执行出错：', e.message);

@@ -1247,22 +1247,22 @@
     var left = Math.max(0, total - done);
 
     var goal = dailyGoal();
-    var todayDone = todayDoneCount();
+    var ds = dayStats(todayKey());
+    var todayDone = ds.total;
     var leftToGoal = Math.max(0, goal - todayDone);
 
     var due = reviewPool(Date.now());
     var late = due.filter(function (x) { return Date.now() - x.at > DAY; }).length;
     var nextAt = nextDueIn(Date.now());
 
-    // 学习卡：按「今日目标」算，超额就继续往上加（40 / 30）
+    // 学习卡：进度按「今日单词」（新学 + 复习）算，超额就继续往上加（40 / 30）
     el('todayLearnChip').textContent = '今日 ' + todayDone + ' / ' + goal;
     el('todayLearnBar').style.width = Math.min(100, goal ? Math.round(todayDone / goal * 100) : 0) + '%';
     var learnCard = el('todayLearnCard');
     var learnBtn = el('btnStartLearn');
     if (leftToGoal === 0) {
-      el('todayLearnBig').innerHTML = '<span class="tick">✓</span><small>今日已完成</small>';
-      el('todayLearnNote').textContent = todayDone + ' / ' + goal + ' · 想背还能继续'
-        + (left ? ' · 这一轮还剩 ' + left + ' 个' : '');
+      el('todayLearnBig').innerHTML = '<span class="tick">✓</span><small>今日已完成 ' + todayDone + ' / ' + goal + '</small>';
+      el('todayLearnNote').textContent = '';
       learnBtn.className = 'ghost-btn today-btn';
       learnBtn.textContent = '再学 10 个';
       learnBtn.dataset.action = 'learn';
@@ -1270,7 +1270,7 @@
       learnCard.classList.add('is-done');
     } else {
       el('todayLearnBig').innerHTML = leftToGoal + '<small>个到目标</small>';
-      el('todayLearnNote').textContent = '今天已完成 ' + todayDone + ' 个'
+      el('todayLearnNote').textContent = '今天新学 ' + ds.learned + ' 个'
         + (left ? ' · 这一轮还剩 ' + left + ' 个' : '');
       learnBtn.className = 'primary-btn today-btn';
       learnBtn.textContent = todayDone > 0 || st.done > 0 ? '继续学习' : '开始学习';
@@ -1281,7 +1281,7 @@
 
     // 复习卡
     el('todayReviewChip').textContent = due.length ? ('逾期 ' + late + ' 个') : '没有到期的';
-    el('todayReviewBig').innerHTML = due.length + '<small>个到期</small>';
+    el('todayReviewBig').innerHTML = due.length + '<small>个到期 · 已复习 ' + ds.reviewed + ' 词</small>';
     if (due.length) {
       var lateDays = Math.floor((Date.now() - due[0].at) / DAY);
       el('todayReviewNote').textContent = (lateDays >= 1 ? '最久的一个拖了 ' + lateDays + ' 天' : '到期的都在这儿了')
@@ -1702,21 +1702,36 @@
     return s;
   }
 
-  // 每天「完成」了几个词：最后一次评价是熟悉、且这个词已经很熟。
-  // 新词第三遍熟悉、右上角划掉、复习点熟悉都算；复习点忘了/模糊不算。
-  function doneByDay() {
-    var map = {};
+  // 某一天：新学完成几个、很熟之后又复习了几个，加起来就是当天的「今日单词」
+  function dayStats(key) {
+    var learned = 0, reviewed = 0;
     Object.keys(db.records).forEach(function (k) {
       var r = db.records[k];
-      if (!r.masteredAt || r.last !== 3 || !r.lastAt) return;
-      var key = dayKeyOf(r.lastAt);
-      map[key] = (map[key] || 0) + 1;
+      if (!r.masteredAt) return;
+      if (dayKeyOf(r.masteredAt) === key) { learned++; return; }
+      if (r.lastAt && dayKeyOf(r.lastAt) === key) reviewed++;
     });
-    return map;
+    return { learned: learned, reviewed: reviewed, total: learned + reviewed };
   }
 
   function todayDoneCount() {
-    return doneByDay()[todayKey()] || 0;
+    return dayStats(todayKey()).total;
+  }
+
+  // 每天完成了几个词（新学的 + 那天复习过的）
+  function doneByDay() {
+    var map = {};
+    var add = function (ts) {
+      var k = dayKeyOf(ts);
+      map[k] = (map[k] || 0) + 1;
+    };
+    Object.keys(db.records).forEach(function (k) {
+      var r = db.records[k];
+      if (!r.masteredAt) return;
+      add(r.masteredAt);
+      if (r.lastAt && dayKeyOf(r.lastAt) !== dayKeyOf(r.masteredAt)) add(r.lastAt);
+    });
+    return map;
   }
 
   function dailyGoal() {
