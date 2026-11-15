@@ -1675,6 +1675,98 @@ button {
 #view-stats .stat-cards.is-typing .stat-card { padding: 10px 14px 8px; }
 #view-stats .stat-cards.is-typing .num { font-size: 20px; }
 
+/* ================= 今天（学习入口） ================= */
+.today-page { max-width: 900px; margin: 0 auto; padding: 64px 32px 80px; }
+.today-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
+.today-date { font-size: 12px; color: var(--faint); letter-spacing: 0.06em; padding-bottom: 6px; }
+.today-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 26px; }
+.today-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 250px;
+  padding: 22px 22px 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm), 0 1px 0 var(--hairline) inset;
+}
+.today-card.is-hot { border-color: var(--accent-ring); }
+.today-card.is-done { background: var(--surface-2); }
+.today-kicker {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+}
+.today-kicker em { font-style: normal; font-size: 10.5px; color: var(--faint); letter-spacing: 0.06em; }
+.today-big {
+  font-family: var(--font-display);
+  font-size: 58px;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin: 20px 0 6px;
+  font-variant-numeric: tabular-nums;
+}
+.today-big small {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  margin-left: 6px;
+}
+.today-big .tick { color: var(--ok); font-size: 48px; line-height: 1; }
+.today-bar { height: 4px; border-radius: 99px; background: var(--line); overflow: hidden; margin: 10px 0; }
+.today-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--accent-deep), var(--accent));
+  transition: width 0.3s var(--ease);
+}
+.today-note { font-size: 12px; color: var(--muted); letter-spacing: 0.02em; line-height: 1.6; margin-bottom: 18px; }
+.today-btn { margin-top: auto; width: 100%; justify-content: center; }
+.today-btn[disabled] { opacity: 0.45; cursor: default; }
+.today-foot {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 11.5px;
+  color: var(--faint);
+  letter-spacing: 0.03em;
+}
+.today-foot b { color: var(--text-soft); font-weight: 600; font-family: var(--font-mono); }
+.today-foot .right { margin-left: auto; }
+@media (max-width: 720px) {
+  .today-page { padding: 28px 18px 100px; }
+  .today-grid { grid-template-columns: 1fr; gap: 12px; margin-top: 18px; }
+  .today-card { min-height: 0; padding: 18px; }
+  .today-big { font-size: 46px; margin: 14px 0 4px; }
+  .today-head { display: block; }
+  .today-date { padding: 6px 0 0; }
+}
+
+/* 练习页左上角「←」回今天 */
+.drill-back {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+}
+.drill-back:hover { color: var(--text); border-color: var(--line-strong); }
+.done-actions .ghost-btn[hidden] { display: none; }
+
 /* ---------- 打字练习记录页 ---------- */
 .typing-hist-page { max-width: 980px; margin: 0 auto; padding: 34px 32px 60px; }
 .typing-hist-tools { display: flex; align-items: center; gap: 14px; margin: 4px 0 14px; }

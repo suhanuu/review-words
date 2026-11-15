@@ -19,7 +19,7 @@
     </span>
   </div>
   <nav class="nav" aria-label="主导航">
-    <button class="nav-btn is-active" data-view="drill">学习</button>
+    <button class="nav-btn is-active" data-view="today">学习</button>
     <button class="nav-btn" data-view="writing">作文训练</button>
     <button class="nav-btn" data-view="books">书架</button>
     <button class="nav-btn" data-view="stats">统计</button>
@@ -38,12 +38,49 @@
 
 <main class="main">
 
+  <!-- ============ 今天（学习入口） ============ -->
+  <section class="view is-active" id="view-today">
+    <div class="page today-page">
+      <div class="today-head">
+        <div>
+          <h2 class="page-title">今天</h2>
+          <p class="page-sub" style="margin-bottom:0">先把新词过了，再清复习。</p>
+        </div>
+        <span class="today-date" id="todayDate"></span>
+      </div>
+
+      <div class="today-grid">
+        <article class="today-card is-hot" id="todayLearnCard">
+          <div class="today-kicker"><span>每日学习</span><em id="todayLearnChip">已背熟 0 / 10</em></div>
+          <div class="today-big" id="todayLearnBig">10<small>个新词</small></div>
+          <div class="today-bar"><i id="todayLearnBar"></i></div>
+          <div class="today-note" id="todayLearnNote">今天先背这 10 个</div>
+          <button class="primary-btn today-btn" id="btnStartLearn" type="button">开始学习</button>
+        </article>
+
+        <article class="today-card" id="todayReviewCard">
+          <div class="today-kicker"><span>复习</span><em id="todayReviewChip">没有到期的</em></div>
+          <div class="today-big" id="todayReviewBig">0<small>个到期</small></div>
+          <div class="today-note" id="todayReviewNote"></div>
+          <button class="ghost-btn today-btn" id="btnStartReview" type="button">开始复习</button>
+        </article>
+      </div>
+
+      <div class="today-foot">
+        <span>今天背熟 <b id="todayMastered">0</b> 个</span>
+        <span>学了 <b id="todayMinutes">0</b> 分钟</span>
+        <span class="right">累计很熟 <b id="todayTotalMastered">0</b> 词</span>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ 练习 ============ -->
-  <section class="view is-active" id="view-drill">
+  <section class="view" id="view-drill">
     <div class="drill">
       <div class="study-shell">
         <div class="drill-top">
-          <span class="progress-label" id="drillIndex">已学 0 词</span>
+          <button class="drill-back" id="btnDrillBack" type="button" title="回到今天" aria-label="回到今天">←</button>
+          <span class="progress-label" id="drillIndex">学习 0 / 10</span>
           <span class="due-stat" id="dueStat">待复习 0</span>
           <div class="drill-bar"><i id="drillBar"></i></div>
           <span class="timer" id="drillTimer">00:00</span>
@@ -98,17 +135,18 @@
   <!-- ============ 完成 ============ -->
   <section class="view" id="view-done">
     <div class="done">
-      <div class="done-kicker">本轮结束</div>
+      <div class="done-kicker" id="doneKicker">这一轮结束了</div>
       <h2 class="done-title" id="doneTitle">整本书记过的词都在复习间隔里</h2>
       <div class="done-stats">
         <div class="done-stat"><div class="num" id="doneWords">0</div><div class="lbl">今天过词</div></div>
         <div class="done-stat"><div class="num" id="doneAcc">0<small>个</small></div><div class="lbl">今日很熟</div></div>
-        <div class="done-stat"><div class="num" id="doneCpm">0<small>字/分</small></div><div class="lbl">作文打字速度（待接入）</div></div>
+        <div class="done-stat"><div class="num" id="doneDue">0<small>个</small></div><div class="lbl">待复习</div></div>
         <div class="done-stat"><div class="num" id="doneTime">0<small>分</small></div><div class="lbl">今天用时</div></div>
       </div>
       <div class="done-actions">
-        <button class="primary-btn" id="btnAgain">再复习 15 个</button>
-        <button class="ghost-btn" id="btnHome">看看统计</button>
+        <button class="primary-btn" id="btnDonePrimary" data-action="today" type="button">回今天</button>
+        <button class="ghost-btn" id="btnDoneToday" type="button">回今天</button>
+        <button class="ghost-btn" id="btnHome" type="button">看看统计</button>
       </div>
     </div>
   </section>
@@ -379,7 +417,7 @@
 
 <!-- ============ 手机底部导航（≤720px 显示） ============ -->
 <nav class="tabbar" id="tabbar" aria-label="底部导航">
-  <button class="tab-item nav-btn" type="button" data-view="drill">
+  <button class="tab-item nav-btn" type="button" data-view="today">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h9.5A2.5 2.5 0 0 1 17 7v12.5H7.5A2.5 2.5 0 0 1 5 17z"/><path d="M8 8h6M8 11h6"/></svg>
     <span>学习</span>
   </button>

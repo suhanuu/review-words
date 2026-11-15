@@ -274,45 +274,99 @@
     return (d < 10 ? Math.ceil(d * 10) / 10 : Math.ceil(d)) + ' 天后';
   }
 
-  // 下一个没学过的词，严格按书的顺序
-  function nextNew() {
+  // ================= 两个池子 =================
+  // 学习池：今天批次里的词（还没很熟）。当天反复轮，攒满 3 次就离开。
+  // 复习池：很熟过的词（masteredAt），按阶梯到期才回来，永不回学习池。
+  var BATCH_SIZE = 10;
+
+  // 还没很熟、也没被右上角「熟悉」划掉
+  function isOpen(w) {
+    var r = db.records[w.w];
+    if (!r) return true;
+    return !r.masteredAt && !r.done;
+  }
+
+  // 今天批次里还没很熟的词（保持书里的顺序）
+  function todayBatch() {
+    var today = todayKey();
+    return allWords().filter(function (w) {
+      var r = db.records[w.w];
+      return r && r.batch === today && isOpen(w);
+    });
+  }
+
+  // 凑满今天的 10 个：今天批次不够就从「还没很熟」的词里按书序补
+  function ensureBatch() {
+    var today = todayKey();
+    var batch = todayBatch();
+    if (batch.length >= BATCH_SIZE) return batch.slice(0, BATCH_SIZE);
+
+    var need = BATCH_SIZE - batch.length;
     var ws = allWords();
+    var touched = false;
+    for (var i = 0; i < ws.length && need > 0; i++) {
+      var w = ws[i];
+      var r = db.records[w.w];
+      if (r && r.batch === today) continue;   // 已经在今天批次里
+      if (!isOpen(w)) continue;               // 很熟过 / 被划掉的不要
+      getRec(w.w).batch = today;
+      batch.push(w);
+      need--;
+      touched = true;
+    }
+    if (touched) save();
+    return batch;
+  }
+
+  // 过了 12 点：昨天没攒满 3 次的次数清零、退回池子
+  function resetStaleBatch() {
+    var today = todayKey();
+    var changed = false;
+    Object.keys(db.records).forEach(function (k) {
+      var r = db.records[k];
+      if (!r.batch || r.batch === today) return;
+      if (r.masteredAt || r.done) { r.batch = ''; return; }
+      r.step = 0;
+      r.iv = 0;
+      r.dueAt = 0;
+      r.batch = '';
+      changed = true;
+    });
+    if (changed) save();
+  }
+
+  // 今天这 10 个的进度（含「再学 10 个」加上来的）
+  function batchStats() {
+    var today = todayKey();
+    var total = 0, done = 0;
+    Object.keys(db.records).forEach(function (k) {
+      var r = db.records[k];
+      if (r.batch !== today) return;
+      total++;
+      if (r.masteredAt) done++;
+    });
+    return { total: total, done: done, left: Math.max(0, total - done) };
+  }
+
+  // 复习池：很熟过、到期的，逾期最久的排最前
+  function reviewPool(now) {
+    now = now || Date.now();
+    var ws = allWords(), out = [];
     for (var i = 0; i < ws.length; i++) {
       var r = db.records[ws[i].w];
-      if (!r || !r.seen) return ws[i];
+      if (r && r.masteredAt && !r.done && r.dueAt > 0 && r.dueAt <= now) {
+        out.push({ w: ws[i], at: r.dueAt });
+      }
     }
-    return null;
-  }
-
-  // 返回 { w, mode }：mode = due（到期复习）/ new（新词）
-  // 到期复习永远优先于新词，但两者都不设数量上限
-  function pickNext() {
-    if (state.forced.length) return { w: state.forced.shift(), mode: 'due' };
-
-    var due = duePool(Date.now());
-    if (due.length) return { w: due[0].w, mode: 'due' };
-
-    var fresh = nextNew();
-    if (fresh) return { w: fresh, mode: 'new' };
-
-    return null;
-  }
-
-  // 卡里最该复习的 n 个词，用来「再复习一组」
-  function reviewBatch(n) {
-    var ws = allWords().filter(function (w) {
-      var r = db.records[w.w];
-      return r && r.seen > 0 && !r.done;
-    });
-    ws.sort(function (a, b) {
-      return (db.records[a.w].dueAt || 0) - (db.records[b.w].dueAt || 0);
-    });
-    return ws.slice(0, n);
+    out.sort(function (a, b) { return a.at - b.at; });
+    return out;
   }
 
   // ================= 状态 =================
   var state = {
-    view: 'drill',
+    view: 'today',
+    mode: 'learn',       // learn = 今天这 10 个 / review = 很熟的到期词
+    queue: [],           // 学习池的轮换队列
     phase: 'idle',
     current: null,
     origin: 'new',
@@ -846,10 +900,11 @@
 
   // 预取下一个词的发音（只窥探，不改动队列）
   function peekNext() {
-    if (state.forced.length) return state.forced[0];
-    var due = duePool(Date.now());
-    if (due.length) return due[0].w;
-    return nextNew();
+    if (state.mode === 'review') {
+      var due = reviewPool(Date.now());
+      return due.length ? due[0].w : null;
+    }
+    return state.queue[0] || null;
   }
 
   function preloadNext() {
@@ -917,13 +972,17 @@
   // ================= 视图切换 =================
   function setView(name) {
     state.view = name;
-    ['drill', 'done', 'writing', 'typing', 'article-history', 'weak-words', 'books', 'stats', 'typing-history', 'words', 'favs'].forEach(function (v) {
+    ['today', 'drill', 'done', 'writing', 'typing', 'article-history', 'weak-words', 'books', 'stats', 'typing-history', 'words', 'favs'].forEach(function (v) {
       var node = el('view-' + v);
       if (node) node.classList.toggle('is-active', v === name);
     });
     document.querySelectorAll('.nav-btn').forEach(function (b) {
-      b.classList.toggle('is-active', b.dataset.view === name || (name === 'typing' && b.dataset.view === 'writing') || (name === 'done' && b.dataset.view === 'drill'));
+      b.classList.toggle('is-active',
+        b.dataset.view === name ||
+        (name === 'typing' && b.dataset.view === 'writing') ||
+        ((name === 'done' || name === 'drill') && b.dataset.view === 'today'));
     });
+    if (name === 'today') renderToday();
     if (name === 'stats') renderStats();
     if (name === 'words') renderWords(true);
     if (name === 'favs') renderFavs();
@@ -944,12 +1003,83 @@
   }
 
   // ================= 学习流程 =================
-  // 没有「每日任务」：进来就接着上次的位置往下走，取词规则见 pickNext
+  // 两个入口：学习（今天批次里反复轮，攒满 3 次就离开）/ 复习（很熟的到期词）
+  function nextFromPool() {
+    if (state.mode === 'review') {
+      var due = reviewPool(Date.now());
+      return due.length ? { w: due[0].w, mode: 'due' } : null;
+    }
+    if (!state.queue.length) {
+      // 队列空了就把今天还没很熟的再收一遍，刷新之后也能接上
+      state.queue = todayBatch();
+    }
+    var next = state.queue.shift();
+    return next ? { w: next, mode: 'new' } : null;
+  }
+
   function loadNext() {
-    var pick = pickNext();
-    if (!pick) { endAll(); return; }
+    resetStaleBatch();     // 过了 12 点顺手把昨天的次数清零
+    var pick = nextFromPool();
+    if (!pick) { endSession(); return; }
     setView('drill');
     loadWord(pick.w, pick.mode);
+  }
+
+  function startLearn() {
+    resetStaleBatch();
+    state.mode = 'learn';
+    state.queue = ensureBatch();
+    if (!state.queue.length) { setView('today'); renderToday(); return; }
+    setView('drill');
+    startTimer();
+    loadNext();
+  }
+
+  function startReview() {
+    resetStaleBatch();
+    state.mode = 'review';
+    setView('drill');
+    startTimer();
+    loadNext();
+  }
+
+  // 一轮结束：学习学完 / 复习清完，两套文案
+  function endSession() {
+    stopTimer();
+    var d = dayEntry();
+    var st = batchStats();
+    var due = reviewPool(Date.now()).length;
+    var nextAt = nextDueIn(Date.now());
+    var sec = Math.round(d.seconds || 0);
+
+    el('doneWords').textContent = d.words || 0;
+    el('doneAcc').innerHTML = masteredOn(todayKey()) + '<small>个</small>';
+    el('doneTime').innerHTML = Math.max(1, Math.round(sec / 60)) + '<small>分</small>';
+    el('doneDue').innerHTML = due + '<small>个</small>';
+
+    if (state.mode === 'review') {
+      el('doneKicker').textContent = '复习清完了';
+      el('doneTitle').textContent = nextAt
+        ? '下一个词 ' + countdownText(nextAt) + '后回来'
+        : '这本书暂时没有要复习的词了';
+      setDonePrimary(due ? '继续复习' : '回今天', due ? 'review' : 'today');
+    } else {
+      el('doneKicker').textContent = '今天的新词学完了';
+      el('doneTitle').textContent = (st.total || BATCH_SIZE) + ' 个都背熟了';
+      setDonePrimary(due ? '去复习 ' + due + ' 个' : '再学 10 个', due ? 'review' : 'learn');
+    }
+
+    state.current = null;
+    state.phase = 'idle';
+    setView('done');
+  }
+
+  function setDonePrimary(label, action) {
+    var btn = el('btnDonePrimary');
+    btn.textContent = label;
+    btn.dataset.action = action;
+    var alt = el('btnDoneToday');
+    if (alt) alt.hidden = (action === 'today');
   }
 
   function startTimer() {
@@ -1078,20 +1208,97 @@
     return '先凭印象判断：' + rate + tail;
   }
 
+  // 顶栏：学习看今天这 10 个的进度，复习看到底还剩几个到期
   function renderProgress() {
-    var ws = allWords();
-    var learned = 0;
-    for (var i = 0; i < ws.length; i++) {
-      var r = db.records[ws[i].w];
-      if (r && r.seen > 0) learned++;
+    var bar = document.querySelector('.drill-bar');
+    if (state.mode === 'review') {
+      var left = reviewPool(Date.now()).length;
+      el('drillIndex').textContent = '复习 · 还剩 ' + left + ' 个';
+      if (bar) bar.style.visibility = 'hidden';
+    } else {
+      var st = batchStats();
+      var total = st.total || BATCH_SIZE;
+      el('drillIndex').textContent = '学习 ' + st.done + ' / ' + total;
+      el('drillBar').style.width = (total ? Math.round(st.done / total * 100) : 0) + '%';
+      if (bar) bar.style.visibility = '';
     }
-    var total = ws.length || 1;
-    el('drillIndex').textContent = '已学 ' + learned + ' / ' + ws.length;
-    el('drillBar').style.width = (learned / total) * 100 + '%';
-
-    // 复习队列的实时状态：待复习（含逾期）与其中已逾期多少；
-    // 一个都没到期时，报出最近的一个还要多久回来，否则永远是「待复习 0」
     refreshDueStat();
+  }
+
+  // ================= 今天（入口页） =================
+  function dateLabel() {
+    var d = new Date();
+    var week = '日一二三四五六'.charAt(d.getDay());
+    return (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日 星期' + week;
+  }
+
+  function openWordCount() {
+    var ws = allWords(), n = 0;
+    for (var i = 0; i < ws.length; i++) if (isOpen(ws[i])) n++;
+    return n;
+  }
+
+  function renderToday() {
+    renderProgress();   // 学习/复习两个数都从这儿来
+    var st = batchStats();
+    var total = st.total > 0 ? st.total : Math.min(BATCH_SIZE, openWordCount());
+    var done = Math.min(st.done, total);
+    var left = Math.max(0, total - done);
+
+    var due = reviewPool(Date.now());
+    var late = due.filter(function (x) { return Date.now() - x.at > DAY; }).length;
+    var nextAt = nextDueIn(Date.now());
+
+    // 学习卡
+    el('todayLearnChip').textContent = '已背熟 ' + done + ' / ' + (total || BATCH_SIZE);
+    el('todayLearnBar').style.width = (total ? Math.round(done / total * 100) : 0) + '%';
+    var learnCard = el('todayLearnCard');
+    var learnBtn = el('btnStartLearn');
+    if (total > 0 && left === 0) {
+      el('todayLearnBig').innerHTML = '<span class="tick">✓</span><small>今天学完了</small>';
+      el('todayLearnNote').textContent = '这 ' + total + ' 个都进了复习 · 明天开始第一轮';
+      learnBtn.className = 'ghost-btn today-btn';
+      learnBtn.textContent = '再学 10 个';
+      learnBtn.dataset.action = 'learn';
+      learnCard.classList.remove('is-hot');
+      learnCard.classList.add('is-done');
+    } else {
+      el('todayLearnBig').innerHTML = (left || BATCH_SIZE) + '<small>个新词</small>';
+      el('todayLearnNote').textContent = done
+        ? '还剩 ' + left + ' 个 · 过完一轮再来一轮'
+        : '今天先背这 ' + (left || BATCH_SIZE) + ' 个';
+      learnBtn.className = 'primary-btn today-btn';
+      learnBtn.textContent = done ? '继续学习' : '开始学习';
+      learnBtn.dataset.action = 'learn';
+      learnCard.classList.add('is-hot');
+      learnCard.classList.remove('is-done');
+    }
+
+    // 复习卡
+    el('todayReviewChip').textContent = due.length ? ('逾期 ' + late + ' 个') : '没有到期的';
+    el('todayReviewBig').innerHTML = due.length + '<small>个到期</small>';
+    if (due.length) {
+      var lateDays = Math.floor((Date.now() - due[0].at) / DAY);
+      el('todayReviewNote').textContent = (lateDays >= 1 ? '最久的一个拖了 ' + lateDays + ' 天' : '到期的都在这儿了')
+        + (nextAt ? ' · 下一个 ' + countdownText(nextAt) + '后到期' : '');
+    } else {
+      el('todayReviewNote').textContent = nextAt
+        ? '今天的复习清完了 · 下一个词 ' + countdownText(nextAt) + '后回来'
+        : '这本书暂时没有要复习的词了';
+    }
+    var reviewBtn = el('btnStartReview');
+    reviewBtn.disabled = !due.length;
+    reviewBtn.className = due.length
+      ? (left > 0 ? 'ghost-btn today-btn' : 'primary-btn today-btn')
+      : 'ghost-btn today-btn';
+    reviewBtn.textContent = due.length ? '开始复习' : '暂时没有要复习的';
+    el('todayReviewCard').classList.toggle('is-hot', left === 0 && due.length > 0);
+
+    // 底下那行汇总
+    el('todayMastered').textContent = masteredOn(todayKey());
+    el('todayMinutes').textContent = Math.round((dayEntry().seconds || 0) / 60);
+    el('todayTotalMastered').textContent = masteredTotal();
+    el('todayDate').textContent = dateLabel();
   }
 
   // 只刷顶栏那个小格子，切词/每秒 tick 都调它
@@ -1414,6 +1621,11 @@
     if (reviewOnly ? grade === 3 : (ok && state.errors === 0 && state.mistakes === 0)) d.clean += 1;
     if (wasNew) d.newWords += 1;
 
+    // 学习池是「一直轮」：没攒满 3 次的排回队尾，等这一轮过完再来
+    if (state.mode === 'learn' && rec.step < MASTERED && !rec.masteredAt) {
+      state.queue.push(w);
+    }
+
     save();
     renderProgress();
     renderMasterBtn();
@@ -1455,43 +1667,6 @@
   function nextFromReveal() {
     if (state.phase !== 'judged') return;
     next();
-  }
-
-  // 全书的词都学过、且当下没有到期复习时才会走到这里
-  function endAll() {
-    stopTimer();
-    var d = dayEntry();
-    var cpm = d.seconds ? Math.round(d.chars / (d.seconds / 60)) : 0;
-    var masteredToday = masteredOn(todayKey());
-
-    // 下一次有词要复习是什么时候，给个明确的期待
-    var nextAt = 0;
-    Object.keys(db.records).forEach(function (k) {
-      var r = db.records[k];
-      if (r.seen > 0 && r.dueAt > 0 && (!nextAt || r.dueAt < nextAt)) nextAt = r.dueAt;
-    });
-    var tip = nextAt
-      ? '下一个词在 ' + ivText(Math.max(0, nextAt - Date.now())) + '后等你复习'
-      : '这本书的词都过完了，暂时没有要复习的词';
-
-    el('doneTitle').textContent = '这一轮结束了 · ' + tip;
-    el('doneWords').textContent = d.words;
-    el('doneAcc').innerHTML = masteredToday + '<small>个</small>';
-    el('doneCpm').innerHTML = cpm + '<small>字/分</small>';
-    el('doneTime').innerHTML = Math.max(1, Math.round(d.seconds / 60)) + '<small>分</small>';
-
-    state.current = null;
-    state.phase = 'idle';
-    setView('done');
-  }
-
-  function forceBatch(n) {
-    var batch = reviewBatch(n);
-    if (!batch.length) return;
-    state.step = 0;
-    state.forced = batch;
-    startTimer();
-    loadNext();
   }
 
   // ================= 统计 =================
@@ -2756,7 +2931,19 @@
     el('btnDrawerClose').addEventListener('click', closeDrawer);
     el('drawerMask').addEventListener('click', closeDrawer);
 
-    el('btnAgain').addEventListener('click', function () { forceBatch(15); });
+    // 入口页：开始学习 / 开始复习
+    el('btnStartLearn').addEventListener('click', startLearn);
+    el('btnStartReview').addEventListener('click', startReview);
+    el('btnDrillBack').addEventListener('click', function () { setView('today'); });
+
+    // 收尾卡：主按钮跟着场景变（去复习 / 再学 10 个 / 回今天）
+    el('btnDonePrimary').addEventListener('click', function () {
+      var action = this.dataset.action;
+      if (action === 'review') startReview();
+      else if (action === 'learn') startLearn();
+      else setView('today');
+    });
+    el('btnDoneToday').addEventListener('click', function () { setView('today'); });
     el('btnHome').addEventListener('click', function () { setView('stats'); });
 
     el('btnSpeak').addEventListener('click', function (e) {
@@ -3259,12 +3446,11 @@
       db = load();
       wordCache = null;
       wordIndex = null;
-      state.forced = [];
+      state.queue = [];
       state.step = 0;
       applySettings();
       closeDrawer();
-      startTimer();
-      loadNext();
+      setView('today');
     });
   }
 
@@ -3274,8 +3460,14 @@
     applyGrade: applyGrade,
     masteredOn: masteredOn,
     masteredTotal: masteredTotal,
+    batchStats: batchStats,
+    todayBatch: todayBatch,
+    ensureBatch: ensureBatch,
+    resetStaleBatch: resetStaleBatch,
+    reviewPool: reviewPool,
     duePool: duePool,
-    pickNext: pickNext,
+    // 给回归脚本直接改记录的入口（只读引用，别在页面里依赖它）
+    records: function () { return db.records; },
     ivText: ivText,
     dueCount: dueCount,
     overdueCount: overdueCount,
@@ -3290,7 +3482,7 @@
   };
 
   // ================= 启动 =================
-  // 没有欢迎页也没有每日任务：打开就是接着上次的那个词
+  // 打开先落在「今天」：看清还剩多少新词、多少到期，再决定进哪边。
   // 先把 load() 做过的迁移（补 forget_count、老间隔折算成台阶）落盘一次，
   // 免得每次刷新都重算，也保证数据和内存里的状态一致
   save();
@@ -3298,8 +3490,8 @@
   mountHands();
   applySettings();
   bind();
-  startTimer();
-  loadNext();
+  resetStaleBatch();   // 过了 12 点，昨天没学完的次数清零
+  setView('today');
   // 万一没有可学的词（整本书都进了复习间隔），也要把收藏数字摆对
   syncFavUI();
 

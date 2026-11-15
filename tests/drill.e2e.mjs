@@ -113,7 +113,10 @@ try {
   await cdp.send('Page.enable');
 
   // 等 app.js 起来（它由 IndexedDB 引导脚本异步插入）
-  await waitFor(() => cdp.eval('!!(window.__review && document.getElementById("wordText").textContent)'));
+  await waitFor(() => cdp.eval('!!(window.__review && document.getElementById("view-today"))'));
+  // 现在开局是「今天」页，先点开始学习才进背词
+  await cdp.eval('document.getElementById("btnStartLearn").click()');
+  await waitFor(() => cdp.eval('document.getElementById("view-drill").classList.contains("is-active")'));
   const firstWord = await cdp.eval('document.getElementById("wordText").textContent');
 
   const recOf = (w) => `(() => {

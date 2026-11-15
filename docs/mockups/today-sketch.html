@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>今天 · 草图</title>
+<!-- 只读草图：复用真实样式表，不引 app.js -->
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  html, body { min-height: 100%; }
+  body { margin: 0; }
+
+  main { min-height: calc(100vh - 72px); }
+  .today-page {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 64px 32px 80px;
+  }
+  .today-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
+  .today-date { font-size: 12px; color: var(--faint); letter-spacing: 0.06em; padding-bottom: 6px; }
+
+  .today-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 26px;
+  }
+  .today-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 250px;
+    padding: 22px 22px 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-sm), 0 1px 0 var(--hairline) inset;
+  }
+  .today-card.is-hot { border-color: var(--accent-ring); }
+  .today-card.is-done { background: var(--surface-2); }
+  .today-kicker {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    color: var(--muted);
+  }
+  .today-kicker em { font-style: normal; font-size: 10.5px; color: var(--faint); letter-spacing: 0.06em; }
+  .today-big {
+    font-family: var(--font-display);
+    font-size: 58px;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin: 20px 0 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .today-big small {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    margin-left: 6px;
+  }
+  .today-big .tick { color: var(--ok); font-size: 48px; line-height: 1; }
+  .today-bar {
+    height: 4px;
+    border-radius: 99px;
+    background: var(--line);
+    overflow: hidden;
+    margin: 10px 0 10px;
+  }
+  .today-bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent-deep), var(--accent)); }
+  .today-note {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+    line-height: 1.6;
+    margin-bottom: 18px;
+  }
+  .today-note b { color: var(--text-soft); font-weight: 600; }
+  .today-btn {
+    margin-top: auto;
+    width: 100%;
+    justify-content: center;
+  }
+  .today-btn[disabled] { opacity: 0.45; cursor: default; }
+
+  .today-foot {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 22px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    font-size: 11.5px;
+    color: var(--faint);
+    letter-spacing: 0.03em;
+  }
+  .today-foot b { color: var(--text-soft); font-weight: 600; font-family: var(--font-mono); }
+  .today-foot .right { margin-left: auto; }
+
+  @media (max-width: 720px) {
+    .nav { display: none; }
+    .tabbar { display: flex; }
+    .today-page { padding: 28px 18px 90px; }
+    .today-grid { grid-template-columns: 1fr; gap: 12px; margin-top: 18px; }
+    .today-card { min-height: 0; padding: 18px; }
+    .today-big { font-size: 46px; margin: 14px 0 4px; }
+    .today-head { display: block; }
+    .today-date { padding: 6px 0 0; }
+  }
+</style>
+</head>
+<body data-state="normal">
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M5 4.5h9.5A2.5 2.5 0 0 1 17 7v12.5H7.5A2.5 2.5 0 0 1 5 17z"/><path d="M8 8h6M8 11h6M8 14h3"/></svg>
+    </span>
+    <span class="brand-copy">
+      <strong>考研单词学习</strong>
+      <small>记忆 · 打字 · 查词</small>
+    </span>
+  </div>
+  <nav class="nav" aria-label="主导航">
+    <button class="nav-btn is-active">学习</button>
+    <button class="nav-btn">作文训练</button>
+    <button class="nav-btn">书架</button>
+    <button class="nav-btn">统计</button>
+    <button class="nav-btn">词库</button>
+    <button class="nav-btn">收藏</button>
+  </nav>
+</header>
+
+<nav class="tabbar" aria-label="底部导航">
+  <button class="tab-item nav-btn is-active" type="button">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h9.5A2.5 2.5 0 0 1 17 7v12.5H7.5A2.5 2.5 0 0 1 5 17z"/><path d="M8 8h6M8 11h6"/></svg>
+    <span>学习</span>
+  </button>
+  <button class="tab-item nav-btn" type="button">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L18 10l-4-4L4 16z"/><path d="M14 6l4 4"/></svg>
+    <span>作文</span>
+  </button>
+  <button class="tab-item nav-btn" type="button">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V10M12 19V5M19 19v-6"/></svg>
+    <span>统计</span>
+  </button>
+  <button class="tab-item" type="button">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>
+    <span>更多</span>
+  </button>
+</nav>
+
+<main>
+  <div class="today-page">
+    <div class="today-head">
+      <div>
+        <h2 class="page-title">今天</h2>
+        <p class="page-sub" style="margin-bottom:0">先把新词过了，再清复习。</p>
+      </div>
+      <span class="today-date">11 月 14 日 星期五</span>
+    </div>
+
+    <div class="today-grid">
+      <article class="today-card is-hot" id="cardLearn">
+        <div class="today-kicker"><span>每日学习</span><em id="learnChip">已背熟 3 / 10</em></div>
+        <div class="today-big" id="learnBig">7<small>个新词</small></div>
+        <div class="today-bar"><i id="learnBar" style="width:30%"></i></div>
+        <div class="today-note" id="learnNote">这一轮还没过完 · 第 2 轮</div>
+        <button class="primary-btn today-btn" id="learnBtn">开始学习</button>
+      </article>
+
+      <article class="today-card" id="cardReview">
+        <div class="today-kicker"><span>复习</span><em id="reviewChip">逾期 3 个</em></div>
+        <div class="today-big" id="reviewBig">12<small>个到期</small></div>
+        <div class="today-note" id="reviewNote">最久的一个拖了 3 天 · 下一个 4 小时后到期</div>
+        <button class="ghost-btn today-btn" id="reviewBtn">开始复习</button>
+      </article>
+    </div>
+
+    <div class="today-foot">
+      <span>今天背熟 <b>6</b> 个</span>
+      <span>学了 <b>12</b> 分钟</span>
+      <span class="right">累计很熟 <b>41</b> 词</span>
+    </div>
+  </div>
+</main>
+
+<script>
+  // 三个状态来回切，方便截图对比：?f=normal | done | empty
+  var f = new URLSearchParams(location.search).get('f') || 'normal';
+  if (f === 'done') {
+    document.getElementById('learnChip').textContent = '已背熟 10 / 10';
+    document.getElementById('learnBig').innerHTML = '<span class="tick">✓</span><small>今天学完了</small>';
+    document.getElementById('learnBar').style.width = '100%';
+    document.getElementById('learnNote').textContent = '这 10 个都进了复习 · 明天开始第一轮';
+    document.getElementById('learnBtn').className = 'ghost-btn today-btn';
+    document.getElementById('learnBtn').textContent = '再学 10 个';
+    document.getElementById('cardLearn').classList.remove('is-hot');
+    document.getElementById('cardLearn').classList.add('is-done');
+    document.getElementById('cardReview').classList.add('is-hot');
+    document.getElementById('reviewBtn').className = 'primary-btn today-btn';
+  }
+  if (f === 'empty') {
+    document.getElementById('learnChip').textContent = '已背熟 10 / 10';
+    document.getElementById('learnBig').innerHTML = '<span class="tick">✓</span><small>今天学完了</small>';
+    document.getElementById('learnBar').style.width = '100%';
+    document.getElementById('learnNote').textContent = '明天再来 10 个新词';
+    document.getElementById('learnBtn').className = 'ghost-btn today-btn';
+    document.getElementById('learnBtn').textContent = '再学 10 个';
+    document.getElementById('cardLearn').classList.add('is-done');
+
+    document.getElementById('reviewChip').textContent = '没有到期的';
+    document.getElementById('reviewBig').innerHTML = '0<small>个到期</small>';
+    document.getElementById('reviewNote').textContent = '今天的复习清完了 · 下一个词 4 小时后回来';
+    document.getElementById('reviewBtn').className = 'ghost-btn today-btn';
+    document.getElementById('reviewBtn').setAttribute('disabled', '');
+    document.getElementById('reviewBtn').textContent = '暂时没有要复习的';
+  }
+</script>
+</body>
+</html>
