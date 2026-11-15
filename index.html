@@ -64,8 +64,9 @@
         </article>
 
         <article class="today-card" id="todayReviewCard">
-          <div class="today-kicker"><span>复习</span><em id="todayReviewChip">没有到期的</em></div>
+          <div class="today-kicker"><span>复习</span><em id="todayReviewChip">已复习 0 / 10</em></div>
           <div class="today-big" id="todayReviewBig">0<small>个到期</small></div>
+          <div class="today-bar"><i id="todayReviewBar"></i></div>
           <div class="today-note" id="todayReviewNote"></div>
           <button class="ghost-btn today-btn" id="btnStartReview" type="button">开始复习</button>
         </article>
@@ -82,8 +83,12 @@
         <div class="goal-card" role="dialog" aria-modal="true" aria-labelledby="goalTitle">
           <div class="goal-title" id="goalTitle">学习设置</div>
           <label class="goal-row">
-            <span>每日目标（个）</span>
+            <span>学习目标（个）</span>
             <input id="goalInput" type="number" min="1" max="999" step="1" inputmode="numeric">
+          </label>
+          <label class="goal-row">
+            <span>复习目标（个）</span>
+            <input id="goalReviewInput" type="number" min="1" max="999" step="1" inputmode="numeric">
           </label>
           <div class="goal-actions">
             <button class="ghost-btn" id="btnGoalCancel" type="button">取消</button>

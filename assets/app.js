@@ -30,7 +30,8 @@
     hideAnswer: false,
     showPinyin: true,
     fontScale: 1,
-    dailyGoal: 10      // 每日目标（今天完成几个词），学习页右上角可以改
+    dailyGoal: 10,     // 学习目标（今天新学几个），学习页右上角可以改
+    reviewGoal: 10     // 复习目标（今天复习几个）
   };
 
   var el = function (id) { return document.getElementById(id); };
@@ -1246,70 +1247,75 @@
     var done = Math.min(st.done, total);
     var left = Math.max(0, total - done);
 
-    var goal = dailyGoal();
+    var goalL = dailyGoal();
+    var goalR = reviewGoal();
     var ds = dayStats(todayKey());
-    var todayDone = ds.total;
-    var leftToGoal = Math.max(0, goal - todayDone);
-
     var due = reviewPool(Date.now());
     var late = due.filter(function (x) { return Date.now() - x.at > DAY; }).length;
     var nextAt = nextDueIn(Date.now());
 
-    // 学习卡：进度按「今日单词」（新学 + 复习）算，超额就继续往上加（40 / 30）
-    el('todayLearnChip').textContent = '今日 ' + todayDone + ' / ' + goal;
-    el('todayLearnBar').style.width = Math.min(100, goal ? Math.round(todayDone / goal * 100) : 0) + '%';
+    // 学习卡：今天新学几个 / 学习目标
+    el('todayLearnChip').textContent = '已学习 ' + ds.learned + ' / ' + goalL;
+    el('todayLearnBar').style.width = Math.min(100, goalL ? Math.round(ds.learned / goalL * 100) : 0) + '%';
     var learnCard = el('todayLearnCard');
     var learnBtn = el('btnStartLearn');
-    if (leftToGoal === 0) {
-      el('todayLearnBig').innerHTML = '<span class="tick">✓</span><small>今日已完成 ' + todayDone + ' / ' + goal + '</small>';
-      el('todayLearnNote').textContent = '';
+    if (ds.learned >= goalL) {
+      el('todayLearnBig').innerHTML = '<span class="tick">✓</span><small>今日已完成</small>';
+      el('todayLearnNote').textContent = '已学习 ' + ds.learned + ' 词'
+        + (left ? ' · 这一轮还剩 ' + left + ' 个' : '');
       learnBtn.className = 'ghost-btn today-btn';
       learnBtn.textContent = '再学 10 个';
       learnBtn.dataset.action = 'learn';
       learnCard.classList.remove('is-hot');
       learnCard.classList.add('is-done');
     } else {
-      el('todayLearnBig').innerHTML = leftToGoal + '<small>个到目标</small>';
+      el('todayLearnBig').innerHTML = (goalL - ds.learned) + '<small>个到目标</small>';
       el('todayLearnNote').textContent = '今天新学 ' + ds.learned + ' 个'
         + (left ? ' · 这一轮还剩 ' + left + ' 个' : '');
       learnBtn.className = 'primary-btn today-btn';
-      learnBtn.textContent = todayDone > 0 || st.done > 0 ? '继续学习' : '开始学习';
+      learnBtn.textContent = ds.learned > 0 || st.done > 0 ? '继续学习' : '开始学习';
       learnBtn.dataset.action = 'learn';
       learnCard.classList.add('is-hot');
       learnCard.classList.remove('is-done');
     }
 
-    // 复习卡
-    el('todayReviewChip').textContent = due.length ? ('逾期 ' + late + ' 个') : '没有到期的';
-    el('todayReviewBig').innerHTML = due.length + '<small>个到期 · 已复习 ' + ds.reviewed + ' 词</small>';
-    if (due.length) {
-      var lateDays = Math.floor((Date.now() - due[0].at) / DAY);
-      el('todayReviewNote').textContent = (lateDays >= 1 ? '最久的一个拖了 ' + lateDays + ' 天' : '到期的都在这儿了')
-        + (nextAt ? ' · 下一个 ' + countdownText(nextAt) + '后到期' : '');
-    } else {
-      el('todayReviewNote').textContent = nextAt
-        ? '今天的复习清完了 · 下一个词 ' + countdownText(nextAt) + '后回来'
-        : '这本书暂时没有要复习的词了';
-    }
+    // 复习卡：今天复习几个 / 复习目标
+    el('todayReviewChip').textContent = '已复习 ' + ds.reviewed + ' / ' + goalR;
+    el('todayReviewBar').style.width = Math.min(100, goalR ? Math.round(ds.reviewed / goalR * 100) : 0) + '%';
+    var reviewCard = el('todayReviewCard');
     var reviewBtn = el('btnStartReview');
+    if (ds.reviewed >= goalR) {
+      el('todayReviewBig').innerHTML = '<span class="tick">✓</span><small>今日复习已完成</small>';
+      el('todayReviewNote').textContent = '已复习 ' + ds.reviewed + ' 词'
+        + (due.length ? ' · 还有 ' + due.length + ' 个到期' : '');
+      reviewCard.classList.add('is-done');
+    } else {
+      el('todayReviewBig').innerHTML = (goalR - ds.reviewed) + '<small>个到目标</small>';
+      var dueNote = due.length
+        ? ('还有 ' + due.length + ' 个到期' + (late ? ' · 逾期 ' + late + ' 个' : ''))
+        : (nextAt ? '下一个词 ' + countdownText(nextAt) + '回来' : '这本书暂时没有要复习的词了');
+      el('todayReviewNote').textContent = dueNote + ' · 已复习 ' + ds.reviewed + ' 词';
+      reviewCard.classList.remove('is-done');
+    }
     reviewBtn.disabled = !due.length;
     reviewBtn.className = due.length
-      ? (leftToGoal > 0 ? 'ghost-btn today-btn' : 'primary-btn today-btn')
+      ? (ds.learned >= goalL ? 'primary-btn today-btn' : 'ghost-btn today-btn')
       : 'ghost-btn today-btn';
-    reviewBtn.textContent = due.length ? '开始复习' : '暂时没有要复习的';
-    el('todayReviewCard').classList.toggle('is-hot', leftToGoal === 0 && due.length > 0);
+    reviewBtn.textContent = due.length ? '开始复习 ' + due.length + ' 个' : '暂时没有要复习的';
+    el('todayReviewCard').classList.toggle('is-hot', due.length > 0 && ds.learned >= goalL);
 
     // 底下那行汇总
-    el('todayMastered').textContent = todayDone;
+    el('todayMastered').textContent = ds.total;
     el('todayMinutes').textContent = Math.round((dayEntry().seconds || 0) / 60);
     el('todayTotalMastered').textContent = masteredTotal();
     el('todayDate').textContent = dateLabel();
   }
 
-  // 学习设置（今天页右上角）：每日目标，后续别的可调项也放这个弹层里
+  // 学习设置（今天页右上角）：学习目标 / 复习目标，后续别的可调项也放这个弹层里
   function openGoalPop() {
     var input = el('goalInput');
     input.value = String(dailyGoal());
+    el('goalReviewInput').value = String(reviewGoal());
     el('goalPop').hidden = false;
     input.focus();
     input.select();
@@ -1736,6 +1742,11 @@
 
   function dailyGoal() {
     var n = Number(db.settings.dailyGoal);
+    return n > 0 ? Math.round(n) : 10;
+  }
+
+  function reviewGoal() {
+    var n = Number(db.settings.reviewGoal);
     return n > 0 ? Math.round(n) : 10;
   }
 
@@ -3029,8 +3040,11 @@
     el('btnGoalCancel').addEventListener('click', closeGoalPop);
     el('btnGoalSave').addEventListener('click', function () {
       var n = Math.round(Number(el('goalInput').value));
+      var r = Math.round(Number(el('goalReviewInput').value));
       if (!(n > 0)) { el('goalInput').focus(); return; }
+      if (!(r > 0)) { el('goalReviewInput').focus(); return; }
       db.settings.dailyGoal = Math.min(999, n);
+      db.settings.reviewGoal = Math.min(999, r);
       save();
       closeGoalPop();
       renderToday();

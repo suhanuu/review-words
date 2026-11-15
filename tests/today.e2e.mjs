@@ -91,7 +91,7 @@ try {
   check('开局是今天页', await cdp.eval('document.getElementById("view-today").classList.contains("is-active")'));
   const learnBig = await cdp.eval('document.getElementById("todayLearnBig").textContent');
   const chip0 = await cdp.eval('document.getElementById("todayLearnChip").textContent');
-  check('学习卡按目标显示今日 0 / 10', /今日 0 \/ 10/.test(chip0), chip0);
+  check('学习卡显示已学习 0 / 10', /已学习 0 \/ 10/.test(chip0), chip0);
   check('大数字是「10 个到目标」', /10/.test(learnBig), learnBig);
 
   // 2) 点开始学习
@@ -132,7 +132,7 @@ try {
   await cdp.eval('document.getElementById("btnDoneToday").click()');
   await sleep(400);
   const todayBig = await cdp.eval('document.getElementById("todayLearnBig").textContent');
-  check('今天页显示今日已完成 10 / 10', /已完成/.test(todayBig) && /10 \/ 10/.test(todayBig), todayBig);
+  check('今天页显示今日已完成', /已完成/.test(todayBig), todayBig);
   const learnBtn = await cdp.eval('document.getElementById("btnStartLearn").textContent');
   check('学习按钮变「再学 10 个」', /再学 10 个/.test(learnBtn), learnBtn);
 
@@ -143,7 +143,7 @@ try {
   await cdp.eval('document.getElementById("btnGoalSave").click()');
   await sleep(300);
   const chip30 = await cdp.eval('document.getElementById("todayLearnChip").textContent');
-  check('目标改成 30 → 今日 10 / 30', /今日 10 \/ 30/.test(chip30), chip30);
+  check('学习目标改成 30 → 已学习 10 / 30', /已学习 10 \/ 30/.test(chip30), chip30);
   const big30 = await cdp.eval('document.getElementById("todayLearnBig").textContent');
   check('大数字变「20 个到目标」', /20/.test(big30), big30);
 
@@ -180,8 +180,10 @@ try {
   })()`);
   await cdp.eval('document.querySelector(\'.nav-btn[data-view="today"]\').click()');
   await sleep(400);
-  const reviewBig = await cdp.eval('document.getElementById("todayReviewBig").textContent');
-  check('今天页显示 5 个到期', /^5/.test(reviewBig.replace(/\s/g, '')), reviewBig);
+  const reviewNote0 = await cdp.eval('document.getElementById("todayReviewNote").textContent');
+  check('复习卡显示 5 个到期', /5 个到期/.test(reviewNote0), reviewNote0);
+  check('复习按钮带上待复习数', /5 个/.test(await cdp.eval('document.getElementById("btnStartReview").textContent')),
+    await cdp.eval('document.getElementById("btnStartReview").textContent'));
 
   await cdp.eval('document.getElementById("btnStartReview").click()');
   await sleep(400);
@@ -221,8 +223,10 @@ try {
   // 今天页复习卡上要能看到「已复习 N 词」
   await cdp.eval('document.getElementById("btnDoneToday").click()');
   await sleep(400);
-  const reviewBigAfter = await cdp.eval('document.getElementById("todayReviewBig").textContent');
-  check('复习卡显示已复习词数', /已复习\s*\d+\s*词/.test(reviewBigAfter), reviewBigAfter);
+  const reviewChipAfter = await cdp.eval('document.getElementById("todayReviewChip").textContent');
+  check('复习卡显示已复习 5 / 10', /已复习 5 \/ 10/.test(reviewChipAfter), reviewChipAfter);
+  const reviewNoteAfter = await cdp.eval('document.getElementById("todayReviewNote").textContent');
+  check('复习卡说明里有已复习词数', /已复习 5 词/.test(reviewNoteAfter), reviewNoteAfter);
 } catch (e) {
   fails++;
   console.error('执行出错：', e.message);
