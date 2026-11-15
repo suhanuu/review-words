@@ -46,7 +46,12 @@
           <h2 class="page-title">今天</h2>
           <p class="page-sub" style="margin-bottom:0">先把新词过了，再清复习。</p>
         </div>
-        <span class="today-date" id="todayDate"></span>
+        <div class="today-head-right">
+          <span class="today-date" id="todayDate"></span>
+          <button class="icon-btn" id="btnTodaySettings" type="button" title="学习设置" aria-label="学习设置">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M6 14v6"/></svg>
+          </button>
+        </div>
       </div>
 
       <div class="today-grid">
@@ -67,9 +72,25 @@
       </div>
 
       <div class="today-foot">
-        <span>今天背熟 <b id="todayMastered">0</b> 个</span>
+        <span>今天完成 <b id="todayMastered">0</b> 个</span>
         <span>学了 <b id="todayMinutes">0</b> 分钟</span>
         <span class="right">累计很熟 <b id="todayTotalMastered">0</b> 词</span>
+      </div>
+
+      <!-- 学习设置：每日目标，后续别的可调项也放这儿 -->
+      <div class="goal-pop" id="goalPop" hidden>
+        <div class="goal-card" role="dialog" aria-modal="true" aria-labelledby="goalTitle">
+          <div class="goal-title" id="goalTitle">学习设置</div>
+          <label class="goal-row">
+            <span>每日目标（个）</span>
+            <input id="goalInput" type="number" min="1" max="999" step="1" inputmode="numeric">
+          </label>
+          <p class="goal-hint">今天完成到目标就显示「今日已完成」，还可以接着背，数字会变成 40 / 30 这样。</p>
+          <div class="goal-actions">
+            <button class="ghost-btn" id="btnGoalCancel" type="button">取消</button>
+            <button class="primary-btn" id="btnGoalSave" type="button">保存</button>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -139,7 +160,7 @@
       <h2 class="done-title" id="doneTitle">整本书记过的词都在复习间隔里</h2>
       <div class="done-stats">
         <div class="done-stat"><div class="num" id="doneWords">0</div><div class="lbl">今天过词</div></div>
-        <div class="done-stat"><div class="num" id="doneAcc">0<small>个</small></div><div class="lbl">今日很熟</div></div>
+        <div class="done-stat"><div class="num" id="doneAcc">0<small>个</small></div><div class="lbl">今日完成</div></div>
         <div class="done-stat"><div class="num" id="doneDue">0<small>个</small></div><div class="lbl">待复习</div></div>
         <div class="done-stat"><div class="num" id="doneTime">0<small>分</small></div><div class="lbl">今天用时</div></div>
       </div>
@@ -287,7 +308,14 @@
 
       <div class="chart-block">
         <div class="chart-head">
-          <div class="chart-title">单词/个</div>
+          <div class="chart-head-left">
+            <div class="chart-title">单词/个</div>
+            <div class="chart-month-nav">
+              <button type="button" class="chart-month-btn" data-month-for="words" data-month-step="-1" aria-label="上个月">‹</button>
+              <span class="chart-month" id="wordsMonth">11 月</span>
+              <button type="button" class="chart-month-btn" data-month-for="words" data-month-step="1" aria-label="下个月">›</button>
+            </div>
+          </div>
           <div class="chart-latest" id="wordsLatest"></div>
         </div>
         <div class="chart" data-series="words"></div>
@@ -311,7 +339,14 @@
 
       <div class="chart-block">
         <div class="chart-head">
-          <div class="chart-title" id="typingChartUnit">WPM</div>
+          <div class="chart-head-left">
+            <div class="chart-title" id="typingChartUnit">WPM</div>
+            <div class="chart-month-nav">
+              <button type="button" class="chart-month-btn" data-month-for="typing" data-month-step="-1" aria-label="上个月">‹</button>
+              <span class="chart-month" id="typingMonth">11 月</span>
+              <button type="button" class="chart-month-btn" data-month-for="typing" data-month-step="1" aria-label="下个月">›</button>
+            </div>
+          </div>
           <div class="chart-latest" id="typingLatest"></div>
         </div>
         <div class="chart" id="typingChart" data-series="typing"></div>

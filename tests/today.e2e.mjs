@@ -90,7 +90,9 @@ try {
   // 1) 打开就落在「今天」
   check('开局是今天页', await cdp.eval('document.getElementById("view-today").classList.contains("is-active")'));
   const learnBig = await cdp.eval('document.getElementById("todayLearnBig").textContent');
-  check('学习卡显示 10 个新词', /10/.test(learnBig), learnBig);
+  const chip0 = await cdp.eval('document.getElementById("todayLearnChip").textContent');
+  check('学习卡按目标显示今日 0 / 10', /今日 0 \/ 10/.test(chip0), chip0);
+  check('大数字是「10 个到目标」', /10/.test(learnBig), learnBig);
 
   // 2) 点开始学习
   await cdp.eval('document.getElementById("btnStartLearn").click()');
@@ -130,9 +132,20 @@ try {
   await cdp.eval('document.getElementById("btnDoneToday").click()');
   await sleep(400);
   const todayBig = await cdp.eval('document.getElementById("todayLearnBig").textContent');
-  check('今天页显示学完了', /学完了|✓/.test(todayBig), todayBig);
+  check('今天页显示今日已完成', /已完成|✓/.test(todayBig), todayBig);
   const learnBtn = await cdp.eval('document.getElementById("btnStartLearn").textContent');
   check('学习按钮变「再学 10 个」', /再学 10 个/.test(learnBtn), learnBtn);
+
+  // 5.5) 学习设置：把目标改成 30，卡片立刻变 10 / 30
+  await cdp.eval('document.getElementById("btnTodaySettings").click()');
+  await sleep(250);
+  await cdp.eval('(() => { const i = document.getElementById("goalInput"); i.value = "30"; })()');
+  await cdp.eval('document.getElementById("btnGoalSave").click()');
+  await sleep(300);
+  const chip30 = await cdp.eval('document.getElementById("todayLearnChip").textContent');
+  check('目标改成 30 → 今日 10 / 30', /今日 10 \/ 30/.test(chip30), chip30);
+  const big30 = await cdp.eval('document.getElementById("todayLearnBig").textContent');
+  check('大数字变「20 个到目标」', /20/.test(big30), big30);
 
   // 6) 跨天清零：把 3 个没很熟的词标成昨天的批次，看会不会清零回炉
   const reset = await cdp.eval(`(() => {
@@ -149,19 +162,21 @@ try {
   const rs = JSON.parse(reset);
   check('跨天没学完的清零回炉', rs.length === 3 && rs.every((x) => x.step === 0 && x.batch === ''), reset);
 
-  // 7) 复习入口：塞 5 个到期的很熟词，看今天页和复习流程
+  // 7) 复习入口：塞 5 个「以前学过、今天到期」的词（不能是今天批次里的）
   await cdp.eval(`(() => {
     const recs = window.__review.records();
-    const words = Object.keys(recs).slice(0, 5);
-    words.forEach(w => {
-      const r = recs[w];
-      r.masteredAt = Date.now() - 3 * 86400000;
-      r.dueAt = Date.now() - 3600000;
-      r.done = 0;
-      r.step = 3;
-      r.batch = '';
+    const inBatch = new Set(window.__review.todayBatch().map(w => w.w));
+    const bank = (window.WORD_BANK || []).map(w => w.w).filter(w => !inBatch.has(w) && !recs[w]).slice(0, 5);
+    bank.forEach(w => {
+      recs[w] = {
+        seen: 3, step: 3, iv: 86400000,
+        masteredAt: Date.now() - 3 * 86400000,
+        dueAt: Date.now() - 3600000,
+        last: 1, lastAt: Date.now() - 3 * 86400000,
+        forgot: 0, wrong: 0, done: 0, batch: ''
+      };
     });
-    return words.length;
+    return bank.length;
   })()`);
   await cdp.eval('document.querySelector(\'.nav-btn[data-view="today"]\').click()');
   await sleep(400);
@@ -174,6 +189,7 @@ try {
   check('顶栏是复习', /复习/.test(await cdp.eval('document.getElementById("drillIndex").textContent')),
     await cdp.eval('document.getElementById("drillIndex").textContent'));
 
+  const doneBeforeReview = await cdp.eval('window.__review.todayDone()');
   // 第一个词点「忘了」：会不会掉回学习池？
   const firstReviewWord = await cdp.eval('document.getElementById("wordText").textContent');
   await cdp.eval('document.querySelector(\'.rate[data-grade="1"]\').click()');
@@ -197,6 +213,10 @@ try {
   check('复习清完进收尾页', await cdp.eval('document.getElementById("view-done").classList.contains("is-active")'));
   const rt = await cdp.eval('document.getElementById("doneKicker").textContent');
   check('收尾卡说复习清完了', /复习清完/.test(rt), rt);
+
+  const doneAfterReview = await cdp.eval('window.__review.todayDone()');
+  check('复习过的也计入今日完成（+4，忘了那个不算）', doneAfterReview === doneBeforeReview + 4,
+    doneBeforeReview + ' -> ' + doneAfterReview);
 } catch (e) {
   fails++;
   console.error('执行出错：', e.message);

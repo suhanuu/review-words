@@ -1527,6 +1527,22 @@ button {
   justify-content: space-between;
   margin-bottom: 18px;
 }
+.chart-head-left { display: flex; align-items: center; gap: 10px; }
+.chart-month-nav { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.chart-month-btn {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  line-height: 1;
+}
+.chart-month-btn:hover:not(:disabled) { color: var(--text); border-color: var(--line-strong); }
+.chart-month-btn:disabled { opacity: 0.35; cursor: default; }
+.chart-month { min-width: 38px; text-align: center; letter-spacing: 0.02em; }
 .chart-title {
   font-size: 12.5px;
   letter-spacing: 0.08em;
@@ -1741,6 +1757,54 @@ button {
 }
 .today-foot b { color: var(--text-soft); font-weight: 600; font-family: var(--font-mono); }
 .today-foot .right { margin-left: auto; }
+.today-head-right { display: flex; align-items: center; gap: 10px; }
+
+/* 学习设置弹层（每日目标） */
+.goal-pop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: rgba(23, 22, 15, 0.26);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+.goal-pop[hidden] { display: none; }
+[data-theme="dark"] .goal-pop { background: rgba(0, 0, 0, 0.55); }
+.goal-card {
+  width: min(360px, calc(100vw - 40px));
+  padding: 20px 20px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+}
+.goal-title { font-size: 13.5px; letter-spacing: 0.04em; margin-bottom: 14px; }
+.goal-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12.5px;
+  color: var(--text-soft);
+  margin-bottom: 10px;
+}
+.goal-row input {
+  width: 96px;
+  padding: 7px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: var(--field);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-align: right;
+  outline: none;
+}
+.goal-row input:focus { border-color: var(--accent); }
+.goal-hint { font-size: 11px; color: var(--muted); line-height: 1.6; margin: 0 0 14px; }
+.goal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 @media (max-width: 720px) {
   .today-page { padding: 28px 18px 100px; }
   .today-grid { grid-template-columns: 1fr; gap: 12px; margin-top: 18px; }

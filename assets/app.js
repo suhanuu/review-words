@@ -29,7 +29,8 @@
     autoplay: true,
     hideAnswer: false,
     showPinyin: true,
-    fontScale: 1
+    fontScale: 1,
+    dailyGoal: 10      // 每日目标（今天完成几个词），学习页右上角可以改
   };
 
   var el = function (id) { return document.getElementById(id); };
@@ -1053,7 +1054,7 @@
     var sec = Math.round(d.seconds || 0);
 
     el('doneWords').textContent = d.words || 0;
-    el('doneAcc').innerHTML = masteredOn(todayKey()) + '<small>个</small>';
+    el('doneAcc').innerHTML = todayDoneCount() + '<small>个</small>';
     el('doneTime').innerHTML = Math.max(1, Math.round(sec / 60)) + '<small>分</small>';
     el('doneDue').innerHTML = due + '<small>个</small>';
 
@@ -1245,30 +1246,34 @@
     var done = Math.min(st.done, total);
     var left = Math.max(0, total - done);
 
+    var goal = dailyGoal();
+    var todayDone = todayDoneCount();
+    var leftToGoal = Math.max(0, goal - todayDone);
+
     var due = reviewPool(Date.now());
     var late = due.filter(function (x) { return Date.now() - x.at > DAY; }).length;
     var nextAt = nextDueIn(Date.now());
 
-    // 学习卡
-    el('todayLearnChip').textContent = '已背熟 ' + done + ' / ' + (total || BATCH_SIZE);
-    el('todayLearnBar').style.width = (total ? Math.round(done / total * 100) : 0) + '%';
+    // 学习卡：按「今日目标」算，超额就继续往上加（40 / 30）
+    el('todayLearnChip').textContent = '今日 ' + todayDone + ' / ' + goal;
+    el('todayLearnBar').style.width = Math.min(100, goal ? Math.round(todayDone / goal * 100) : 0) + '%';
     var learnCard = el('todayLearnCard');
     var learnBtn = el('btnStartLearn');
-    if (total > 0 && left === 0) {
-      el('todayLearnBig').innerHTML = '<span class="tick">✓</span><small>今天学完了</small>';
-      el('todayLearnNote').textContent = '这 ' + total + ' 个都进了复习 · 明天开始第一轮';
+    if (leftToGoal === 0) {
+      el('todayLearnBig').innerHTML = '<span class="tick">✓</span><small>今日已完成</small>';
+      el('todayLearnNote').textContent = todayDone + ' / ' + goal + ' · 想背还能继续'
+        + (left ? ' · 这一轮还剩 ' + left + ' 个' : '');
       learnBtn.className = 'ghost-btn today-btn';
       learnBtn.textContent = '再学 10 个';
       learnBtn.dataset.action = 'learn';
       learnCard.classList.remove('is-hot');
       learnCard.classList.add('is-done');
     } else {
-      el('todayLearnBig').innerHTML = (left || BATCH_SIZE) + '<small>个新词</small>';
-      el('todayLearnNote').textContent = done
-        ? '还剩 ' + left + ' 个 · 过完一轮再来一轮'
-        : '今天先背这 ' + (left || BATCH_SIZE) + ' 个';
+      el('todayLearnBig').innerHTML = leftToGoal + '<small>个到目标</small>';
+      el('todayLearnNote').textContent = '今天已完成 ' + todayDone + ' 个'
+        + (left ? ' · 这一轮还剩 ' + left + ' 个' : '');
       learnBtn.className = 'primary-btn today-btn';
-      learnBtn.textContent = done ? '继续学习' : '开始学习';
+      learnBtn.textContent = todayDone > 0 || st.done > 0 ? '继续学习' : '开始学习';
       learnBtn.dataset.action = 'learn';
       learnCard.classList.add('is-hot');
       learnCard.classList.remove('is-done');
@@ -1289,16 +1294,29 @@
     var reviewBtn = el('btnStartReview');
     reviewBtn.disabled = !due.length;
     reviewBtn.className = due.length
-      ? (left > 0 ? 'ghost-btn today-btn' : 'primary-btn today-btn')
+      ? (leftToGoal > 0 ? 'ghost-btn today-btn' : 'primary-btn today-btn')
       : 'ghost-btn today-btn';
     reviewBtn.textContent = due.length ? '开始复习' : '暂时没有要复习的';
-    el('todayReviewCard').classList.toggle('is-hot', left === 0 && due.length > 0);
+    el('todayReviewCard').classList.toggle('is-hot', leftToGoal === 0 && due.length > 0);
 
     // 底下那行汇总
-    el('todayMastered').textContent = masteredOn(todayKey());
+    el('todayMastered').textContent = todayDone;
     el('todayMinutes').textContent = Math.round((dayEntry().seconds || 0) / 60);
     el('todayTotalMastered').textContent = masteredTotal();
     el('todayDate').textContent = dateLabel();
+  }
+
+  // 学习设置（今天页右上角）：每日目标，后续别的可调项也放这个弹层里
+  function openGoalPop() {
+    var input = el('goalInput');
+    input.value = String(dailyGoal());
+    el('goalPop').hidden = false;
+    input.focus();
+    input.select();
+  }
+
+  function closeGoalPop() {
+    el('goalPop').hidden = true;
   }
 
   // 只刷顶栏那个小格子，切词/每秒 tick 都调它
@@ -1684,16 +1702,26 @@
     return s;
   }
 
-  // 每天背熟了几个词，一次扫完记录，按天分组
-  function masteredByDay() {
+  // 每天「完成」了几个词：最后一次评价是熟悉、且这个词已经很熟。
+  // 新词第三遍熟悉、右上角划掉、复习点熟悉都算；复习点忘了/模糊不算。
+  function doneByDay() {
     var map = {};
     Object.keys(db.records).forEach(function (k) {
-      var at = db.records[k].masteredAt;
-      if (!at) return;
-      var key = dayKeyOf(at);
+      var r = db.records[k];
+      if (!r.masteredAt || r.last !== 3 || !r.lastAt) return;
+      var key = dayKeyOf(r.lastAt);
       map[key] = (map[key] || 0) + 1;
     });
     return map;
+  }
+
+  function todayDoneCount() {
+    return doneByDay()[todayKey()] || 0;
+  }
+
+  function dailyGoal() {
+    var n = Number(db.settings.dailyGoal);
+    return n > 0 ? Math.round(n) : 10;
   }
 
   // 把某个自然月拆成一天一个点；当月只画到今天，未来的日子不画
@@ -1734,15 +1762,21 @@
   function renderStats() {
     watchFlush();                       // 先把还没结算的这段时长算进去
     var today = todayKey();
-    var month = today.slice(0, 7);
+    if (!wordMonth) wordMonth = today.slice(0, 7);
+    var month = wordMonth;
 
-    el('statWordsToday').textContent = masteredOn(today);
+    el('statWordsToday').textContent = todayDoneCount();
     el('statWordsTotal').textContent = masteredTotal();
     el('statTimeToday').innerHTML = minutesText(statSecondsOn(today));
     el('statTimeTotal').innerHTML = hoursText(statSecondsTotal());
 
-    var map = masteredByDay();
+    var map = doneByDay();
     var pts = monthSeries(month, function (k) { return map[k] || 0; });
+    el('wordsMonth').textContent = Number(month.slice(5, 7)) + ' 月';
+    var atCurrent = month >= today.slice(0, 7);
+    document.querySelectorAll('[data-month-for="words"]').forEach(function (b) {
+      b.disabled = atCurrent && Number(b.dataset.monthStep) > 0;
+    });
     el('wordsLatest').textContent = pts.length ? pts[pts.length - 1].v + ' 个' : '';
     renderChart(document.querySelector('.chart[data-series="words"]'), pts, 0, 'var(--ok)', ' 个');
 
@@ -1752,6 +1786,15 @@
   // ---------- 当月折线浮层 ----------
   var popKind = 'words';
   var popMonth = '';
+  var wordMonth = '';     // 统计页背词图在看哪个月
+  var typingMonth = '';   // 统计页打字图在看哪个月
+
+  function shiftMonthKey(key, delta) {
+    var y = Number(key.slice(0, 4));
+    var m = Number(key.slice(5, 7)) - 1 + delta;
+    var d = new Date(y, m, 1);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1);
+  }
 
   function openMonthPop(kind) {
     popKind = kind;
@@ -1776,7 +1819,7 @@
 
   function renderMonthPop() {
     var isWords = popKind === 'words';
-    var map = isWords ? masteredByDay() : null;
+    var map = isWords ? doneByDay() : null;
     var pts = monthSeries(popMonth, function (k) {
       return isWords ? (map[k] || 0) : Math.round(statSecondsOn(k) / 60);
     });
@@ -1837,12 +1880,19 @@
     el('typingTotalErrors').textContent = sumErr;
     el('typingChartUnit').textContent = unit;
 
-    // 当月每天的平均速度（这天没练就是 0）
-    var month = todayKey().slice(0, 7);
+    // 当月每天的平均速度（这天没练就不画点）
+    var today = todayKey();
+    if (!typingMonth) typingMonth = today.slice(0, 7);
+    var month = typingMonth;
     var byDay = {};
     list.forEach(function (x) {
       if (!x.date || x.date.slice(0, 7) !== month) return;
       (byDay[x.date] = byDay[x.date] || []).push(recordSpeed(x));
+    });
+    el('typingMonth').textContent = Number(month.slice(5, 7)) + ' 月';
+    var atCurrent = month >= today.slice(0, 7);
+    document.querySelectorAll('[data-month-for="typing"]').forEach(function (b) {
+      b.disabled = atCurrent && Number(b.dataset.monthStep) > 0;
     });
     var pts = monthSeries(month, function (k) {
       var arr = byDay[k];
@@ -2814,6 +2864,9 @@
         var rn = document.createElement('button'); rn.type = 'button'; rn.className = 'ghost-btn'; rn.textContent = '重命名';
         rn.addEventListener('click', function () { startRename(book); });
         actions.appendChild(rn);
+        var rl = document.createElement('button'); rl.type = 'button'; rl.className = 'ghost-btn'; rl.textContent = '重新学习';
+        rl.addEventListener('click', function () { resetBook(book); });
+        actions.appendChild(rl);
         if (book.kind !== 'builtin') {
           var del = document.createElement('button'); del.type = 'button'; del.className = 'ghost-btn is-danger'; del.textContent = '删除';
           del.addEventListener('click', function () { startDelete(book); });
@@ -2830,8 +2883,31 @@
     }
   }
 
-  function startRename(book) { renamingId = book.id; deletingId = null; renderBookshelf(); }
-  function cancelRename() { renamingId = null; renderBookshelf(); }
+  // 重新学习：清掉这本书的学习记录（收藏、词表、设置都保留）
+  function resetBook(book) {
+    if (!confirm('确认重新学习吗？\n重新学习会重置这本书的学习进度。')) return;
+
+    var key = STORE_KEY + ':book:' + book.id;
+    var raw = {};
+    try { raw = JSON.parse(localStorage.getItem(key) || '{}') || {}; } catch (e) { raw = {}; }
+    raw.records = {};
+    raw.days = {};
+    try { localStorage.setItem(key, JSON.stringify(raw)); } catch (e) {}
+
+    if (book.id === activeBookId) {
+      db = load();
+      wordCache = null;
+      wordIndex = null;
+      state.queue = [];
+      state.current = null;
+      state.phase = 'idle';
+      save();
+      setView('today');
+    }
+    renderBookshelf();
+  }
+
+  function startRename(book) { renamingId = book.id; deletingId = null; renderBookshelf(); }  function cancelRename() { renamingId = null; renderBookshelf(); }
   function commitRename(book, value) {
     var name = String(value || '').trim();
     renamingId = null;
@@ -2931,9 +3007,22 @@
     el('btnDrawerClose').addEventListener('click', closeDrawer);
     el('drawerMask').addEventListener('click', closeDrawer);
 
-    // 入口页：开始学习 / 开始复习
+    // 入口页：开始学习 / 开始复习 / 学习设置
     el('btnStartLearn').addEventListener('click', startLearn);
     el('btnStartReview').addEventListener('click', startReview);
+    el('btnTodaySettings').addEventListener('click', openGoalPop);
+    el('btnGoalCancel').addEventListener('click', closeGoalPop);
+    el('btnGoalSave').addEventListener('click', function () {
+      var n = Math.round(Number(el('goalInput').value));
+      if (!(n > 0)) { el('goalInput').focus(); return; }
+      db.settings.dailyGoal = Math.min(999, n);
+      save();
+      closeGoalPop();
+      renderToday();
+    });
+    el('goalPop').addEventListener('click', function (e) {
+      if (e.target && e.target.id === 'goalPop') closeGoalPop();
+    });
     el('btnDrillBack').addEventListener('click', function () { setView('today'); });
 
     // 收尾卡：主按钮跟着场景变（去复习 / 再学 10 个 / 回今天）
@@ -2987,6 +3076,25 @@
       var inChart = e.target && e.target.closest && e.target.closest('.chart, .month-pop-chart');
       if (!inChart) hideAllChartTips();
     }, true);
+
+    // 统计页：两张主图各自的月份切换
+    document.querySelectorAll('[data-month-for]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var step = Number(btn.dataset.monthStep) || 0;
+        if (!step) return;
+        var today = todayKey().slice(0, 7);
+        if (btn.dataset.monthFor === 'typing') {
+          var next = shiftMonthKey(typingMonth || today, step);
+          if (next > today) return;
+          typingMonth = next;
+        } else {
+          var nextW = shiftMonthKey(wordMonth || today, step);
+          if (nextW > today) return;
+          wordMonth = nextW;
+        }
+        renderStats();
+      });
+    });
 
     // 统计页：打字区英/中切换
     var typingSegBtns = document.querySelectorAll('#view-stats [data-typing-stat]');
@@ -3464,6 +3572,8 @@
     todayBatch: todayBatch,
     ensureBatch: ensureBatch,
     resetStaleBatch: resetStaleBatch,
+    todayDone: todayDoneCount,
+    dailyGoal: dailyGoal,
     reviewPool: reviewPool,
     duePool: duePool,
     // 给回归脚本直接改记录的入口（只读引用，别在页面里依赖它）
