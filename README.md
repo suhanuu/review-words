@@ -339,3 +339,5 @@ JSON 输出；如果服务商不支持 JSON
 -   [Cloudflare Worker / AI 配置说明](docs/AI-WORKER-SETUP.md)
 -   [项目测试清单](docs/TESTING.md)
 -   [项目改造计划](docs/REFACTOR-PLAN.md)
+
+本项目仅供个人学习使用，未经作者书面许可，禁止用于任务商业用途
