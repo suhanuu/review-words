@@ -1,6 +1,10 @@
 /* Review Words: IndexedDB-backed persistence bridge.
    The existing app uses synchronous localStorage. This bridge hydrates it before app.js
-   starts, then mirrors every write to IndexedDB while retaining localStorage fallback. */
+   starts, then mirrors every write to IndexedDB while retaining localStorage fallback.
+   注：页面里的读写现在都走 assets/modules/core/store.js；这里只剩两件事——
+   1) 启动前把 IndexedDB 里的镜像灌回 localStorage（只在键缺失时灌，不会覆盖本地更新的数据）；
+   2) 挂 Storage.prototype 钩子，把之后的每次写入顺手镜像到 IndexedDB。
+   如果 localStorage 本身写失败（配额满），钩子拿不到值，由 store.js 直接补写 IndexedDB。 */
 (function () {
   'use strict';
   var DB_NAME='review-words-db', STORE='kv', VERSION=1;

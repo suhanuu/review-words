@@ -1,13 +1,14 @@
-(function(){
+﻿(function(){
 'use strict';
 var $=function(id){return document.getElementById(id);};
-var BOOKS_KEY='reviewwords.books.v1', ACTIVE_KEY='reviewwords.activeBook.v1', PREFIX='wordtype.v1:book:', ARTICLES='reviewwords.articles.v1', TASKS='reviewwords.dailyTasks.v1', AI_SETTINGS='reviewwords.aiSettings.v1', SELECTION='reviewwords.weakSelection.v1';
+var RWStore=window.RWStore, KEYS=RWStore.KEYS;
+var ACTIVE_KEY=KEYS.activeBook, PREFIX=KEYS.bookPrefix, ARTICLES=KEYS.articles, TASKS=KEYS.dailyTasks, AI_SETTINGS=KEYS.aiSettings, SELECTION=KEYS.weakSelection;
 var RECOMMEND_MIN=6, RECOMMEND_MAX=12, SWEET_MIN=8, SWEET_MAX=10, HARD_MAX=24, DEFAULT_PICK=10;
 // 文案只在这里拼：以后调整区间，页面上的说明、计数、确认弹窗会一起变
 function rangeText(){return RECOMMEND_MIN+'–'+RECOMMEND_MAX;}
 function sweetText(){return SWEET_MIN+'–'+SWEET_MAX;}
-function get(k,d){try{return JSON.parse(localStorage.getItem(k)||'null')||d;}catch(e){return d;}}
-function active(){return localStorage.getItem(ACTIVE_KEY)||'redbook-2024';}
+function get(k,d){return RWStore.get(k,d);}
+function active(){return RWStore.getText(ACTIVE_KEY)||'redbook-2024';}
 function archive(){return get(PREFIX+active(),{});}
 function words(){var b=archive(), list=active()==='redbook-2024'?(window.WORD_BANK||[]).concat(b.custom||[]):(b.custom||[]);var m={};list.forEach(function(w){if(w&&w.w)m[w.w]=w;});return m;}
 function weak(){
@@ -25,7 +26,7 @@ function weakGroups(){
  return out;
 }
 function selectionMap(){var m=get(SELECTION,{});return (m&&typeof m==='object'&&!Array.isArray(m))?m:{};}
-function saveSelectionMap(m){localStorage.setItem(SELECTION,JSON.stringify(m));}
+function saveSelectionMap(m){RWStore.set(SELECTION,m);}
 function defaultSelection(){return weak().slice(0,DEFAULT_PICK).map(function(x){return x.word;});}
 // 三态：未初始化（无键 / null）自动选 10；用户清空（[]）不回填；池变动只做 prune
 function getSelection(){
@@ -128,7 +129,7 @@ function confirmWeakPicker(){
  showToast('已保存 '+draft.length+' 个目标词');
 }
 function articles(){return get(ARTICLES,[]);}
-function saveArticles(a){localStorage.setItem(ARTICLES,JSON.stringify(a));}
+function saveArticles(a){RWStore.set(ARTICLES,a);}
 function saveCurrentArticle(obj){var a=articles();a.unshift(obj);saveArticles(a);return obj;}
 function fitArticleTextareas(){['articleSource','articleTranslation'].forEach(function(id){var el=$(id);if(!el)return;el.style.height='auto';el.style.height=Math.max(el.scrollHeight,190)+'px';});}
 function escapeHTML(s){return String(s).replace(/[&<>\"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c];});}
@@ -165,7 +166,8 @@ function deleteSelectedHistory(){
  saveArticles(list.filter(function(a,i){return !remove[i];}));
  selectedHistory={};renderHistory();showToast('已删除 '+chosen.length+' 篇历史文章');
 }
-function showToast(message,isError){var node=$('rwToast');if(!node){node=document.createElement('div');node.id='rwToast';node.className='rw-toast';node.setAttribute('role','status');document.body.appendChild(node);}node.textContent=message;node.classList.toggle('is-error',!!isError);node.classList.add('is-visible');clearTimeout(window.__rwToastTimer);window.__rwToastTimer=setTimeout(function(){node.classList.remove('is-visible');},3600);}
+// 提示条统一由 core/ui-toast.js 负责（存储层也要用，它比这里先加载）
+function showToast(message,isError){if(window.RWToast)return window.RWToast(message,isError);if(window.console)window.console.warn(message);return false;}
 function setGenerationProgress(state,message){var box=$('aiProgress');var text=$('aiProgressText');if(!box)return;box.classList.remove('is-idle','is-loading','is-success','is-error');box.classList.add('is-'+state);if(text)text.textContent=message||'';box.setAttribute('aria-label',message||'作文生成状态');}
 
 function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -186,7 +188,7 @@ function validateAISettings(settings){
 }
 function saveAISettings(showStatus){
  var settings={baseUrl:($('aiBaseUrl').value||'').trim(),apiKey:($('aiApiKey').value||'').trim(),model:($('aiModel').value||'').trim()};
- try{validateAISettings(settings);localStorage.setItem(AI_SETTINGS,JSON.stringify(settings));if(showStatus!==false)$('aiConfigStatus').textContent='设置已保存在当前浏览器。';return settings;}
+ try{validateAISettings(settings);RWStore.set(AI_SETTINGS,settings);if(showStatus!==false)$('aiConfigStatus').textContent='设置已保存在当前浏览器。';return settings;}
  catch(e){$('aiConfigStatus').textContent=e.message;throw e;}
 }
 async function callCompatibleAPI(settings,messages,maxTokens,jsonMode){
@@ -328,17 +330,17 @@ async function generate(){
  var restCount=getSelection().length;
  showToast('本批 '+chosenWords.length+' 个词已完成'+(restCount?'，还剩 '+restCount+' 个待选':'，今日薄弱词已全部完成'));
  $('aiStatus').textContent='生成成功';setGenerationProgress('success','生成成功 · '+wc+' 词');
-  var tasks=get(TASKS,{}),k=active()+':'+today();tasks[k]={bookId:active(),date:today(),status:'已生成',articleId:a.id,createdAt:Date.now()};localStorage.setItem(TASKS,JSON.stringify(tasks));
+  var tasks=get(TASKS,{}),k=active()+':'+today();tasks[k]={bookId:active(),date:today(),status:'已生成',articleId:a.id,createdAt:Date.now()};RWStore.set(TASKS,tasks);
  }catch(e){$('aiStatus').textContent='生成失败：'+e.message;setGenerationProgress('error','生成失败：'+e.message);}
  finally{$('btnGenerateArticle').disabled=false;}
 }
 function backup(){
  var data={format:'review-words-backup',version:1,exportedAt:new Date().toISOString(),items:{}};
- for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k!==AI_SETTINGS&&(/^(wordtype\.v1|reviewwords\.)/.test(k)))data.items[k]=localStorage.getItem(k);}
+ RWStore.entries().forEach(function(it){if(it.key!==AI_SETTINGS)data.items[it.key]=it.value;});
  var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='review-words-backup-'+today()+'.json';a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},1000);$('backupStatus').textContent='已导出 '+Object.keys(data.items).length+' 项本地数据。';
 }
 function restore(file){
- var reader=new FileReader();reader.onload=function(){try{var d=JSON.parse(String(reader.result||''));if(d.format!=='review-words-backup'||!d.items)throw new Error('不是有效的 Review Words 备份文件');if(!confirm('恢复将覆盖备份中同名的数据键，建议先导出当前备份。确定继续吗？'))return;Object.keys(d.items).forEach(function(k){if(k!==AI_SETTINGS&&/^(wordtype\.v1|reviewwords\.)/.test(k))localStorage.setItem(k,String(d.items[k]));});$('backupStatus').textContent='恢复成功，页面即将重新载入。';setTimeout(function(){location.reload();},500);}catch(e){$('backupStatus').textContent='恢复失败：'+e.message;}};reader.readAsText(file,'UTF-8');
+ var reader=new FileReader();reader.onload=function(){try{var d=JSON.parse(String(reader.result||''));if(d.format!=='review-words-backup'||!d.items)throw new Error('不是有效的 Review Words 备份文件');if(!confirm('恢复将覆盖备份中同名的数据键，建议先导出当前备份。确定继续吗？'))return;Object.keys(d.items).forEach(function(k){if(k!==AI_SETTINGS&&/^(wordtype\.v1|reviewwords\.)/.test(k))RWStore.setText(k,String(d.items[k]));});$('backupStatus').textContent='恢复成功，页面即将重新载入。';setTimeout(function(){location.reload();},500);}catch(e){$('backupStatus').textContent='恢复失败：'+e.message;}};reader.readAsText(file,'UTF-8');
 }
 function editDistance(a,b){var prev=Array.from({length:b.length+1},function(_,i){return i;}),cur=[];for(var i=1;i<=a.length;i++){cur=[i];for(var j=1;j<=b.length;j++)cur[j]=Math.min(cur[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));prev=cur;}return prev[b.length];}
 function bind(){
@@ -378,7 +380,7 @@ function bind(){
     accuracy:accuracy,errors:dist,chars:typed.length,
     speed:speed,unit:lang==='zh'?'cpm':'wpm',wpm:speed,
     durationMs:ms,articleId:(articles()[0]||{}).id||null,article:source.slice(0,120)});
-  localStorage.setItem('reviewwords.typingRecords.v1',JSON.stringify(rec.slice(0,500)));
+  RWStore.set(KEYS.typingRecords,rec.slice(0,500));
 },true);
  document.querySelectorAll('.nav-btn[data-view="writing"]').forEach(function(b){b.addEventListener('click',function(){renderWeak();syncNav('writing');});});
 }

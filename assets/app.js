@@ -1,18 +1,19 @@
 (function () {
   'use strict';
 
-  var STORE_KEY = 'wordtype.v1';
-  var BOOKS_KEY = 'reviewwords.books.v1';
-  var ACTIVE_BOOK_KEY = 'reviewwords.activeBook.v1';
+  // 存储统一走 assets/modules/core/store.js：键名表、写失败提示、用量提醒都在那边
+  var RWStore = window.RWStore;
+  var KEYS = RWStore.KEYS;
   var DEFAULT_BOOK_ID = 'redbook-2024';
-  var USER_SCOPE = '';
+  var USER_SCOPE = '';               // 预留给以后的多账号，现在恒为空
   function readBooks() {
-    try { var list = JSON.parse(localStorage.getItem(BOOKS_KEY) || 'null'); if (Array.isArray(list) && list.length) return list; } catch (e) {}
+    var list = RWStore.get(KEYS.books, null);
+    if (Array.isArray(list) && list.length) return list;
     var initial = [{ id: DEFAULT_BOOK_ID, name: '2024 考研英语词汇·红宝书', kind: 'builtin', createdAt: Date.now(), wordCount: (window.WORD_BANK || []).length }];
-    localStorage.setItem(BOOKS_KEY, JSON.stringify(initial)); return initial;
+    RWStore.set(KEYS.books, initial); return initial;
   }
   var books = readBooks();
-  var activeBookId = localStorage.getItem(ACTIVE_BOOK_KEY) || DEFAULT_BOOK_ID;
+  var activeBookId = RWStore.getText(KEYS.activeBook) || DEFAULT_BOOK_ID;
   if (!books.some(function (b) { return b.id === activeBookId; })) activeBookId = DEFAULT_BOOK_ID;
   var MIN = 60000;
   var DAY = 86400000;
@@ -34,15 +35,15 @@
   var el = function (id) { return document.getElementById(id); };
 
   // ================= 存储 =================
-  function storeKey() { return STORE_KEY + ':book:' + activeBookId + (USER_SCOPE ? ':' + USER_SCOPE : ''); }
-  if (activeBookId === DEFAULT_BOOK_ID && !localStorage.getItem(storeKey()) && localStorage.getItem(STORE_KEY)) {
-    localStorage.setItem(storeKey(), localStorage.getItem(STORE_KEY));
+  function storeKey() { return RWStore.bookKey(activeBookId) + (USER_SCOPE ? ':' + USER_SCOPE : ''); }
+  // 老版本「一本书一个键」的数据，第一次升级时复制到分书键下（老键不动，出问题还能回退）
+  if (activeBookId === DEFAULT_BOOK_ID && !RWStore.getText(storeKey()) && RWStore.getText(KEYS.legacyBook)) {
+    RWStore.setText(storeKey(), RWStore.getText(KEYS.legacyBook));
   }
   var db = load();
 
   function load() {
-    var raw = {};
-    try { raw = JSON.parse(localStorage.getItem(storeKey()) || '{}') || {}; } catch (e) { raw = {}; }
+    var raw = RWStore.get(storeKey(), {});
     var recs = raw.records || {};
     // 兼容旧数据：把按「天」存的 due 换成时间戳
     Object.keys(recs).forEach(function (k) {
@@ -84,8 +85,10 @@
     };
   }
 
+  // 整本词书仍然是一个 JSON：写失败时 store 会弹提示条并补一次 IndexedDB 镜像，
+  // 这里不再吞掉错误，只是别让一次失败把整页交互打断。
   function save() {
-    try { localStorage.setItem(storeKey(), JSON.stringify(db)); } catch (e) {}
+    RWStore.set(storeKey(), db);
   }
 
   // 记录字段（沿用旧结构，只多两个字段）：
@@ -1422,10 +1425,8 @@
   var histLang = 'all';
 
   function typingRecords() {
-    try {
-      var raw = JSON.parse(localStorage.getItem('reviewwords.typingRecords.v1') || '[]');
-      return Array.isArray(raw) ? raw : [];
-    } catch (e) { return []; }
+    var raw = RWStore.get(KEYS.typingRecords, []);
+    return Array.isArray(raw) ? raw : [];
   }
 
   function recordSpeed(x) {
@@ -2325,8 +2326,8 @@
 
   // ================= 多词书管理（本地优先） =================
   function bookArchive(book) {
-    var raw = localStorage.getItem(STORE_KEY + ':book:' + book.id);
-    if (!raw && book.id === DEFAULT_BOOK_ID) raw = localStorage.getItem(STORE_KEY); // 老数据兜底
+    var raw = RWStore.getText(RWStore.bookKey(book.id));
+    if (!raw && book.id === DEFAULT_BOOK_ID) raw = RWStore.getText(KEYS.legacyBook); // 老数据兜底
     var data = {};
     try { data = JSON.parse(raw || '{}') || {}; } catch (e) { data = {}; }
     return data;
@@ -2423,7 +2424,7 @@
       } else {
         if (!current) {
           var sw = document.createElement('button'); sw.type = 'button'; sw.className = 'ghost-btn'; sw.textContent = '切换到这本';
-          sw.addEventListener('click', function () { localStorage.setItem(ACTIVE_BOOK_KEY, book.id); location.reload(); });
+          sw.addEventListener('click', function () { RWStore.setText(KEYS.activeBook, book.id); location.reload(); });
           actions.appendChild(sw);
         }
         var rn = document.createElement('button'); rn.type = 'button'; rn.className = 'ghost-btn'; rn.textContent = '重命名';
@@ -2452,12 +2453,11 @@
   function resetBook(book) {
     if (!confirm('确认重新学习吗？\n重新学习会重置这本书的学习进度。')) return;
 
-    var key = STORE_KEY + ':book:' + book.id;
-    var raw = {};
-    try { raw = JSON.parse(localStorage.getItem(key) || '{}') || {}; } catch (e) { raw = {}; }
+    var key = RWStore.bookKey(book.id);
+    var raw = RWStore.get(key, {});
     raw.records = {};
     raw.days = {};
-    try { localStorage.setItem(key, JSON.stringify(raw)); } catch (e) {}
+    RWStore.set(key, raw);
 
     if (book.id === activeBookId) {
       db = load();
@@ -2478,7 +2478,7 @@
     renamingId = null;
     if (name && name !== book.name) {
       book.name = name;
-      localStorage.setItem(BOOKS_KEY, JSON.stringify(books));
+      RWStore.set(KEYS.books, books);
     }
     renderBookshelf();
   }
@@ -2489,9 +2489,9 @@
     if (book.kind === 'builtin') return;
     deletingId = null;
     books = books.filter(function (b) { return b.id !== book.id; });
-    localStorage.setItem(BOOKS_KEY, JSON.stringify(books));
-    try { localStorage.removeItem(STORE_KEY + ':book:' + book.id); } catch (e) {}
-    if (activeBookId === book.id) { localStorage.setItem(ACTIVE_BOOK_KEY, DEFAULT_BOOK_ID); location.reload(); return; }
+    RWStore.set(KEYS.books, books);
+    RWStore.remove(RWStore.bookKey(book.id));
+    if (activeBookId === book.id) { RWStore.setText(KEYS.activeBook, DEFAULT_BOOK_ID); location.reload(); return; }
     renderBookshelf();
   }
 
@@ -2526,9 +2526,9 @@
       if (!words.length) { hint.textContent = '文件中没有有效单词。'; return; }
       var id = 'book-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
       books.push({ id: id, name: name, kind: 'custom', createdAt: Date.now(), wordCount: words.length });
-      localStorage.setItem(BOOKS_KEY, JSON.stringify(books));
-      localStorage.setItem(STORE_KEY + ':book:' + id, JSON.stringify({ settings: Object.assign({}, DEFAULTS), records: {}, days: {}, custom: words, favs: {} }));
-      localStorage.setItem(ACTIVE_BOOK_KEY, id); hint.textContent = '已导入 ' + words.length + ' 个单词，正在切换……';
+      RWStore.set(KEYS.books, books);
+      RWStore.set(RWStore.bookKey(id), { settings: Object.assign({}, DEFAULTS), records: {}, days: {}, custom: words, favs: {} });
+      RWStore.setText(KEYS.activeBook, id); hint.textContent = '已导入 ' + words.length + ' 个单词，正在切换……';
       setTimeout(function () { location.reload(); }, 250);
     };
     reader.onerror = function () { hint.textContent = '文件读取失败。'; };
@@ -3056,7 +3056,7 @@
 
     el('btnReset').addEventListener('click', function () {
       if (!confirm('会清空所有学习记录、收藏和导入的词，确定吗？')) return;
-      localStorage.removeItem(storeKey());
+      RWStore.remove(storeKey());
       db = load();
       wordCache = null;
       wordIndex = null;

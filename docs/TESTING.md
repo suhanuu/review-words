@@ -83,3 +83,24 @@ node tests/style.diff.mjs HEAD --allow-rule-changes
 - 删规则、合并规则：加 `--allow-rule-changes`，规则序列允许不同，样式仍须完全一致。
 - 动到 `:hover` / `:active` / `:focus` 的规则时再加 `--pseudo`：改拍“所有可点元素都悬停 + 按下 + 聚焦”的状态，单独跑一遍。
 - 结尾打印“全部一致”才算通过；有差异会逐条列出元素、属性名和前后的值。
+
+## K. 存储层回归（改存储键、存储函数后自动跑）
+
+所有 `localStorage` 读写都走 `assets/modules/core/store.js`，键名表也在里面；往页面上加新数据只往那张表里加键。跑法：
+
+```
+node tests/store.test.js     # 单测：读写、坏 JSON 兜底、写失败提示、IndexedDB 补镜像、八成用量提醒
+node tests/store.e2e.mjs     # 端到端：把 setItem 打成抛错，确认弹提示条、数据没丢、页面还能用
+```
+
+- `store.test.js` 用假存储，不碰浏览器；退出码非 0 表示有失败项。
+- `store.e2e.mjs` 起静态服务 + 无头 Edge，真点按钮，占端口 8125 / 9225。
+- 改了键名或数据位置时，两端都要过；线上旧数据靠“老键不动、只做复制”的方式兼容，不要做原地迁移。
+
+## L. 其余自动化冒烟
+
+```
+node tests/schedule.test.js  # 背词节奏规则（assets/schedule.js）
+node tests/drill.e2e.mjs     # 背词页：评价落库、右上角“熟悉”、老记录迁移
+node tests/today.e2e.mjs     # 今天页：两个入口、今日单词计数、跨天清批
+```
