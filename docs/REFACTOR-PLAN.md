@@ -95,3 +95,37 @@ GitHub Pages 只能托管静态文件，不能安全保存 Gemini/Groq/OpenRoute
 
 - **已取消 Cloudflare Worker 方案**：删除 `worker/index.js` 和 `docs/AI-WORKER-SETUP.md`，作文生成只保留浏览器直连 OpenAI 兼容 API。上面第二、三阶段里关于 Worker 的内容是历史记录，不再有效。
 - `_data/build.js` 去掉了写死的本机绝对路径，源文件固定从 `_data/红宝书源.csv` 读取。
+
+## 第五阶段（2026-11-26）：存储层、FSRS-6、模块化
+
+### 存储层
+- 所有 localStorage 读写收到 `assets/modules/core/store.js`：一个键名表、JSON/裸字符串读写、
+  `entries()`（备份导出用）、`usage()`（占用估算）。
+- 写失败不再被 `catch (e) {}` 吞掉：弹提示条（`core/ui-toast.js`）、提醒先导出备份，
+  同时直接补写 IndexedDB 镜像，避免配额满时整本词书当场丢。
+- 用量超过八成提前提醒一次。数据位置没变，老键 `wordtype.v1` 只读不删。
+
+### 复习算法
+- 学习期（还没很熟）仍走 `assets/schedule.js`；很熟之后由 `assets/modules/core/scheduler.js`
+  调用 `assets/vendor/ts-fsrs-6.0.1.umd.js` 的 FSRS-6 排期，封顶 365 天、关随机抖动。
+- 旧进度迁移：按原阶梯天数折算稳定度（1/2/4/7/15/30/90/180 天），到期时间不改，
+  记录里写 `fsrs.sch = 6`，重复打开不会二次折算；老毕业词（`done = 1`）保持不再出现。
+- 不再产生新的“毕业”：一直点熟悉也只排到 365 天。
+
+### 复习日志与统计
+- `reviewwords.revlog.<词书 id>.<YYYY-MM>`，每条 `[时间戳, 评价, 排到的间隔天数]`，
+  每月上限 3000 条；统计页新增“复习”一排（今日/本月评价、忘了占比、平均间隔）。
+- “重新学习”和“清空记录”会连带清掉这本书的日志，别的书不动。
+
+### 加载与拆分
+- `hands.js`（271KB 手部 SVG）改成第一次进打字页才加载；`dict.js`（2.9MB）本来就是查词时才加载。
+- 页面不物理拆成多个 HTML：在“无构建、双击 index.html 就能用”的前提下，拆文件要么上构建、
+  要么改成前端路由，两者都违背约定。所以 `index.html` 只按模块分段并标注对应实现
+  （见文件头的结构表），不拆物理文件。
+
+### 后续待做
+- `assets/app.js` 仍是一个 IIFE（约 3,100 行），按功能继续拆成独立模块：
+  背词 / 今天 / 书架 / 词库与收藏 / 统计与图表 / 打字与键盘手型。
+- `assets/modules/reviewwords-enhancements.js` 还是压行的写法，先展开再按功能并入模块。
+- 拆分前先给作文、打字、统计、书架补自动化测试（打字与手部懒加载已有
+  `tests/lazy-hands.e2e.mjs` 打底）。

@@ -1,4 +1,25 @@
 <!DOCTYPE html>
+<!--
+  Review Words · 页面结构（无构建：双击本文件或任意静态服务器都能打开）
+  按模块分段，段名与 assets/ 下的实现一一对应：
+
+    今天（学习入口）   view-today            app.js · 今天页
+    练习（背词）      view-drill            app.js · 背词 + modules/core/scheduler.js（FSRS-6）
+    完成              view-done             app.js · 收尾
+    作文训练          view-writing          app.js · 作文 + modules/reviewwords-enhancements.js
+    全屏打字练习      view-typing           app.js · 打字 + hands.js（第一次进本页才加载）
+    文章历史          view-article-history  reviewwords-enhancements.js · 历史
+    今日薄弱词汇      view-weak-words       reviewwords-enhancements.js · 选词页
+    书架              view-books            app.js · 书架
+    统计              view-stats            app.js · 统计与图表
+    打字练习记录      view-typing-history   app.js · 打字成绩
+    词库（查词）      view-words            app.js · 词库 + dict.js（第一次查词才加载）
+    我的收藏          view-favs             app.js · 收藏
+    共享层                                手机导航 / 弹层 / 设置抽屉，所有页面共用
+
+  页面不物理拆成多个 HTML 的原因见 docs/REFACTOR-PLAN.md：拆了就没法再「直接打开
+  index.html」，要么上构建、要么改路由，两边都和「无构建」冲突。
+-->
 <html lang="zh-CN" data-theme="light">
 <head>
 <meta charset="utf-8">
@@ -56,7 +77,7 @@
 
 <main class="main">
 
-  <!-- ============ 今天（学习入口） ============ -->
+  <!-- ============ 今天（学习入口） · 对应 app.js 今天页 ============ -->
   <section class="view is-active" id="view-today">
     <div class="page today-page">
       <div class="today-head">
@@ -117,7 +138,7 @@
     </div>
   </section>
 
-  <!-- ============ 练习 ============ -->
+  <!-- ============ 练习（背词页） · 对应 app.js 背词 + modules/core/scheduler.js ============ -->
   <section class="view" id="view-drill">
     <div class="drill">
       <div class="study-shell">
@@ -169,7 +190,7 @@
     </div>
   </section>
 
-  <!-- ============ 完成 ============ -->
+  <!-- ============ 完成（收尾页） · 对应 app.js 收尾 ============ -->
   <section class="view" id="view-done">
     <div class="done">
       <div class="done-kicker" id="doneKicker">这一轮结束了</div>
@@ -189,7 +210,7 @@
   </section>
 
 
-  <!-- ============ 作文训练 ============ -->
+  <!-- ============ 作文训练 · 对应 app.js 作文 + modules/reviewwords-enhancements.js ============ -->
   <section class="view" id="view-writing">
     <div class="page writing-page">
       <h2 class="page-title">作文训练</h2>
@@ -222,7 +243,7 @@
     </div>
   </section>
 
-  <!-- ============ 独立全屏打字练习 ============ -->
+  <!-- ============ 全屏打字练习 · 对应 app.js 打字 + hands.js（懒加载） ============ -->
   <section class="view" id="view-typing" aria-label="全屏打字练习">
     <div class="typing-screen">
       <div class="typing-screen-head">
@@ -246,7 +267,7 @@
     </div>
   </section>
 
-  <!-- ============ 独立文章历史 ============ -->
+  <!-- ============ 文章历史 · 对应 modules/reviewwords-enhancements.js ============ -->
   <section class="view" id="view-article-history" aria-label="文章历史">
     <div class="page article-history-page">
       <div class="history-page-head"><button type="button" class="ghost-btn" id="btnHistoryBack">← 返回作文训练</button><h2 class="page-title">文章历史</h2></div>
@@ -260,7 +281,7 @@
     </div>
   </section>
 
-  <!-- ============ 独立选词页 ============ -->
+  <!-- ============ 今日薄弱词汇（选词页） · 对应 modules/reviewwords-enhancements.js ============ -->
   <section class="view" id="view-weak-words" aria-label="今日薄弱词汇">
     <div class="page weak-picker-page">
       <div class="history-page-head">
@@ -289,7 +310,7 @@
     </div>
   </section>
 
-  <!-- ============ 书架 ============ -->
+  <!-- ============ 书架 · 对应 app.js 书架 ============ -->
   <section class="view" id="view-books">
     <div class="page">
       <div class="bookshelf-head">
@@ -303,7 +324,7 @@
     </div>
   </section>
 
-  <!-- ============ 统计 ============ -->
+  <!-- ============ 统计 · 对应 app.js 统计与图表 ============ -->
   <section class="view" id="view-stats">
     <div class="page">
       <h2 class="page-title">统计</h2>
@@ -403,7 +424,7 @@
     </div>
   </section>
 
-  <!-- ============ 打字练习记录 ============ -->
+  <!-- ============ 打字练习记录 · 对应 app.js 打字成绩 ============ -->
   <section class="view" id="view-typing-history">
     <div class="page typing-hist-page">
       <div class="history-page-head">
@@ -423,7 +444,7 @@
     </div>
   </section>
 
-  <!-- ============ 词库：查词词典 ============ -->
+  <!-- ============ 词库（查词词典） · 对应 app.js 词库 + dict.js（懒加载） ============ -->
   <section class="view" id="view-words">
     <div class="page">
       <div class="dict-head">
@@ -456,7 +477,7 @@
     </div>
   </section>
 
-  <!-- ============ 我的收藏 ============ -->
+  <!-- ============ 我的收藏 · 对应 app.js 收藏 ============ -->
   <section class="view" id="view-favs">
     <div class="page">
       <h2 class="page-title">我的收藏</h2>
@@ -479,7 +500,7 @@
 
 </main>
 
-<!-- ============ 手机底部导航（≤720px 显示） ============ -->
+<!-- ============ 共享层：手机底部导航（≤720px 显示） ============ -->
 <nav class="tabbar" id="tabbar" aria-label="底部导航">
   <button class="tab-item nav-btn" type="button" data-view="today">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h9.5A2.5 2.5 0 0 1 17 7v12.5H7.5A2.5 2.5 0 0 1 5 17z"/><path d="M8 8h6M8 11h6"/></svg>
@@ -514,7 +535,7 @@
   </div>
 </section>
 
-<!-- ============ 新建词书弹层 ============ -->
+<!-- ============ 共享层：新建词书弹层 ============ -->
 <div class="modal-mask" id="newBookMask"></div>
 <div class="modal" id="newBookModal" role="dialog" aria-modal="true" aria-labelledby="newBookModalTitle" aria-hidden="true">
   <div class="modal-head">
@@ -534,7 +555,7 @@
   </div>
 </div>
 
-<!-- ============ 单词详细资料 ============ -->
+<!-- ============ 共享层：单词详细资料弹层 ============ -->
 <div class="detail-mask" id="detailMask"></div>
 <section class="detail-sheet" id="detailSheet" aria-hidden="true" role="dialog" aria-label="单词详细资料">
   <div class="detail-head">
@@ -548,7 +569,7 @@
 </section>
 
 
-<!-- ============ 设置抽屉 ============ -->
+<!-- ============ 共享层：设置抽屉 ============ -->
 <div class="drawer-mask" id="drawerMask"></div>
 <aside class="drawer" id="drawer">
   <div class="drawer-head">
