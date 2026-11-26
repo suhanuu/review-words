@@ -14,7 +14,6 @@
   var books = readBooks();
   var activeBookId = localStorage.getItem(ACTIVE_BOOK_KEY) || DEFAULT_BOOK_ID;
   if (!books.some(function (b) { return b.id === activeBookId; })) activeBookId = DEFAULT_BOOK_ID;
-  var MAX_TRIES = 3;
   var MIN = 60000;
   var DAY = 86400000;
 
@@ -27,8 +26,6 @@
     theme: 'light',
     sound: true,
     autoplay: true,
-    hideAnswer: false,
-    showPinyin: true,
     fontScale: 1,
     dailyGoal: 10,     // 学习目标（今天新学几个），学习页右上角可以改
     reviewGoal: 10     // 复习目标（今天复习几个）
@@ -372,17 +369,7 @@
     phase: 'idle',
     current: null,
     origin: 'new',
-    grade: 0,
-    errors: 0,
-    mistakes: 0,
-    locked: false,
-    lockValue: '',
-    composing: false,
-    committed: '',
-    comp: '',
-    wordStart: 0,
-    step: 0,
-    forced: []
+    step: 0
   };
 
   var timerId = null;
@@ -560,84 +547,17 @@
     focusHand(layerOfHand('left'), layerOfHand('right'));
   }
 
-  // ===== 下一个字母的指法提示 =====
-  // 整串推进：从当前字开始，把后面所有字的拼音接成一条，减去输入法缓冲里已敲的字母，
-  // 剩下的第一个就是下一个字母。这样一路敲到底，不会在每个字边界停下。
-  function restPinyin() {
-    var w = state.current;
-    if (!w) return '';
-    var chars = Array.from(w.a || '');
-    var py = pinyinAlign(w.a || '');
-    var typed = Array.from(state.committed || '').length;
-    var rest = '';
-    for (var j = typed; j < chars.length; j++) rest += (py[j] || '');
-    return rest.replace(/ü/g, 'v').replace(/[^a-z]/g, '');
-  }
-
   // 键盘常驻，时刻告诉用户“现在该做什么”。
   // codes: 要高亮的键（可能多个）；text: 状态栏文案；hand: 手部要伸到哪个键
   function hintState() {
     var out = { codes: [], text: '', hand: '' };
     if (state.view !== 'drill') return out;
 
-    // ① 看词自评：J / K / L 三选一，三个键一起亮
+    // 看词自评：J / K / L 三选一，三个键一起亮；评完分就没有键位提示了
     if (state.phase === 'recall') {
       out.codes = ['KeyJ', 'KeyK', 'KeyL'];
-      out.text = '选择记忆程度 · J 忘了 / K 模糊 / L 很熟';
-      return out;
+      out.text = '选择记忆程度 · J 忘了 / K 模糊 / L 熟悉';
     }
-
-    if (state.phase !== 'typing') return out;
-
-    // ② 打错了被锁住：先把错的删掉
-    if (state.locked) {
-      out.codes = ['Backspace'];
-      out.text = '打错了 · Backspace 删掉重来';
-      return out;
-    }
-
-    var w = state.current;
-    if (!w) return out;
-
-    var chars = Array.from(w.a || '');
-    var typed = Array.from(state.committed || '').length;
-
-    // ③ 答案已全部上屏：Enter 提交
-    if (typed >= chars.length) {
-      out.codes = ['Enter'];
-      out.text = '答案已输入完 · Enter 提交';
-      out.hand = 'Enter';
-      return out;
-    }
-
-    // 开了「隐藏答案」就不再提示字母，否则等于把读音漏出来
-    if (db.settings.hideAnswer) {
-      out.text = '按拼音输入中文';
-      return out;
-    }
-
-    var target = restPinyin();
-    if (!target) return out;
-
-    var buf = String(state.comp || '').toLowerCase().replace(/[^a-z]/g, '');
-    var n = 0;
-    while (n < buf.length && n < target.length && buf.charAt(n) === target.charAt(n)) n++;
-
-    // ④ 整串拼音敲完：空格上屏
-    if (n >= target.length) {
-      out.codes = ['Space'];
-      out.text = '拼音已敲完 · 空格上屏';
-      out.hand = 'Space';
-      return out;
-    }
-
-    // ⑤ 逐字母提示；敲错/简拼对不上时，提示的仍是「这一位该敲的字母」，把人带回来
-    var letter = target.charAt(n);
-    var code = 'Key' + letter.toUpperCase();
-    var name = FINGER_NAMES[FINGER_MAP[code]] || '';
-    out.codes = [code];
-    out.text = '下一个 ' + letter + (name ? ' · ' + name : '');
-    out.hand = code;
     return out;
   }
 
@@ -703,10 +623,9 @@
 
   function visualKey(e, down) {
     if (state.view !== 'typing' && state.view !== 'drill') return;
-    if (state.view === 'drill' && state.phase !== 'typing' && state.phase !== 'recall') return;
+    if (state.view === 'drill' && state.phase !== 'recall') return;
     // 作文训练只响应真实键盘事件，不允许点击屏幕键盘代替输入。
     if (down && state.view === 'typing' && document.activeElement !== el('writingInput')) return;
-    if (down && state.view === 'drill' && state.phase === 'typing' && document.activeElement !== el('typeInput')) return;
     var code = eventCode(e);
     if (!code) return;
     var key = document.querySelector('.kb-key[data-code="' + code + '"]');
@@ -725,9 +644,8 @@
     }
   }
 
-  // ================= 音效 =================
+  // ================= 提示音 =================
   var actx = null;
-  var noiseBuf = null;
 
   function ensureCtx() {
     if (!actx) {
@@ -737,78 +655,6 @@
     }
     if (actx.state === 'suspended') actx.resume();
     return actx;
-  }
-
-  function noiseSource() {
-    if (!noiseBuf) {
-      // 一段平坦白噪，包络完全交给 gain 控制，这样每次敲击都能硬起硬落
-      var len = Math.floor(actx.sampleRate * 0.06);
-      noiseBuf = actx.createBuffer(1, len, actx.sampleRate);
-      var d = noiseBuf.getChannelData(0);
-      for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-    }
-    var s = actx.createBufferSource();
-    s.buffer = noiseBuf;
-    return s;
-  }
-
-  // 机械键盘「嗒」：1.5ms 起音 + 十几毫秒急收，不留尾巴
-  // kind: 'down' 按下 / 'up' 抬起 / 'space' 空格 / 'enter' 回车
-  var CLICK = {
-    down: { f: 3300, q: 0.95, hp: 1300, dur: 0.021, amp: 0.62, body: 0.042, bf: 620 },
-    up: { f: 4700, q: 1.2, hp: 2200, dur: 0.012, amp: 0.30, body: 0.012, bf: 760 },
-    space: { f: 2900, q: 0.8, hp: 1100, dur: 0.025, amp: 0.68, body: 0.058, bf: 420 },
-    enter: { f: 2600, q: 0.78, hp: 1000, dur: 0.028, amp: 0.70, body: 0.062, bf: 350 }
-  };
-
-  function keyClick(kind) {
-    if (!db.settings.sound) return;
-    if (!ensureCtx()) return;
-
-    var c = CLICK[kind] || CLICK.down;
-    var t = actx.currentTime;
-    var j = 0.94 + Math.random() * 0.12;
-
-    try {
-      var src = noiseSource();
-      var bp = actx.createBiquadFilter();
-      bp.type = 'bandpass';
-      bp.frequency.value = c.f * j;
-      bp.Q.value = c.q;
-
-      var hp = actx.createBiquadFilter();
-      hp.type = 'highpass';
-      hp.frequency.value = c.hp;
-
-      // 提亮 7.2kHz，让「嗒」更脆
-      var pk = actx.createBiquadFilter();
-      pk.type = 'peaking';
-      pk.frequency.value = 7200 * j;
-      pk.Q.value = 1.1;
-      pk.gain.value = 8;
-
-      var g1 = actx.createGain();
-      g1.gain.setValueAtTime(0, t);
-      g1.gain.linearRampToValueAtTime(c.amp, t + 0.0015);
-      g1.gain.exponentialRampToValueAtTime(0.0001, t + c.dur);
-
-      src.connect(bp); bp.connect(hp); hp.connect(pk); pk.connect(g1); g1.connect(actx.destination);
-      src.start(t); src.stop(t + c.dur + 0.004);
-
-      // 一点点腔体厚度，只做 10ms 左右的起音，不拖
-      if (c.body > 0.012) {
-        var o = actx.createOscillator();
-        var g2 = actx.createGain();
-        o.type = 'sine';
-        o.frequency.setValueAtTime(c.bf * j, t);
-        o.frequency.exponentialRampToValueAtTime(c.bf * 0.5, t + c.dur * 0.7);
-        g2.gain.setValueAtTime(0, t);
-        g2.gain.linearRampToValueAtTime(c.body, t + 0.0018);
-        g2.gain.exponentialRampToValueAtTime(0.0001, t + c.dur * 0.8);
-        o.connect(g2); g2.connect(actx.destination);
-        o.start(t); o.stop(t + c.dur);
-      }
-    } catch (e) {}
   }
 
   function beep(freq, dur, type, vol) {
@@ -823,38 +669,6 @@
       g.gain.setValueAtTime(vol || 0.04, t);
       g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
       o.start(t); o.stop(t + dur + 0.02);
-    } catch (e) {}
-  }
-
-  function isClickKey(e) {
-    var k = e.key;
-    if (!k) return false;
-    return k !== 'Shift' && k !== 'Control' && k !== 'Alt' && k !== 'Meta' &&
-      k !== 'CapsLock' && k !== 'AltGraph' && k !== 'Tab' && k !== 'Dead' &&
-      k !== 'ContextMenu' && k !== 'Escape';
-  }
-
-  // 打错的提示音：两声下行的方波，明显区别于键盘咔声
-  function errBeep(vol) {
-    if (!db.settings.sound) return;
-    if (!ensureCtx()) return;
-    try {
-      var t = actx.currentTime;
-      var lp = actx.createBiquadFilter();
-      lp.type = 'lowpass';
-      lp.frequency.value = 1900;
-      lp.connect(actx.destination);
-
-      [0, 0.085].forEach(function (off, i) {
-        var o = actx.createOscillator(), g = actx.createGain();
-        o.type = 'square';
-        o.frequency.value = i ? 152 : 214;
-        g.gain.setValueAtTime(0.0001, t + off);
-        g.gain.linearRampToValueAtTime(vol || 0.15, t + off + 0.006);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + off + 0.075);
-        o.connect(g); g.connect(lp);
-        o.start(t + off); o.stop(t + off + 0.09);
-      });
     } catch (e) {}
   }
 
@@ -925,13 +739,6 @@
     });
   }
 
-  function normalize(s) {
-    return String(s)
-      .replace(/[\s\u3000]/g, '')
-      .replace(/[，。、；：！？·…—\-–—""''（）()《》〈〉【】\[\]{}~～]/g, '')
-      .toLowerCase();
-  }
-
   function extractAnswer(def) {
     var s = String(def).replace(/^[a-zA-Z]{1,5}\.\s*/, '');
     s = s.split(/[；;、\/]/)[0];
@@ -939,38 +746,8 @@
     return s.slice(0, 14);
   }
 
-  // ================= 拼音 =================
+  // ================= 汉字判定（词表搜索用）=================
   var HAN = /[\u3400-\u4dbf\u4e00-\u9fff\uF900-\uFAFF]/;
-  var pyCache = {};
-
-  // 返回与字符一一对应的无声调拼音；非汉字位置为空串
-  function pinyinAlign(text) {
-    if (pyCache[text]) return pyCache[text];
-
-    var chars = Array.from(text);
-    var out = chars.map(function () { return ''; });
-    var zh = '', idx = [];
-
-    chars.forEach(function (c, i) {
-      if (HAN.test(c)) { zh += c; idx.push(i); }
-    });
-
-    var arr = [];
-    if (zh && window.pinyinPro) {
-      try {
-        arr = window.pinyinPro.pinyin(zh, { toneType: 'none', type: 'array', nonZh: 'removed' }) || [];
-      } catch (e) { arr = []; }
-    }
-
-    idx.forEach(function (pos, k) {
-      var p = String(arr[k] || '').toLowerCase();
-      out[pos] = /^[a-zü]+$/.test(p) ? p : '';
-    });
-
-    pyCache[text] = out;
-    return out;
-  }
-
   // ================= 视图切换 =================
   function setView(name) {
     state.view = name;
@@ -1146,16 +923,16 @@
     btn.title = done ? '这个词已经标记完成，不会再出现' : '点一下标记为已完成，这个词以后不再出现';
   }
 
+  // 自评阶段整个答案区都不出现，连字数也不透露；评完分由 renderMeaning() 填中文意思
+  function clearAnswer() {
+    el('answerText').innerHTML = '';
+    updateHint();
+  }
+
   function loadWord(w, mode) {
     state.current = w;
     state.origin = mode || 'new';
     state.phase = 'recall';
-    state.grade = 0;
-    state.errors = 0;
-    state.mistakes = 0;
-    state.locked = false;
-    state.lockValue = '';
-    state.wordStart = Date.now();
 
     el('wordText').textContent = w.w;
     el('stageMode').textContent = mode === 'due' ? '间隔复习' : '看词自评';
@@ -1170,22 +947,13 @@
     prefetchDetail(w.w);
     // 三个自评选项在看词阶段就出现：先凭印象定级，定完才揭晓中文
     el('rateRow').classList.add('show');
-    el('typeRow').classList.remove('show');
     // 这一屏还没有答案，把答案区收起来，别留一大片空白
     document.querySelector('.drill').classList.add('is-recall');
     document.querySelector('.drill').classList.remove('is-reveal');
     // 背词阶段只看词义并自评；键盘与手部动画统一放到作文训练。
     showKeyboard(false);
 
-    var inp = el('typeInput');
-    inp.value = '';
-    inp.disabled = true;
-    inp.classList.remove('is-ok', 'is-bad');
-    state.committed = '';
-    state.comp = '';
-
-    setFeedback('');
-    renderAnswer();
+    clearAnswer();
     renderProgress();
     renderMasterBtn();
     syncFavUI();
@@ -1342,152 +1110,6 @@
       (wait ? ' · <span class="due-next">下一词 ' + countdownText(wait) + '</span>' : '');
   }
 
-  // ================= 打字判定 =================
-  function firstMismatch(typed) {
-    var w = state.current;
-    if (!w) return -1;
-    var chars = Array.from(w.a || '');
-    for (var i = 0; i < typed.length; i++) {
-      if (i >= chars.length || typed[i] !== chars[i]) return i;
-    }
-    return -1;
-  }
-
-  function onWrongChar() {
-    errBeep(0.16);
-    var ans = el('answerText');
-    ans.classList.add('shake');
-    setTimeout(function () { ans.classList.remove('shake'); }, 340);
-    setFeedback('打错了 · Backspace 删掉这个字再继续', 'bad');
-  }
-
-  function refreshTyped() {
-    var inp = el('typeInput');
-    state.committed = inp.value;
-    var bad = firstMismatch(Array.from(state.committed));
-
-    if (bad >= 0) {
-      if (!state.locked) {
-        state.locked = true;
-        state.lockValue = inp.value;
-        state.mistakes += 1;
-        onWrongChar();
-      }
-    } else if (state.locked) {
-      state.locked = false;
-      setFeedback('');
-    }
-
-    renderAnswer();
-  }
-
-  // 上锁期间只接受从尾部删除，其它一律回滚
-  function acceptEdit() {
-    var inp = el('typeInput');
-    if (state.locked) {
-      var v = inp.value, old = state.lockValue;
-      var isDelete = v.length < old.length && old.indexOf(v) === 0;
-      if (v !== old && !isDelete) {
-        inp.value = old;
-        renderAnswer();
-        beep(120, 0.03, 'square', 0.028);
-        return;
-      }
-    }
-    refreshTyped();
-  }
-
-  function renderAnswer() {
-    var w = state.current;
-    if (!w) return;
-
-    var host = el('answerText');
-    var chars = Array.from(w.a || '');
-    var py = pinyinAlign(w.a || '');
-    var typed = Array.from(state.committed || '');
-    var masked = state.phase === 'recall' || state.phase === 'idle';
-    var hide = db.settings.hideAnswer && state.phase === 'typing';
-    var showPy = !masked && !hide && db.settings.showPinyin !== false;
-
-    // 自评阶段整个答案区都不出现，连字数也不透露
-    if (masked) {
-      host.innerHTML = '';
-      updateHint();
-      return;
-    }
-
-    // 每个字起始位置对应的字母序号
-    var pre = [0];
-    for (var k = 0; k < chars.length; k++) pre.push(pre[k] + (py[k] || '').length);
-    var base = pre[Math.min(typed.length, chars.length)];
-
-    // 输入法组词中：数出当前已经敲对的字母（前缀匹配，错位即停）
-    var compOn = 0;
-    var comp = String(state.comp || '').toLowerCase().replace(/[^a-z]/g, '');
-    if (showPy && comp && !state.locked) {
-      var rest = '';
-      for (var j = typed.length; j < chars.length; j++) rest += (py[j] || '');
-      rest = rest.replace(/ü/g, 'v');
-      var n = 0;
-      while (n < comp.length && n < rest.length && comp.charAt(n) === rest.charAt(n)) n++;
-      compOn = n;
-    }
-
-    var html = '';
-
-    // 下一个待敲字母在整串拼音里的序号（用于拼音行与键盘的同步提示）
-    var nextIdx = base + compOn;
-    // 一路走到整条拼音串末尾：字边界不再是提示的终点
-    var nxLimit = pre[chars.length];
-
-    chars.forEach(function (ch, i) {
-      var cls = 'pending';
-      if (i < typed.length) cls = typed[i] === ch ? 'ok' : 'bad';
-
-      if (hide) {
-        var color = cls === 'ok' ? '--accent' : cls === 'bad' ? '--bad' : '--pending';
-        html += '<span class="cell"><span class="py"></span>' +
-          '<span class="mask" style="opacity:1;background:var(' + color + ')"></span></span>';
-        return;
-      }
-
-      var pyHtml = '';
-      var p = py[i] || '';
-      if (showPy && p) {
-        pyHtml = Array.from(p).map(function (L, li) {
-          var g = pre[i] + li;
-          var on = i < typed.length
-            ? cls === 'ok'
-            : (g >= base && g < base + compOn);
-          // 紧挨着已敲字母后的那一个，就是键盘上要提示、手指要落下的字母
-          var nx = (!on && !state.locked && state.phase === 'typing' && g === nextIdx && nextIdx < nxLimit);
-          return '<i class="' + (on ? 'on' : '') + (nx ? ' nx' : '') + '">' + esc(L) + '</i>';
-        }).join('');
-      }
-
-      html += '<span class="cell">' +
-        '<span class="py">' + pyHtml + '</span>' +
-        '<span class="ch ' + cls + '">' + esc(ch) + '</span>' +
-        '</span>';
-    });
-
-    if (!hide && typed.length > chars.length) {
-      for (var i = chars.length; i < typed.length; i++) {
-        html += '<span class="cell"><span class="py"></span>' +
-          '<span class="ch bad">' + esc(typed[i]) + '</span></span>';
-      }
-    }
-
-    host.innerHTML = html;
-    updateHint();
-  }
-
-  function setFeedback(msg, kind) {
-    var f = el('feedback');
-    f.textContent = msg || '';
-    f.className = 'feedback' + (kind ? ' ' + kind : '');
-  }
-
   // 自评揭晓：把中文意思放进原来打字的大字位置，任何窗口高度都先看到意思；
   // 完整释义、已记录提示依次排在下面，实在放不下时先裁掉最下面的提示。
   function renderMeaning() {
@@ -1538,8 +1160,7 @@
   // 背词只做熟悉度判断：先存记录，再揭晓释义
   function rate(g) {
     if (state.phase !== 'recall') return;
-    state.grade = g;
-    finish(true, g, true, true);
+    finish(g);
     revealMeaning();
   }
 
@@ -1578,50 +1199,8 @@
     beep(660, 0.07, 'sine', 0.04);
   }
 
-  function submit() {
-    if (state.phase !== 'typing') return;
-
-    var w = state.current;
-    var inp = el('typeInput');
-    var typed = inp.value;
-    if (!typed.trim()) return;
-
-    if (normalize(typed) === normalize(w.a)) {
-      finish(true);
-      return;
-    }
-
-    state.errors += 1;
-    inp.classList.add('is-bad');
-    el('typeRow').classList.add('shake');
-    errBeep(0.14);
-    setTimeout(function () { el('typeRow').classList.remove('shake'); }, 360);
-
-    if (state.errors >= MAX_TRIES) {
-      state.phase = 'judged';
-      inp.value = w.a;
-      state.committed = w.a;
-      state.comp = '';
-      state.locked = false;
-      state.lockValue = '';
-      renderAnswer();
-      setFeedback('已给出答案 · 这个词记为「忘了」', 'bad');
-      setTimeout(function () { finish(false, 1); }, 1200);
-      return;
-    }
-
-    setFeedback('不对，再试一次（还剩 ' + (MAX_TRIES - state.errors) + ' 次）', 'bad');
-    inp.value = '';
-    state.committed = '';
-    state.comp = '';
-    state.locked = false;
-    state.lockValue = '';
-    renderAnswer();
-    setTimeout(function () { inp.classList.remove('is-bad'); }, 500);
-  }
-
-  function finish(ok, forcedGrade, reviewOnly, holdForMeaning) {
-    if (state.phase === 'judged' && !forcedGrade) return;
+  // 自评落库：grade 1 忘了 / 2 模糊 / 3 熟悉。间隔怎么走全在 applyGrade（schedule.js）
+  function finish(grade) {
     state.phase = 'judged';
     updateHint();   // 这一词已结束，清掉键位提示
 
@@ -1629,20 +1208,14 @@
     var rec = getRec(w.w);
     var wasNew = rec.seen === 0;
 
-    var grade = forcedGrade || state.grade || 2;
-    if (db.settings.hideAnswer && state.errors > 0) grade = Math.min(grade, 2);
-
     // applyGrade 内部写 step / iv / dueAt / last / lastAt / forgot，这里不再重复写时间
     applyGrade(rec, grade);
     rec.seen += 1;
-    if (reviewOnly ? grade < 3 : (!ok || state.errors > 0 || state.mistakes > 0)) rec.wrong += 1;
+    if (grade < 3) rec.wrong += 1;
 
     var d = dayEntry();
     d.words += 1;
-    if (!reviewOnly) {
-      d.chars += Array.from(w.a).length;
-    }
-    if (reviewOnly ? grade === 3 : (ok && state.errors === 0 && state.mistakes === 0)) d.clean += 1;
+    if (grade === 3) d.clean += 1;
     if (wasNew) d.newWords += 1;
 
     // 学习池是「一直轮」：没攒满 3 次的排回队尾，等这一轮过完再来
@@ -1653,33 +1226,7 @@
     save();
     renderProgress();
     renderMasterBtn();
-
-    // 评价完立刻把这个词推进未来的队列，本轮不会再出现
-    var gap = ivText(rec.iv);
-    var inp = el('typeInput');
-    if (reviewOnly) {
-      setFeedback((grade === 1 ? '已记录：忘了' : grade === 2 ? '已记录：模糊' : '已记录：很熟') + ' · ' + gap + '后复习', 'ok');
-      beep(520, 0.045, 'sine', 0.025);
-      if (!holdForMeaning) setTimeout(next, 260);
-    } else if (ok) {
-      inp.classList.remove('is-bad');
-      inp.classList.add('is-ok');
-      setFeedback('对了 · ' + gap + '后复习', 'ok');
-      beep(660, 0.07, 'sine', 0.04);
-      setTimeout(function () { beep(990, 0.09, 'sine', 0.032); }, 75);
-      setTimeout(next, 430);
-    } else {
-      setFeedback('已给出答案 · 记为「忘了」· ' + gap + '后复习', 'bad');
-      setTimeout(next, 1150);
-    }
-  }
-
-  // 间隔转成「15 分钟」「2.2 天」这种短文案
-  function ivText(ms) {
-    if (ms < 60 * MIN) return Math.round(ms / MIN) + ' 分钟';
-    if (ms < DAY) return Math.round(ms / (60 * MIN)) + ' 小时';
-    var d = ms / DAY;
-    return (d < 10 ? Math.round(d * 10) / 10 : Math.round(d)) + ' 天';
+    beep(520, 0.045, 'sine', 0.025);
   }
 
   function next() {
@@ -2609,9 +2156,6 @@
     el('detailSheet').classList.add('show');
     el('detailSheet').setAttribute('aria-hidden', 'false');
 
-    var inp = el('typeInput');
-    if (inp) inp.blur();
-
     var intro = { w: word, ph: phonetic, def: def, forms: forms || '' };
     detailOf(word).then(function (rec) {
       if (!detailShown) return;         // 取的过程中已经关掉了
@@ -2628,11 +2172,6 @@
     el('detailMask').classList.remove('show');
     el('detailSheet').classList.remove('show');
     el('detailSheet').setAttribute('aria-hidden', 'true');
-    // 从打字阶段打开的，关掉就把焦点还给输入框，接着敲
-    if (state.view === 'drill' && state.phase === 'typing') {
-      var inp = el('typeInput');
-      try { inp.focus({ preventScroll: true }); } catch (e) { inp.focus(); }
-    }
   }
 
   function openCurrentDetail() {
@@ -3223,68 +2762,6 @@
       });
     });
 
-    var inp = el('typeInput');
-
-    inp.addEventListener('compositionstart', function () {
-      state.composing = true;
-      state.comp = '';
-    });
-
-    // 组词过程中实时读拼音，逐字母点亮
-    inp.addEventListener('compositionupdate', function (e) {
-      state.composing = true;
-      state.comp = e.data || '';
-      renderAnswer();
-    });
-
-    inp.addEventListener('compositionend', function () {
-      state.composing = false;
-      state.comp = '';
-      acceptEdit();
-    });
-
-    inp.addEventListener('input', function () {
-      if (state.composing) return;
-      acceptEdit();
-    });
-
-    // 锁定时拦掉一切插入（含粘贴、拖入）
-    inp.addEventListener('beforeinput', function (e) {
-      if (!state.locked) return;
-      var t = e.inputType || '';
-      if (t.indexOf('insert') === 0) {
-        e.preventDefault();
-        beep(120, 0.03, 'square', 0.028);
-      }
-    });
-
-    inp.addEventListener('keydown', function (e) {
-      // 长按不连发「咔」声，也避免误提交
-      if (e.repeat) return;
-
-      if (e.key === 'Enter') {
-        if (e.isComposing || state.composing) { keyClick('enter'); return; }
-        keyClick('enter');
-        e.preventDefault();
-        submit();
-        return;
-      }
-
-      // 打错后锁死：只放行删除与方向键，其余按键无效
-      if (state.locked && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault();
-        beep(120, 0.03, 'square', 0.028);
-        return;
-      }
-
-      if (isClickKey(e)) keyClick(e.key === ' ' ? 'space' : 'down');
-    });
-
-    inp.addEventListener('keyup', function (e) {
-      if (e.key === 'Enter') return;
-      if (isClickKey(e)) keyClick('up');
-    });
-
     document.addEventListener('keydown', function (e) {
       // 详细面板打开时，键盘交给面板：只认 Esc，别把 J/K/L 当成自评
       if (detailShown) {
@@ -3607,7 +3084,6 @@
     duePool: duePool,
     // 给回归脚本直接改记录的入口（只读引用，别在页面里依赖它）
     records: function () { return db.records; },
-    ivText: ivText,
     dueCount: dueCount,
     overdueCount: overdueCount,
     nextDueIn: nextDueIn,

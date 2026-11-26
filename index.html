@@ -143,12 +143,6 @@
             <button class="rate" data-grade="3"><kbd>L</kbd>熟悉</button>
           </div>
           <button class="meaning-next-btn" id="btnMeaningNext" type="button" hidden>下一个单词 <span aria-hidden="true">→</span></button>
-
-          <div class="type-row" id="typeRow" hidden>
-            <input id="typeInput" type="text" autocomplete="off" autocorrect="off"
-                   autocapitalize="off" spellcheck="false" placeholder="把中文意思敲出来">
-            <div class="feedback" id="feedback"></div>
-          </div>
         </div>
       </div>
       </div>
@@ -541,22 +535,6 @@
 
   <div class="setting">
     <div>
-      <div class="setting-name">保留旧版答案隐藏设置</div>
-      <div class="setting-desc">作文训练的显示方式将在作文模块中单独控制</div>
-    </div>
-    <div class="switch" data-toggle="hideAnswer"></div>
-  </div>
-
-  <div class="setting">
-    <div>
-      <div class="setting-name">拼音提示（旧版兼容）</div>
-      <div class="setting-desc">背词页已改为看词自评，不再进行中文拼音打字</div>
-    </div>
-    <div class="switch on" data-toggle="showPinyin"></div>
-  </div>
-
-  <div class="setting">
-    <div>
       <div class="setting-name">音效</div>
       <div class="setting-desc">按键、对、错的轻提示音</div>
     </div>
@@ -590,7 +568,6 @@
 
 <script src="./assets/words.js"></script>
 <script src="./assets/hands.js"></script>
-<script src="./assets/vendor/pinyin-pro.js"></script>
 <script src="./assets/schedule.js"></script>
 <script src="./assets/modules/core/persistence-bootstrap.js"></script>
 </body>
