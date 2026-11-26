@@ -2,10 +2,12 @@
 // 全部计算样式和盒子尺寸，逐个元素比对。拆样式表、挪规则、删“看起来没用”的选择器之后跑一遍，
 // 没有任何差异才敢说“视觉零变化”。
 //
-// 跑法：node tests/style.diff.mjs                        （基线 = HEAD）
+// 跑法：node tests/style.diff.mjs                        （基线 = HEAD，默认状态）
 //       node tests/style.diff.mjs 9ce310f               （基线 = 指定的提交）
 //       node tests/style.diff.mjs HEAD --allow-rule-changes
 //           删规则、合并规则时用：规则序列允许不同，只看每个元素算出来的样式是否一致。
+//       node tests/style.diff.mjs HEAD --pseudo [--allow-rule-changes]
+//           改拍“交互态”：把所有可点元素强制成悬停 + 按下 + 聚焦，用来守住 :hover / :active / :focus 的规则。
 // 需要：python（起静态服务）、Edge（无头）、git（把基线检出到临时目录）
 import { spawn, execFileSync } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -87,6 +89,8 @@ const SCENES = [
 ];
 const SIZES = [[1280, 800], [390, 844]];
 const THEMES = ['light', 'dark'];
+// --pseudo：不拍默认状态，改拍“所有可点元素都悬停 + 按下 + 聚焦”的状态，用来守住 :hover / :active / :focus 的规则
+const PSEUDO = process.argv.includes('--pseudo');
 
 const applyScene = (scene, theme) => `(() => {
   const s = ${JSON.stringify(scene)};
@@ -160,6 +164,8 @@ try {
   await cdp.ready;
   await cdp.send('Page.enable');
   await cdp.send('Runtime.enable');
+  let rootId = 0;
+  const PSEUDO_CLASSES = ['hover', 'active', 'focus'];
 
   const load = async (port) => {
     // 两边必须在同一种设备模拟状态下加载。上一轮抓取结束时留下的是“手机宽度”，不清掉的话
@@ -168,6 +174,9 @@ try {
     await cdp.send('Emulation.clearDeviceMetricsOverride');
     await cdp.send('Page.navigate', { url: `http://127.0.0.1:${port}/` });
     await waitFor('app 启动', () => cdp.eval('!!(window.__review && document.getElementById("view-today"))'));
+    await cdp.send('DOM.enable');
+    await cdp.send('CSS.enable');
+    rootId = (await cdp.send('DOM.getDocument', { depth: 0 })).root.nodeId;
     // 关掉过渡和动画，两个版本都停在最终状态；否则比对结果取决于抓取时机
     await cdp.eval(`(() => { const st = document.createElement('style'); st.id = '__noanim';
       st.textContent = '*,*::before,*::after{transition:none!important;animation:none!important}';
@@ -192,6 +201,14 @@ try {
           await cdp.eval(applyScene(scene, theme));
           await sleep(60);
           const key = `${w}x${h} ${theme} ${scene.view}${scene.reveal ? '(揭晓)' : ''}${scene.overlay ? '+' + scene.overlay : ''}`;
+          let forced = [];
+          if (PSEUDO) {
+            // 把所有可点、可输入的元素强制成“悬停 + 按下 + 聚焦”，给 :hover / :active / :focus 的规则也拍一张
+            const { nodeIds } = await cdp.send('DOM.querySelectorAll', { nodeId: rootId, selector: 'button, a[href], input, select, textarea, [tabindex], label, summary, .rate, .book-card, .fav-btn' });
+            for (const nodeId of nodeIds) await cdp.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: PSEUDO_CLASSES });
+            forced = nodeIds;
+            await sleep(40);
+          }
           let start = 0, snap = { count: 0, body: '', all: [], names: [] };
           do {
             const part = await cdp.eval(snapshotPart(start, CHUNK));
@@ -199,7 +216,8 @@ try {
             for (const r of part.records) snap.all.push(r);
             start += CHUNK;
           } while (start < snap.count);
-          out[key] = snap;
+          for (const nodeId of forced) await cdp.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [] });
+          out[key + (PSEUDO ? ' 交互态' : '')] = snap;
         }
         console.log(`     [${tag}] ${w}x${h} ${theme}：${SCENES.length} 个场景，${((Date.now() - t0) / 1000).toFixed(1)} 秒`);
       }

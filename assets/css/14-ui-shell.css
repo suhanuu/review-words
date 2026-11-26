@@ -1,4 +1,4 @@
-/* 本文件由原 style.css 第 3154–3509 行原样切出，文件名前的数字就是加载顺序，不要调换 */
+/* 本文件最初由 style.css 第 3154–3509 行切出，文件名前的数字就是加载顺序，不要调换 */
 
 /* ============================================================
    UI 改版 · 第 1 步：骨架统一（版心 / 字号 / 间距）
@@ -88,7 +88,6 @@
 
   /* 表单与说明文字 */
   .writing-label,
-  .book-import-label,
   .ai-settings-fields label,
   .ai-controls label,
   #aiConfigStatus,
@@ -101,12 +100,8 @@
   .weak-pool-note,
   .ai-security-note,
   .ai-settings-summary,
-  .book-import-hint,
   .fav-empty-desc,
   .writing-status,
-  .book-tag,
-  .mode-btn,
-  .typing-metrics,
   .badge,
   .fav-time { font-size: 12px; }
 
@@ -114,7 +109,6 @@
   .detail-ph,
   .detail-sec-title,
   .detail-chip span,
-  .feedback,
   .review-result { font-size: var(--fs-xs); }
 
   .detail-chip b,
@@ -128,8 +122,7 @@
   .fav-ph,
   .weak-word-chip { font-size: 13px; }
   .weak-word-chip small { font-size: 12px; }
-  .book-card p,
-  .book-switch { font-size: var(--fs-xs); }
+  .book-card p { font-size: var(--fs-xs); }
 
   /* ---------- 3. 间距 ---------- */
   .page-sub { margin-bottom: var(--sp-4); }

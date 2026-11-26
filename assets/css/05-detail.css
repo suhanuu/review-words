@@ -1,4 +1,4 @@
-/* 本文件由原 style.css 第 628–1079 行原样切出，文件名前的数字就是加载顺序，不要调换 */
+/* 本文件最初由 style.css 第 628–1079 行切出，文件名前的数字就是加载顺序，不要调换 */
 
 /* ============ 单词详细资料面板 ============ */
 .detail-mask {
@@ -229,26 +229,11 @@
   color: var(--accent);
   text-shadow: 0 0 14px var(--accent-ring);
 }
-/* 下一个待敲的字母：跟着键盘一起提示 */
-.answer .py i.nx {
-  color: var(--accent-deep);
-  text-shadow: 0 0 12px var(--accent-ring);
-  animation: pyNext 1.5s var(--ease) infinite;
-}
-@keyframes pyNext {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.45; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .answer .py i.nx { animation: none; }
-}
-
 .answer .ch {
   line-height: 1.16;
   transition: color 0.14s var(--ease), text-shadow 0.2s var(--ease),
     background-color 0.14s var(--ease);
 }
-.answer .ch.pending { color: var(--pending); }
 .answer .ch.ok {
   color: var(--accent);
   text-shadow: 0 0 18px var(--accent-ring);
@@ -333,20 +318,10 @@
   color: var(--text-soft);
   background: var(--surface);
   box-shadow: var(--shadow-key);
-  transition: color 0.18s var(--ease), border-color 0.18s var(--ease),
-    background-color 0.18s var(--ease), transform 0.18s var(--ease),
-    box-shadow 0.18s var(--ease);
-}
-.rate:hover {
-  color: var(--text);
-  border-color: var(--line-strong);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
 }
 .rate[data-grade="1"]:hover { color: var(--bad); background: var(--bad-soft); border-color: var(--bad); }
 .rate[data-grade="2"]:hover { color: var(--warn); background: var(--warn-soft); border-color: var(--warn); }
 .rate[data-grade="3"]:hover { color: var(--ok); background: var(--ok-soft); border-color: var(--ok); }
-.rate:active { transform: translateY(0); }
 .rate kbd {
   font-family: var(--font-mono);
   font-size: 9.5px;
@@ -358,85 +333,6 @@
   background: var(--surface-2);
   box-shadow: var(--shadow-key);
 }
-
-/* 打字区 */
-.type-row {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  width: min(460px, 86%);
-  opacity: 0;
-  pointer-events: none;
-  transform: translate(-50%, 10px);
-  transition: opacity 0.28s var(--ease), transform 0.28s var(--ease);
-}
-.type-row.show { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
-
-#typeInput {
-  display: block;
-  width: 100%;
-  max-width: 440px;
-  margin: 0 auto;
-  background: var(--field);
-  border: 1px solid var(--line-strong);
-  border-radius: 15px;
-  outline: none;
-  padding: 14px 20px;
-  font-family: var(--font-sans);
-  font-size: 19px;
-  color: var(--text);
-  text-align: center;
-  letter-spacing: 0.09em;
-  box-shadow: var(--shadow-key), 0 8px 22px -18px rgba(23, 22, 15, 0.35);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease),
-    background-color 0.2s var(--ease), transform 0.2s var(--ease);
-}
-[data-theme="dark"] #typeInput {
-  background: rgba(255, 255, 255, 0.055);
-  border-color: rgba(255, 255, 255, 0.14);
-}
-#typeInput::placeholder {
-  color: var(--faint);
-  letter-spacing: 0.02em;
-  font-size: 13.5px;
-}
-#typeInput:focus {
-  border-color: var(--accent);
-  background: var(--surface);
-  box-shadow: 0 0 0 4px var(--accent-ring), var(--shadow-key), 0 12px 30px -20px var(--accent-ring);
-  transform: translateY(-1px);
-}
-#typeInput.is-ok {
-  border-color: var(--ok);
-  color: var(--ok);
-  box-shadow: 0 0 0 4px var(--ok-soft), var(--shadow-key);
-}
-#typeInput.is-bad {
-  border-color: var(--bad);
-  box-shadow: 0 0 0 4px var(--bad-soft), var(--shadow-key);
-}
-
-.shake { animation: shake 0.34s var(--ease); }
-@keyframes shake {
-  0%, 100% { transform: translate(-50%, 0); }
-  18% { transform: translate(calc(-50% - 8px), 0); }
-  42% { transform: translate(calc(-50% + 7px), 0); }
-  68% { transform: translate(calc(-50% - 3px), 0); }
-}
-
-.feedback {
-  height: 24px;
-  margin-top: 12px;
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-  transition: color 0.2s var(--ease);
-}
-.feedback.bad { color: var(--bad); }
-.feedback.ok { color: var(--ok); }
-
 .hints {
   display: flex;
   align-items: center;

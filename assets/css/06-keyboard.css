@@ -1,4 +1,4 @@
-/* 本文件由原 style.css 第 1080–1361 行原样切出，文件名前的数字就是加载顺序，不要调换 */
+/* 本文件最初由 style.css 第 1080–1361 行切出，文件名前的数字就是加载顺序，不要调换 */
 
 /* ============================================================
    键盘指法
@@ -217,10 +217,9 @@
   .drill .stage { min-height: 0; padding: 10px 30px 6px; overflow: hidden; }
   .drill .stage-kicker { margin-bottom: 8px; }
   .drill .word { font-size: clamp(34px, min(5.4vw, 7.6vh), 72px); margin-bottom: 5px; }
-  .drill .phonetic-row { margin-bottom: 10px; flex: 0 0 auto; }
+  .drill .phonetic-row { flex: 0 0 auto; }
   /* 释义区按视口给一个固定高度（自评/打字两个阶段共用，切换单词不跳） */
   .drill .meaning-block {
-    --meaning-h: clamp(104px, 16vh, 150px);
     height: var(--meaning-h);
     min-height: 0;
     gap: 8px;
@@ -272,10 +271,8 @@
 @media (max-height: 620px) and (min-width: 861px) {
   .drill .word { font-size: clamp(28px, min(4.8vw, 6.2vh), 46px); }
   .drill .phonetic-row { margin-bottom: 6px; }
-  .drill .meaning-block { --meaning-h: 64px; }
   .drill .answer { font-size: 19px; min-height: 1.35em; }
   .drill .full-def { display: none; }
-  .drill .action-zone { height: 64px; }
   .keyboard-dock.on { max-height: 160px; }
   .kb-key { height: 20px; }
   .kb-wrap { width: 62%; }

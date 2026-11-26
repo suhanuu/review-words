@@ -1,4 +1,4 @@
-/* 本文件由原 style.css 第 3687–3748 行原样切出，文件名前的数字就是加载顺序，不要调换 */
+/* 本文件最初由 style.css 第 3687–3748 行切出，文件名前的数字就是加载顺序，不要调换 */
 
 /* ============================================================
    学习页：释义与「下一个单词」的位置固定
@@ -13,11 +13,6 @@
   .drill .meaning-entry { font-size: clamp(21px, 1.95vw, 26px); }
   .drill.is-reveal .meaning-entry { font-size: clamp(21px, 1.95vw, 26px); }
 
-  /* 释义区固定 176px：原来随视口 16vh 在 104–150 之间变（768 高的笔记本只有 123px），
-     三个词性都放不下。176px 能整块放下四行 26px 释义（词库里 99% 的词够用），
-     再长的就在框内滚动 */
-  .drill .meaning-block { --meaning-h: 176px; }
-
   /* 释义本身不参与压缩：内容比框高时整块往下溢出并出现滚动，
      而不是被压扁后最后几行被裁掉 */
   .drill.is-reveal .meaning-block > .answer { flex: 0 0 auto; }
@@ -25,10 +20,7 @@
   /* 揭晓后也保持 --meaning-h 的固定高度；safe center 让释义在框内居中，
      真的放不下时退回顶部对齐，不会把第一行裁掉 */
   .drill.is-reveal .meaning-block {
-    height: var(--meaning-h);
-    max-height: var(--meaning-h);
     justify-content: safe center;
-    padding: 2px 0;
     /* 内容放不下时框内可滚；滚动条尽量细，不挡释义 */
     scrollbar-width: thin;
     scrollbar-color: var(--line-strong) transparent;
@@ -45,17 +37,9 @@
   .drill.is-reveal .meaning-block::-webkit-scrollbar-track { background: transparent; }
   /* 没展开的补充释义是透明占位，留着只会把释义往上推，直接让它不占位 */
   .drill .full-def:not(.show) { display: none; }
-
-  /* 动作区固定两行：第一行自评，第二行「下一个单词」 */
-  .drill .action-zone,
-  .drill.is-reveal .action-zone {
-    height: 104px;
-    margin-top: 6px;
-  }
   .drill .meaning-next-btn {
     position: absolute;
     left: 50%;
-    top: 58px;
     transform: translateX(-50%);
   }
   .drill .meaning-next-btn:hover { transform: translateX(-50%) translateY(-1px); }

@@ -1,17 +1,8 @@
-/* 本文件由原 style.css 第 2841–3153 行原样切出，文件名前的数字就是加载顺序，不要调换 */
+/* 本文件最初由 style.css 第 2841–3153 行切出，文件名前的数字就是加载顺序，不要调换 */
 
 /* ============================================================
    自评揭晓释义
    ============================================================ */
-/* 中文意思放回原来打字的大字位置：窗口再矮也先看到意思 */
-.reveal-answer {
-  display: inline-block;
-  font-size: clamp(23px, 2.6vw, 32px);
-  line-height: 1.2;
-  letter-spacing: 0.02em;
-  color: var(--text);
-}
-.drill.is-reveal .answer { min-height: 0; }
 .drill.is-reveal .meaning-block {
   height: auto;
   /* 比打字阶段多留 96px：两行长释义也能整段显示，不被底部按钮盖住 */
@@ -52,8 +43,7 @@
 .article-reading-card { display: flex; flex-direction: column; }
 .article-reading-card .article-source,
 .article-reading-card .article-translation {
-  width: 100%; height: auto; min-height: 190px; max-height: none;
-  resize: vertical; overflow: hidden; line-height: 1.85; font-size: 14px;
+  width: 100%;
 }
 .article-reading-card .article-translation { height: auto; }
 .article-reading-card .writing-controls { margin-top: 18px; }
@@ -74,21 +64,18 @@ body.is-typing-screen .main { min-height: 100vh; }
 .typing-screen-head > div { display: flex; align-items: center; gap: 12px; color: var(--text); }
 .typing-screen-head > div strong { font-size: 18px; }
 .typing-screen-mode { justify-self: end; color: var(--muted); font-size: 12px; }
-.typing-screen-content { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding-top: 18px; }
+.typing-screen-content { display: grid; gap: 16px; padding-top: 18px; }
 .typing-source-panel, .typing-card {
   min-width: 0; padding: 18px 20px; border: 1px solid var(--line);
   border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-sm);
 }
-.typing-source-panel .typing-prompt {
-  max-height: min(30vh, 280px); overflow-y: auto; font-size: clamp(14px, 1.4vw, 17px);
-  line-height: 1.9; white-space: pre-wrap;
+.typing-source-panel .typing-prompt { font-size: clamp(14px, 1.4vw, 17px);
+  line-height: 1.9;
 }
 .typing-screen .writing-input { min-height: 150px; height: clamp(150px, 22vh, 230px); resize: vertical; font-size: 15px; line-height: 1.8; }
 .typing-screen .writing-keyboard { max-height: none; margin-top: 0; opacity: 1; overflow: visible; transform: none; }
 .typing-screen .writing-keyboard.on { max-height: none; margin-top: 0; }
-.typing-screen .keyboard-panel { width: min(100%, 820px); }
 .typing-screen-actions { display: flex; flex-wrap: wrap; gap: 10px; }
-.typing-screen .typing-metrics { margin: 12px 0 16px; font-size: 13px; }
 @media (max-width: 680px) {
   #view-typing.is-active { padding: 10px 10px 20px; }
   .typing-screen-head { grid-template-columns: 1fr auto; }
@@ -100,7 +87,7 @@ body.is-typing-screen .main { min-height: 100vh; }
   .typing-screen .writing-keyboard .hands { display: none; }
 }
 /* The passage is fully visible in the dedicated practice view; the page itself scrolls if needed. */
-.typing-source-panel .typing-prompt { max-height: none; overflow: visible; }
+.typing-source-panel .typing-prompt { overflow: visible; }
 
 /* Review Words UI refinement: article history, reading and typing */
 .weak-pool-note { margin: 10px 2px 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
@@ -195,7 +182,6 @@ body.is-typing-screen .main { min-height: 100vh; }
 }
 .article-source-preview { width:100%; min-height:118px; padding:12px 14px; border:1px solid var(--line); border-radius:12px; color:var(--text); background:var(--surface-2); font:15px/1.9 var(--font-sans); white-space:pre-wrap; overflow-wrap:anywhere; }
 .target-word-mark { color:#1769aa; background:rgba(23,105,170,.12); border-radius:3px; padding:0 2px; }
-.article-edit-btn { margin:8px 0 14px; }
 
 /* 本轮优化：多词性释义、作文生成状态条；编辑文章按钮已移除 */
 .drill.is-reveal .answer {
