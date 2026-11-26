@@ -127,6 +127,15 @@ try {
 
   check('首词有内容', !!firstWord, firstWord);
 
+  // 虚拟键盘/指法已经拆成模块（modules/drill/keyboard.js），这里确认它真的在工作：
+  // 看词阶段应该同时亮 J/K/L 三个键，状态栏提示怎么选。
+  const kb = await cdp.eval(`(() => {
+    const keys = Array.from(document.querySelectorAll('.kb-key.is-hint')).map(k => k.dataset.code).sort();
+    return { keys: keys.join(','), hint: (document.getElementById('kbState') || {}).textContent || '' };
+  })()`);
+  check('键盘模块亮出 J/K/L 三个键', kb.keys === 'KeyJ,KeyK,KeyL', kb.keys);
+  check('键盘模块给出评价提示', /J 忘了/.test(kb.hint), kb.hint);
+
   // 1) 点「熟悉」：step 1，明天再见
   await cdp.eval('document.querySelector(\'.rate[data-grade="3"]\').click()');
   await sleep(250);

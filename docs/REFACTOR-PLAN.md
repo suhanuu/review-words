@@ -124,8 +124,10 @@ GitHub Pages 只能托管静态文件，不能安全保存 Gemini/Groq/OpenRoute
   （见文件头的结构表），不拆物理文件。
 
 ### 后续待做
-- `assets/app.js` 仍是一个 IIFE（约 3,100 行），按功能继续拆成独立模块：
+- `assets/app.js` 仍是一个 IIFE（约 2,870 行），按功能继续拆成独立模块：
   背词 / 今天 / 书架 / 词库与收藏 / 统计与图表 / 打字与键盘手型。
+- 已拆出第一块：`assets/modules/drill/keyboard.js`（虚拟键盘、键位高亮、手部图层、
+  hands.js 懒加载），约定 `window.RWKeyboard.create({ el, state })`，app.js 只传上下文。
 - `assets/modules/reviewwords-enhancements.js` 还是压行的写法，先展开再按功能并入模块。
 - 拆分前先给作文、打字、统计、书架补自动化测试（打字与手部懒加载已有
   `tests/lazy-hands.e2e.mjs` 打底）。

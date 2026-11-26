@@ -377,298 +377,11 @@
   var startedAt = Date.now();
 
 
-  // ================= 键盘指法 =================
-  var KB_ROWS = [
-    [['Backquote', '`'], ['Digit1', '1'], ['Digit2', '2'], ['Digit3', '3'], ['Digit4', '4'],
-     ['Digit5', '5'], ['Digit6', '6'], ['Digit7', '7'], ['Digit8', '8'], ['Digit9', '9'],
-     ['Digit0', '0'], ['Minus', '-'], ['Equal', '='], ['Backspace', '退格', 2.05, 1]],
-    [['Tab', 'tab', 1.5, 1], ['KeyQ', 'q'], ['KeyW', 'w'], ['KeyE', 'e'], ['KeyR', 'r'],
-     ['KeyT', 't'], ['KeyY', 'y'], ['KeyU', 'u'], ['KeyI', 'i'], ['KeyO', 'o'],
-     ['KeyP', 'p'], ['BracketLeft', '['], ['BracketRight', ']'], ['Backslash', '\\', 1.5, 1]],
-    [['CapsLock', 'caps', 1.8, 1], ['KeyA', 'a'], ['KeyS', 's'], ['KeyD', 'd'],
-     ['KeyF', 'f'], ['KeyG', 'g'], ['KeyH', 'h'], ['KeyJ', 'j'], ['KeyK', 'k'],
-     ['KeyL', 'l'], ['Semicolon', ';'], ['Quote', "'"], ['Enter', '回车', 2.2, 1]],
-    [['ShiftLeft', 'shift', 2.2, 1], ['KeyZ', 'z'], ['KeyX', 'x'], ['KeyC', 'c'],
-     ['KeyV', 'v'], ['KeyB', 'b'], ['KeyN', 'n'], ['KeyM', 'm'], ['Comma', ','],
-     ['Period', '.'], ['Slash', '/'], ['ShiftRight', 'shift', 2.2, 1]],
-    [['ControlLeft', 'ctrl', 1.4, 1], ['AltLeft', 'alt', 1.2, 1], ['Space', '空格', 7.2],
-     ['AltRight', 'alt', 1.2, 1], ['ControlRight', 'ctrl', 1.4, 1]]
-  ];
+  // ================= 键盘指法与手型（独立模块） ===================
+  // 原来这一整块（约 290 行）在 app.js 里，现在拆到 assets/modules/drill/keyboard.js。
+  // 虚拟键盘、键位高亮、手部图层、hands.js 懒加载都在那边；这里只给上下文。
+  var KB = window.RWKeyboard.create({ el: el, state: state });
 
-  var FINGER_MAP = {};
-  [
-    ['left-pinky', ['Backquote', 'Digit1', 'KeyQ', 'KeyA', 'KeyZ', 'Tab', 'CapsLock', 'ShiftLeft', 'ControlLeft']],
-    ['left-ring', ['Digit2', 'KeyW', 'KeyS', 'KeyX']],
-    ['left-middle', ['Digit3', 'KeyE', 'KeyD', 'KeyC']],
-    ['left-index', ['Digit4', 'Digit5', 'KeyR', 'KeyT', 'KeyF', 'KeyG', 'KeyV', 'KeyB']],
-    ['right-index', ['Digit6', 'Digit7', 'KeyY', 'KeyU', 'KeyH', 'KeyJ', 'KeyN', 'KeyM']],
-    ['right-middle', ['Digit8', 'KeyI', 'KeyK', 'Comma']],
-    ['right-ring', ['Digit9', 'KeyO', 'KeyL', 'Period']],
-    ['right-pinky', ['Digit0', 'Minus', 'Equal', 'KeyP', 'BracketLeft', 'BracketRight',
-      'Backslash', 'Semicolon', 'Quote', 'Slash', 'Enter', 'Backspace', 'ShiftRight', 'ControlRight']],
-    ['thumb', ['Space', 'AltLeft', 'AltRight']]
-  ].forEach(function (g) {
-    g[1].forEach(function (code) { FINGER_MAP[code] = g[0]; });
-  });
-
-  var FINGER_NAMES = {
-    'left-pinky': '左手小指',
-    'left-ring': '左手无名指',
-    'left-middle': '左手中指',
-    'left-index': '左手食指',
-    'right-index': '右手食指',
-    'right-middle': '右手中指',
-    'right-ring': '右手无名指',
-    'right-pinky': '右手小指',
-    'thumb': '拇指'
-  };
-
-  function buildKeyboard() {
-    var board = el('kbBoard');
-    if (!board) return;
-    board.innerHTML = KB_ROWS.map(function (row) {
-      return '<div class="kb-row">' + row.map(function (k) {
-        var flex = k[2] ? ' style="flex:' + k[2] + ' 1 0"' : '';
-        var cls = 'kb-key' + (k[3] ? ' is-wide' : '') + (k[0] === 'Space' ? ' kb-space' : '');
-        return '<span class="' + cls + '" data-code="' + k[0] + '" data-label="' + k[1] + '"' + flex + '>' +
-          k[1] + '</span>';
-      }).join('') + '</div>';
-    }).join('');
-  }
-
-  function eventCode(e) {
-    var c = e.code || '';
-    if (c === 'NumpadEnter') return 'Enter';
-    if (c) return c;
-
-    var k = e.key || '';
-    if (/^[a-zA-Z]$/.test(k)) return 'Key' + k.toUpperCase();
-    if (/^[0-9]$/.test(k)) return 'Digit' + k;
-    var fallback = {
-      ' ': 'Space', 'Backspace': 'Backspace', 'Enter': 'Enter', 'Tab': 'Tab',
-      'CapsLock': 'CapsLock', 'Shift': 'ShiftLeft', 'Control': 'ControlLeft',
-      'Alt': 'AltLeft', '`': 'Backquote', '-': 'Minus', '=': 'Equal',
-      '[': 'BracketLeft', ']': 'BracketRight', '\\': 'Backslash', ';': 'Semicolon',
-      "'": 'Quote', ',': 'Comma', '.': 'Period', '/': 'Slash'
-    };
-    return fallback[k] || '';
-  }
-
-  // ================= 手部 =================
-  // 照搬 edclub 的机制：一张 716×380 的 SVG 里预先画好 58 个姿势图层，
-  // 每个图层就是一整只手的静态画（放松 / 某根手指按某个键）。
-  // 运行时只切 display，不做任何变形计算；左右手各显示一层，同时出现。
-
-  // KeyboardEvent.code → 图层 id
-  var LAYER_OF_CODE = {
-    Backquote: 'tilda', Digit1: 'key-1', Digit2: 'key-2', Digit3: 'key-3', Digit4: 'key-4',
-    Digit5: 'key-5', Digit6: 'key-6', Digit7: 'key-7', Digit8: 'key-8', Digit9: 'key-9',
-    Digit0: 'key-0', Minus: 'minus', Equal: 'equal',
-    BracketLeft: 'open-bracket', BracketRight: 'close-bracket', Backslash: 'backslash',
-    KeyQ: 'q', KeyW: 'w', KeyE: 'e', KeyR: 'r', KeyT: 't', KeyY: 'y', KeyU: 'u',
-    KeyI: 'i', KeyO: 'o', KeyP: 'p',
-    KeyA: 'a', KeyS: 's', KeyD: 'd', KeyF: 'f', KeyG: 'g', KeyH: 'h', KeyJ: 'j',
-    KeyK: 'k', KeyL: 'l',
-    KeyZ: 'z', KeyX: 'x', KeyC: 'c', KeyV: 'v', KeyB: 'b', KeyN: 'n', KeyM: 'm',
-    Semicolon: 'semicolon', Quote: 'quote', Comma: 'comma', Period: 'dot', Slash: 'slash',
-    Tab: 'tab', Enter: 'enter', Space: 'space',
-    ShiftLeft: 'shift-left', ShiftRight: 'shift-right'
-  };
-
-  // 按住键的先后顺序，最新的在最前
-  var heldStack = [];
-
-  // 键盘提示：hintCode 是当前要伸手指的那个键（手部用），
-  // hintKey 是提示状态的指纹，只有它变了才动 DOM
-  var hintCode = '';
-  var hintKey = '';
-
-  function heldPush(code) {
-    var i = heldStack.indexOf(code);
-    if (i >= 0) heldStack.splice(i, 1);
-    heldStack.unshift(code);
-  }
-
-  function heldDrop(code) {
-    var i = heldStack.indexOf(code);
-    if (i >= 0) heldStack.splice(i, 1);
-  }
-
-  // 某个手该显示哪一层：取这只手最近按下的键；
-  // 没有按键（或该键没有画姿势层）就用放松层。
-  function layerOfHand(side) {
-    var neutral = side === 'left' ? 'neutral-left' : 'neutral-right';
-    for (var i = 0; i < heldStack.length; i++) {
-      var f = FINGER_MAP[heldStack[i]];
-      if (!f) continue;
-      var belong = f === 'thumb' ? 'right' : f.split('-')[0];
-      if (belong !== side) continue;
-      var layer = LAYER_OF_CODE[heldStack[i]];
-      if (layer) return layer;
-    }
-
-    // 没按键时，把「下一个要敲的字母」那条手指伸到键上，当作指法提示
-    var hf = FINGER_MAP[hintCode];
-    if (hf && hintCode) {
-      var hSide = hf === 'thumb' ? 'right' : hf.split('-')[0];
-      if (hSide === side && LAYER_OF_CODE[hintCode]) return LAYER_OF_CODE[hintCode];
-    }
-
-    return neutral;
-  }
-
-  // 与 edclub 的 focus_hand(l, r) 逐行对应：
-  // 两只手各亮一层，缺的一侧退回 neutral。
-  function focusHand(leftId, rightId) {
-    var host = el('handsSvg');
-    if (!host) return;
-    var layers = host.querySelectorAll('g.st0');
-    var shown = [false, false];
-    var neutral = [null, null];
-
-    for (var i = 0; i < layers.length; i++) {
-      var g = layers[i];
-      var id = g.id.replace(/^hb-/, '');
-      if (id === 'neutral-left') neutral[0] = g;
-      if (id === 'neutral-right') neutral[1] = g;
-      if (id === leftId || id === rightId) {
-        g.style.display = 'block';
-        shown[id === leftId ? 0 : 1] = true;
-      } else {
-        g.style.display = 'none';
-      }
-    }
-
-    for (var k = 0; k < 2; k++) {
-      if (!shown[k] && neutral[k]) neutral[k].style.display = 'block';
-    }
-  }
-
-  function syncHands() {
-    focusHand(layerOfHand('left'), layerOfHand('right'));
-  }
-
-  // 键盘常驻，时刻告诉用户“现在该做什么”。
-  // codes: 要高亮的键（可能多个）；text: 状态栏文案；hand: 手部要伸到哪个键
-  function hintState() {
-    var out = { codes: [], text: '', hand: '' };
-    if (state.view !== 'drill') return out;
-
-    // 看词自评：J / K / L 三选一，三个键一起亮；评完分就没有键位提示了
-    if (state.phase === 'recall') {
-      out.codes = ['KeyJ', 'KeyK', 'KeyL'];
-      out.text = '选择记忆程度 · J 忘了 / K 模糊 / L 熟悉';
-    }
-    return out;
-  }
-
-  function clearHint() {
-    hintCode = '';
-    hintKey = '';
-    document.querySelectorAll('.kb-key.is-hint').forEach(function (n) {
-      n.classList.remove('is-hint');
-    });
-  }
-
-  // 提示变化时才动 DOM：换高亮的键、换手的图层
-  function updateHint() {
-    var h = hintState();
-    var codes = h.codes || [];
-    var fp = codes.join(',') + '|' + h.text;
-
-    if (fp === hintKey) return;
-    hintKey = fp;
-
-    hintCode = h.hand || '';
-
-    document.querySelectorAll('.kb-key.is-hint').forEach(function (n) {
-      n.classList.remove('is-hint');
-    });
-    codes.forEach(function (code) {
-      var keyEl = document.querySelector('.kb-key[data-code="' + code + '"]');
-      if (keyEl) keyEl.classList.add('is-hint');
-    });
-
-    syncHands();
-    if (!document.querySelector('.kb-key.is-down')) {
-      var live = el('kbState');
-      if (live) live.textContent = h.text || '';
-    }
-  }
-
-  // hands.js 有 271KB（58 层 SVG 手部），只为打字页服务，所以进打字页才加载。
-  // 页面加载时那句 <script> 已经摘掉了，这里用和词库（dict.js）一样的动态插入。
-  var handsWaiters = null;
-  function ensureHands(done) {
-    if (window.HANDS_SVG) { done(); return; }
-    if (handsWaiters) { handsWaiters.push(done); return; }
-    handsWaiters = [done];
-    var s = document.createElement('script');
-    s.src = './assets/hands.js';
-    s.onload = function () {
-      var list = handsWaiters || [];
-      handsWaiters = null;
-      list.forEach(function (fn) { try { fn(); } catch (e) {} });
-    };
-    s.onerror = function () { handsWaiters = null; };
-    document.body.appendChild(s);
-  }
-
-  function mountHands() {
-    var host = el('handsSvg');
-    if (!host) return;
-    if (window.HANDS_SVG) {
-      if (!host.firstChild) host.innerHTML = window.HANDS_SVG;
-      syncHands();
-      return;
-    }
-    ensureHands(function () {
-      if (!host.firstChild) host.innerHTML = window.HANDS_SVG;
-      syncHands();
-    });
-  }
-
-  function clearKeyboard() {
-    document.querySelectorAll('.kb-key.is-down').forEach(function (n) { n.classList.remove('is-down'); });
-    heldStack = [];
-    clearHint();
-    syncHands();
-    var live = el('kbState');
-    if (live) live.textContent = '等待输入';
-  }
-
-  function showKeyboard(on) {
-    var dock = el('keyboardDock');
-    if (!dock) return;
-    dock.classList.toggle('on', !!on);
-    dock.setAttribute('aria-hidden', on ? 'false' : 'true');
-    var drill = document.querySelector('.drill');
-    if (drill) drill.classList.toggle('kb-open', !!on);
-    if (on) syncHands(); else clearKeyboard();
-  }
-
-  function visualKey(e, down) {
-    if (state.view !== 'typing' && state.view !== 'drill') return;
-    if (state.view === 'drill' && state.phase !== 'recall') return;
-    // 作文训练只响应真实键盘事件，不允许点击屏幕键盘代替输入。
-    if (down && state.view === 'typing' && document.activeElement !== el('writingInput')) return;
-    var code = eventCode(e);
-    if (!code) return;
-    var key = document.querySelector('.kb-key[data-code="' + code + '"]');
-    if (!key) return;
-
-    key.classList.toggle('is-down', !!down);
-    if (down) heldPush(code); else heldDrop(code);
-    syncHands();
-    var finger = FINGER_MAP[code];
-
-    if (down) {
-      var name = FINGER_NAMES[finger] || '';
-      el('kbState').textContent = (key.dataset.label || '') + (name ? ' · ' + name : '');
-    } else if (!document.querySelector('.kb-key.is-down')) {
-      el('kbState').textContent = hintState().text || '';
-    }
-  }
 
   // ================= 提示音 =================
   var actx = null;
@@ -793,10 +506,10 @@
     if (name === 'favs') renderFavs();
     if (name === 'books') renderBookshelf();
     // 键盘和手部提示只属于作文训练，不再出现在背词页；手部 SVG 第一次进打字页才拉。
-    if (name === 'typing') mountHands();
-    showKeyboard(name === 'typing');
+    if (name === 'typing') KB.mountHands();
+    KB.showKeyboard(name === 'typing');
     document.body.classList.toggle('is-typing-screen', name === 'typing');
-    if (name === 'drill') updateHint();
+    if (name === 'drill') KB.updateHint();
     // 学习页锁住文档滚动：练习时页面不能因为聚焦、锚定或内容变高而整体位移
     var lock = name === 'drill';
     document.documentElement.classList.toggle('is-drill-locked', lock);
@@ -953,7 +666,7 @@
   // 自评阶段整个答案区都不出现，连字数也不透露；评完分由 renderMeaning() 填中文意思
   function clearAnswer() {
     el('answerText').innerHTML = '';
-    updateHint();
+    KB.updateHint();
   }
 
   function loadWord(w, mode) {
@@ -978,7 +691,7 @@
     document.querySelector('.drill').classList.add('is-recall');
     document.querySelector('.drill').classList.remove('is-reveal');
     // 背词阶段只看词义并自评；键盘与手部动画统一放到作文训练。
-    showKeyboard(false);
+    KB.showKeyboard(false);
 
     clearAnswer();
     renderProgress();
@@ -1196,7 +909,7 @@
   function markDone() {
     if (state.phase !== 'recall' || !state.current) return;
     state.phase = 'judged';
-    updateHint();
+    KB.updateHint();
 
     var w = state.current;
     var rec = getRec(w.w);
@@ -1229,7 +942,7 @@
   // 自评落库：grade 1 忘了 / 2 模糊 / 3 熟悉。间隔怎么走全在 applyGrade（schedule.js）
   function finish(grade) {
     state.phase = 'judged';
-    updateHint();   // 这一词已结束，清掉键位提示
+    KB.updateHint();   // 这一词已结束，清掉键位提示
 
     var w = state.current;
     var rec = getRec(w.w);
@@ -2827,9 +2540,9 @@
       }
     });
 
-    document.addEventListener('keydown', function (e) { visualKey(e, true); });
-    document.addEventListener('keyup', function (e) { visualKey(e, false); });
-    window.addEventListener('blur', clearKeyboard);
+    document.addEventListener('keydown', function (e) { KB.visualKey(e, true); });
+    document.addEventListener('keyup', function (e) { KB.visualKey(e, false); });
+    window.addEventListener('blur', KB.clearKeyboard);
 
     // 设置项
     document.querySelectorAll('[data-toggle]').forEach(function (node) {
@@ -2979,7 +2692,7 @@
       // 提交成绩要用「这次真正在练的那段字」和语言，不能再拿英文原文去对中文
       window.__rwTyping = { lang: typingLang, source: writingSource, startedAt: writingStartedAt };
       // 背词页留下的「下一步敲哪个键」高亮和状态文字别带到打字页
-      clearHint();
+      KB.clearHint();
       if (el('kbState')) el('kbState').textContent = '等待输入';
       renderTypingPrompt('');
       if (el('typingPrompt')) el('typingPrompt').scrollTop = 0;
@@ -3135,8 +2848,8 @@
     toggleFav: toggleFav,
     favItems: favItems,
     // 手部 SVG 是懒加载的，回归脚本要能确认：没进打字页就不下载
-    ensureHands: ensureHands,
-    mountHands: mountHands
+    ensureHands: KB.ensureHands,
+    mountHands: KB.mountHands
   };
 
   // ================= 启动 =================
@@ -3144,7 +2857,7 @@
   // 先把 load() 做过的迁移（补 forget_count、老间隔折算成台阶）落盘一次，
   // 免得每次刷新都重算，也保证数据和内存里的状态一致
   save();
-  buildKeyboard();
+  KB.buildKeyboard();
   applySettings();   // hands.js 推迟到进打字页再加载，见 setView('typing')
   bind();
   resetStaleBatch();   // 过了 12 点，昨天没学完的次数清零
