@@ -89,3 +89,9 @@ GitHub Pages 只能托管静态文件，不能安全保存 Gemini/Groq/OpenRoute
 - 为避免重写原应用，本阶段采用 IndexedDB 镜像桥接，不是把业务代码全面改成异步 IndexedDB Repository；localStorage 仍是同步运行时缓存。
 - 文章训练记录已保存，但统计页面的统一可视化汇总仍需下一阶段完善。
 - AI 生成需要部署 Worker 并填写 URL；未配置时手动粘贴文章仍可使用。
+
+
+## 第四阶段（2026-11-26）：清理与重构
+
+- **已取消 Cloudflare Worker 方案**：删除 `worker/index.js` 和 `docs/AI-WORKER-SETUP.md`，作文生成只保留浏览器直连 OpenAI 兼容 API。上面第二、三阶段里关于 Worker 的内容是历史记录，不再有效。
+- `_data/build.js` 去掉了写死的本机绝对路径，源文件固定从 `_data/红宝书源.csv` 读取。

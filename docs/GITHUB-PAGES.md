@@ -18,12 +18,11 @@
 - 清除浏览器站点数据、换浏览器或换设备前，请先备份（JSON 备份恢复功能仍在后续开发计划中）。
 - GitHub Pages 不会自动把浏览器数据同步到 GitHub 仓库。
 
-## 3. AI 作文接口（后续阶段）
+## 3. AI 作文接口
 
-GitHub Pages 是纯静态托管，不能把 API Key 放在 `assets/*.js` 中，也不能在 Pages 仓库里运行 Node 服务端 API。正式接 AI 时会把接口部署到 Cloudflare Workers：
-- 在 Worker 的 Secrets 中设置模型 API Key；
-- Worker 仅开放必要的文章生成 POST 接口，并限制请求大小、来源和频率；
-- GitHub Pages 前端只配置 Worker 的公开 HTTPS URL；
-- Worker 返回作文和翻译，浏览器本地保存文章。
+作文生成由浏览器直接请求你自己配置的 OpenAI 兼容 API，项目不提供服务端代理，也不需要部署任何 Worker：
+- 在"作文训练 → AI API 设置"中填写 Base URL、API Key 和模型名称，这些配置只保存在当前浏览器本地；
+- 服务商必须允许网页跨域请求（CORS），否则浏览器会阻止请求；
+- API Key 不要提交到 GitHub 仓库，私有仓库也不建议。
 
-**不要**把 Gemini、Groq、OpenRouter 或其他模型密钥提交到 GitHub，即使仓库是私有的也不建议这样做。
+**不要**把 OpenAI、Gemini、Groq、OpenRouter 或其他模型密钥提交到 GitHub，即使仓库是私有的也不建议这样做。

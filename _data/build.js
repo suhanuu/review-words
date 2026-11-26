@@ -1,8 +1,6 @@
 const fs = require('fs');
 
-const SRC = fs.existsSync('_data/红宝书源.csv')
-  ? '_data/红宝书源.csv'
-  : 'C:/Users/王鹏辉/Desktop/2024考研英语词汇红宝书.csv';
+const SRC = '_data/红宝书源.csv';
 const IPA = '_data/en_US.txt';
 const OUT = 'assets/words.js';
 

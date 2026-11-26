@@ -256,9 +256,8 @@ WPM、平均准确率、累计差异数及最近练习记录。
 -   不要在公用电脑保存 API Key；使用完毕后可在设置中清除或替换密钥。
 -   不要把 API Key、个人数据备份或包含密钥的截图提交到公开 GitHub 仓库。
 
-如果接口不支持浏览器跨域访问，或不希望浏览器直接持有密钥，可以改用项目提供的
-Cloudflare Worker 方案，具体参阅
-[`docs/AI-WORKER-SETUP.md`](docs/AI-WORKER-SETUP.md)。
+本项目不提供服务端代理，只支持浏览器直连。如果服务商不允许网页跨域访问，只能换用支持
+CORS 的服务商，或者填写自己搭建的可信代理地址；前者不能通过前端代码绕过。
 
 ## 十一、数据备份与恢复
 
@@ -337,7 +336,6 @@ JSON 输出；如果服务商不支持 JSON
 ## 相关文档
 
 -   [GitHub Pages 部署说明](docs/GITHUB-PAGES.md)
--   [Cloudflare Worker / AI 配置说明](docs/AI-WORKER-SETUP.md)
 -   [项目测试清单](docs/TESTING.md)
 -   [项目改造计划](docs/REFACTOR-PLAN.md)
 
