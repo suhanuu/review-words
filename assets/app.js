@@ -596,11 +596,36 @@
     }
   }
 
+  // hands.js 有 271KB（58 层 SVG 手部），只为打字页服务，所以进打字页才加载。
+  // 页面加载时那句 <script> 已经摘掉了，这里用和词库（dict.js）一样的动态插入。
+  var handsWaiters = null;
+  function ensureHands(done) {
+    if (window.HANDS_SVG) { done(); return; }
+    if (handsWaiters) { handsWaiters.push(done); return; }
+    handsWaiters = [done];
+    var s = document.createElement('script');
+    s.src = './assets/hands.js';
+    s.onload = function () {
+      var list = handsWaiters || [];
+      handsWaiters = null;
+      list.forEach(function (fn) { try { fn(); } catch (e) {} });
+    };
+    s.onerror = function () { handsWaiters = null; };
+    document.body.appendChild(s);
+  }
+
   function mountHands() {
     var host = el('handsSvg');
-    if (!host || !window.HANDS_SVG) return;
-    host.innerHTML = window.HANDS_SVG;
-    syncHands();
+    if (!host) return;
+    if (window.HANDS_SVG) {
+      if (!host.firstChild) host.innerHTML = window.HANDS_SVG;
+      syncHands();
+      return;
+    }
+    ensureHands(function () {
+      if (!host.firstChild) host.innerHTML = window.HANDS_SVG;
+      syncHands();
+    });
   }
 
   function clearKeyboard() {
@@ -767,7 +792,8 @@
     if (name === 'words') renderWords(true);
     if (name === 'favs') renderFavs();
     if (name === 'books') renderBookshelf();
-    // 键盘和手部提示只属于作文训练，不再出现在背词页。
+    // 键盘和手部提示只属于作文训练，不再出现在背词页；手部 SVG 第一次进打字页才拉。
+    if (name === 'typing') mountHands();
     showKeyboard(name === 'typing');
     document.body.classList.toggle('is-typing-screen', name === 'typing');
     if (name === 'drill') updateHint();
@@ -3107,7 +3133,10 @@
     // 收藏相关的只读接口，给回归脚本核对持久化与排序
     isFav: isFav,
     toggleFav: toggleFav,
-    favItems: favItems
+    favItems: favItems,
+    // 手部 SVG 是懒加载的，回归脚本要能确认：没进打字页就不下载
+    ensureHands: ensureHands,
+    mountHands: mountHands
   };
 
   // ================= 启动 =================
@@ -3116,8 +3145,7 @@
   // 免得每次刷新都重算，也保证数据和内存里的状态一致
   save();
   buildKeyboard();
-  mountHands();
-  applySettings();
+  applySettings();   // hands.js 推迟到进打字页再加载，见 setView('typing')
   bind();
   resetStaleBatch();   // 过了 12 点，昨天没学完的次数清零
   setView('today');
