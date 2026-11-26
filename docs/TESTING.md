@@ -103,6 +103,9 @@ node tests/store.e2e.mjs     # 端到端：把 setItem 打成抛错，确认弹�
 node tests/schedule.test.js     # 学习期节奏规则（assets/schedule.js）
 node tests/scheduler.test.js    # 复习期 FSRS-6：曲线、封顶 365 天、旧进度迁移幂等
 node tests/review-log.test.js   # 复习日志：按月分键、统计口径、每月 3000 条上限、清书不串账
+node tests/format.test.js       # 日期键、相对时间、倒计时、时长文案、月度序列
+node tests/stats.e2e.mjs        # 统计页：数字卡、月度图、当月浮层、打字区切换、记录页
+node tests/lazy-hands.e2e.mjs   # 手部 SVG 只在进打字页时加载
 node tests/drill.e2e.mjs        # 背词页：评价落库、右上角“熟悉”、老记录迁移、不再毕业
 node tests/today.e2e.mjs        # 今天页：两个入口、今日单词、跨天清批、复习日志与统计页数字
 ```
