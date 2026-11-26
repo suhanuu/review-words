@@ -135,13 +135,13 @@
     return wordIndex;
   }
 
-  // ================= 日期 =================
-  function pad(n) { return n < 10 ? '0' + n : '' + n; }
-
-  function todayKey() {
-    var d = new Date();
-    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-  }
+  // ================= 日期与文案 ===================
+  // 纯函数都在 assets/modules/core/format.js（带单测），这里取本地别名，调用处不用改。
+  var Fmt = window.RWFormat;
+  var pad = Fmt.pad, todayKey = Fmt.todayKey, dayKeyOf = Fmt.dayKeyOf, mmss = Fmt.mmss,
+      humanGap = Fmt.humanGap, countdownText = Fmt.countdownText,
+      minutesText = Fmt.minutesText, hoursText = Fmt.hoursText, durationLabel = Fmt.durationLabel,
+      monthSeries = Fmt.monthSeries, shiftMonthKey = Fmt.shiftMonthKey;
 
   function dayEntry() {
     var k = todayKey();
@@ -149,11 +149,6 @@
     return db.days[k];
   }
 
-  // 时间戳 → 本地日期键（今天的键和 todayKey 一致）
-  function dayKeyOf(ts) {
-    var d = new Date(ts);
-    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-  }
 
   // 「很熟」的词：masteredAt 是第一次攒满 3 次的时刻，只增不减
   function masteredOn(key) {
@@ -173,23 +168,7 @@
     return n;
   }
 
-  function mmss(sec) {
-    return pad(Math.floor(sec / 60)) + ':' + pad(sec % 60);
-  }
 
-  // 「3 分钟前」「2 天后」这类相对时间，给复习提示用
-  function humanGap(ms) {
-    var a = Math.abs(ms);
-    var s = Math.round(a / 1000);
-    if (s < 50) return '刚刚';
-    var m = Math.round(s / 60);
-    if (m < 60) return m + '分钟';
-    var h = Math.round(m / 60);
-    if (h < 24) return h + '小时';
-    var d = Math.round(h / 24);
-    if (d < 30) return d + '天';
-    return Math.round(d / 30) + '个月';
-  }
 
   // ================= 背词节奏 =================
   // 学习期（还没很熟）的规则在 assets/schedule.js，很熟之后交给 assets/modules/core/scheduler.js
@@ -264,15 +243,6 @@
     return best ? best - now : 0;
   }
 
-  // 倒计时文案：向上取整，免得 14:59 显示成「15 分钟」
-  function countdownText(ms) {
-    if (ms < MIN) return '不到 1 分钟后';
-    if (ms < 60 * MIN) return Math.ceil(ms / MIN) + ' 分钟后';
-    // 差一点点不到一整天就报「1 天后」，别出现「24 小时后」这种别扭说法
-    if (ms < DAY * 0.95) return Math.ceil(ms / (60 * MIN)) + ' 小时后';
-    var d = ms / DAY;
-    return (d < 10 ? Math.ceil(d * 10) / 10 : Math.ceil(d)) + ' 天后';
-  }
 
   // ================= 两个池子 =================
   // 学习池：今天批次里的词（还没很熟）。当天反复轮，攒满 3 次就离开。
@@ -1037,40 +1007,6 @@
     return n > 0 ? Math.round(n) : 10;
   }
 
-  // 把某个自然月拆成一天一个点；当月只画到今天，未来的日子不画
-  function monthSeries(month, valueOf) {
-    var y = Number(month.slice(0, 4));
-    var m = Number(month.slice(5, 7));
-    var days = new Date(y, m, 0).getDate();
-    var today = todayKey();
-    var out = [];
-    for (var i = 1; i <= days; i++) {
-      var k = month + '-' + pad(i);
-      if (k > today) break;
-      out.push({ k: k, v: valueOf(k) });
-    }
-    return out;
-  }
-
-  function minutesText(sec) {
-    var m = Math.round((sec || 0) / 60);
-    if (m < 60) return m + '<small>分钟</small>';
-    return (Math.round(m / 6) / 10) + '<small>小时</small>';
-  }
-
-  function hoursText(sec) {
-    var m = Math.round((sec || 0) / 60);
-    if (m < 60) return m + '<small>分钟</small>';
-    var h = m / 60;
-    return (h < 10 ? Math.round(h * 10) / 10 : Math.round(h)) + '<small>小时</small>';
-  }
-
-  function durationLabel(mins) {
-    mins = Math.round(mins || 0);
-    if (mins < 60) return mins + ' 分钟';
-    var h = Math.floor(mins / 60), rest = mins % 60;
-    return h + ' 小时' + (rest ? ' ' + rest + ' 分' : '');
-  }
 
   function renderStats() {
     watchFlush();                       // 先把还没结算的这段时长算进去
@@ -1115,12 +1051,6 @@
   var wordMonth = '';     // 统计页背词图在看哪个月
   var typingMonth = '';   // 统计页打字图在看哪个月
 
-  function shiftMonthKey(key, delta) {
-    var y = Number(key.slice(0, 4));
-    var m = Number(key.slice(5, 7)) - 1 + delta;
-    var d = new Date(y, m, 1);
-    return d.getFullYear() + '-' + pad(d.getMonth() + 1);
-  }
 
   function openMonthPop(kind) {
     popKind = kind;
