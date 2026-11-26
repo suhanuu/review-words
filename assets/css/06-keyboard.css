@@ -1,0 +1,284 @@
+/* 本文件由原 style.css 第 1080–1361 行原样切出，文件名前的数字就是加载顺序，不要调换 */
+
+/* ============================================================
+   键盘指法
+   ============================================================ */
+.keyboard-dock {
+  flex: none;
+  max-height: 0;
+  margin-top: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateY(-8px);
+  transition: max-height 0.38s var(--ease), margin-top 0.38s var(--ease),
+    opacity 0.28s var(--ease), transform 0.38s var(--ease);
+}
+.keyboard-dock.on {
+  max-height: 268px;
+  margin-top: 18px;
+  opacity: 1;
+  transform: none;
+}
+
+.keyboard-panel {
+  position: relative;
+  overflow: hidden;
+  width: min(100%, 664px);
+  margin: 0 auto;
+  padding: 12px 22px 10px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.24), transparent 42%),
+    var(--surface);
+  box-shadow: var(--shadow-sm), 0 1px 0 var(--hairline) inset;
+}
+[data-theme="dark"] .keyboard-panel {
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.018), transparent 42%), var(--surface);
+}
+
+/* 手部：一整张 716×380 的 SVG，里面 58 个姿势图层，
+   左右手各显示一层叠在键盘上，手腕从卡片底边切出去。 */
+.kb-wrap {
+  position: relative;
+}
+
+.hands {
+  position: absolute;
+  left: 0;
+  bottom: var(--hands-bottom, -128px);
+  width: 100%;
+  z-index: 3;
+  /* 手的画稿是给原站那套键位画的，铺满键盘宽度后整体还小一圈，
+     这里按实测放大 1.587 倍并右移 6.7%，让指尖落在键位上。 */
+  transform: translateX(6.7%) scale(1.587);
+  transform-origin: 50% 50%;
+  pointer-events: none;
+  opacity: 0.88; /* 手是淡线稿，键要能透出来 */
+  /* 手腕在卡片底边淡出，避免一刀切的硬边 */
+  -webkit-mask-image: linear-gradient(to bottom, #000 74%, transparent 96%);
+  mask-image: linear-gradient(to bottom, #000 74%, transparent 96%);
+  transition: opacity 0.3s var(--ease);
+}
+.hands svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* 图层的三类 path，沿用原站命名 */
+.hands .st0 { display: none; }
+.hands .st1 {
+  fill: var(--hand-fill);
+  opacity: 0.62;
+}
+[data-theme="dark"] .hands .st1 { opacity: 0.3; }
+
+.hands .st2 {
+  fill: none;
+  stroke: var(--hand-line);
+  stroke-width: 2;
+  stroke-miterlimit: 10;
+}
+/* 指甲：原站是 .st3 组 50% + .st4 灰填充 */
+.hands .st3 { opacity: 0.5; }
+.hands .st4 { fill: var(--hand-nail); }
+
+/* 正在按的那根手指 */
+.hands .st5 {
+  fill: none;
+  stroke: var(--hand-hl);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-miterlimit: 10;
+}
+
+.kb-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.075em;
+  color: var(--faint);
+}
+#kbState {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.kb-board {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.kb-row {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+}
+.kb-key {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 0 2px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: linear-gradient(180deg, var(--surface), var(--surface-2));
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: 0;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.45) inset,
+    0 1px 1px rgba(23, 22, 15, 0.05);
+  transition: transform 0.07s ease, background-color 0.1s var(--ease),
+    border-color 0.1s var(--ease), color 0.1s var(--ease),
+    box-shadow 0.1s var(--ease);
+}
+[data-theme="dark"] .kb-key {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.022));
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.045) inset,
+    0 1px 1px rgba(0, 0, 0, 0.25);
+}
+.kb-key.is-wide {
+  font-size: 8px;
+  color: var(--faint);
+}
+
+/* 下一个该敲的键：手指落点提示，外圈呼吸、字母变靛青 */
+.kb-key.is-hint {
+  z-index: 1;
+  color: var(--accent-deep);
+  border-color: var(--accent);
+  background:
+    linear-gradient(180deg, var(--accent-soft), rgba(255, 255, 255, 0) 82%),
+    var(--surface);
+  animation: kbHint 1.5s var(--ease) infinite;
+}
+@keyframes kbHint {
+  0%, 100% { box-shadow: 0 0 0 1px var(--accent-ring), 0 0 8px -2px var(--accent-ring); }
+  50% { box-shadow: 0 0 0 1px var(--accent), 0 0 15px 0 var(--accent-ring); }
+}
+/* 深色下键面本来就暗，提示键要再亮一点才看得出来 */
+[data-theme="dark"] .kb-key.is-hint {
+  color: #e8f1fa;
+  background:
+    linear-gradient(180deg, rgba(134, 176, 216, 0.26), rgba(255, 255, 255, 0.015) 82%),
+    var(--surface);
+}
+@media (prefers-reduced-motion: reduce) {
+  .kb-key.is-hint { animation: none; box-shadow: 0 0 0 1px var(--accent); }
+}
+
+.kb-key.is-down {
+  z-index: 2;
+  transform: translateY(1px) scale(0.96);
+  color: var(--bg);
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-ring), 0 0 14px var(--accent-ring);
+}
+[data-theme="dark"] .kb-key.is-down { color: #121417; }
+.kb-key.kb-space::after {
+  content: "";
+  width: 17px;
+  height: 1.5px;
+  border-radius: 99px;
+  background: currentColor;
+  opacity: 0.38;
+}
+
+/* 看词自评阶段还没有答案：答案区只隐藏、不摘出文档流。
+   占位保留 → 揭晓释义前后单词位置完全一致，切换单词也不会上下跳。 */
+.drill.is-recall .meaning-block { visibility: hidden; pointer-events: none; }
+
+/* 键盘常驻：练习页锁定成「视口高度 - 顶栏」，页面不出现上下滚动。
+   卡片内部按视口高度收缩（字号用 vh 参与 clamp），键盘永远留在屏幕内。 */
+@media (min-width: 861px) {
+  .drill {
+    height: calc(100vh - 72px);
+    height: calc(100dvh - 72px);
+    min-height: 0;
+    padding: 20px 24px 10px;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  .drill .study-shell { min-height: 0; }
+  .drill .drill-top { min-height: 48px; flex: 0 0 auto; }
+  /* 舞台自己裁切：内容再多也只在卡片内消化，绝不压到下面的输入区与键盘 */
+  .drill .stage { min-height: 0; padding: 10px 30px 6px; overflow: hidden; }
+  .drill .stage-kicker { margin-bottom: 8px; }
+  .drill .word { font-size: clamp(34px, min(5.4vw, 7.6vh), 72px); margin-bottom: 5px; }
+  .drill .phonetic-row { margin-bottom: 10px; flex: 0 0 auto; }
+  /* 释义区按视口给一个固定高度（自评/打字两个阶段共用，切换单词不跳） */
+  .drill .meaning-block {
+    --meaning-h: clamp(104px, 16vh, 150px);
+    height: var(--meaning-h);
+    min-height: 0;
+    gap: 8px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+  }
+  .drill .answer { min-height: 1.9em; }
+  .drill .action-zone { height: 78px; margin-top: 2px; }
+  .drill .keyboard-dock.on { max-height: 250px; margin-top: 14px; }
+  /* 提示语固定一行，长短不影响卡片高度 */
+  .drill .hints { height: 42px; min-height: 42px; padding-top: 0; white-space: nowrap; overflow: hidden; }
+}
+@media (max-width: 860px) {
+  .keyboard-dock { display: none; }
+}
+@media (max-height: 860px) and (min-width: 861px) {
+  .keyboard-dock.on { max-height: 196px; margin-top: 12px; }
+  .keyboard-panel { padding: 8px 18px 6px; }
+  .kb-bar { margin-bottom: 4px; }
+  /* 矮屏：整块（键位 + 手）等比缩小，保证手指还落在键上 */
+  .kb-wrap { width: 72%; margin: 0 auto; }
+  .kb-key { height: 25px; }
+  .hands { --hands-bottom: -92px; }
+  .drill .hints { display: none; }
+  .drill .stage-kicker { display: none; }
+  .drill .word { font-size: clamp(32px, min(5.4vw, 7.2vh), 62px); }
+  .drill .meaning-block { --meaning-h: clamp(96px, 15vh, 132px); min-height: 0; }
+  .drill .answer { min-height: 1.8em; }
+  .drill .action-zone { height: 74px; }
+}
+/* 更矮（笔记本半屏、缩放后的窗口）：再压一档，宁可小也不出滚动条 */
+@media (max-height: 700px) and (min-width: 861px) {
+  .drill { padding: 14px 22px 8px; }
+  .drill .drill-top { min-height: 42px; }
+  .drill .stage { padding: 6px 26px 4px; }
+  .drill .word { font-size: clamp(30px, min(5vw, 6.8vh), 52px); margin-bottom: 4px; }
+  .drill .phonetic-row { margin-bottom: 8px; }
+  .drill .meaning-block { --meaning-h: clamp(88px, 14vh, 118px); }
+  .drill .answer { font-size: clamp(21px, 2.6vw, 27px); min-height: 1.7em; }
+  .drill .action-zone { height: 70px; }
+  .keyboard-dock.on { max-height: 176px; margin-top: 10px; }
+  .keyboard-panel { padding: 6px 16px 4px; }
+  .kb-key { height: 22px; }
+  .kb-wrap { width: 66%; }
+  .hands { --hands-bottom: -82px; }
+}
+/* 极矮（半屏窗口）：只保留要打的中文，补充释义让位给键盘 */
+@media (max-height: 620px) and (min-width: 861px) {
+  .drill .word { font-size: clamp(28px, min(4.8vw, 6.2vh), 46px); }
+  .drill .phonetic-row { margin-bottom: 6px; }
+  .drill .meaning-block { --meaning-h: 64px; }
+  .drill .answer { font-size: 19px; min-height: 1.35em; }
+  .drill .full-def { display: none; }
+  .drill .action-zone { height: 64px; }
+  .keyboard-dock.on { max-height: 160px; }
+  .kb-key { height: 20px; }
+  .kb-wrap { width: 62%; }
+  .hands { --hands-bottom: -78px; }
+}
+

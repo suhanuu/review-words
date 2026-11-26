@@ -1,0 +1,228 @@
+/* 本文件由原 style.css 第 116–341 行原样切出，文件名前的数字就是加载顺序，不要调换 */
+
+/* ============================================================
+   Base
+   ============================================================ */
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(92% 58% at 50% -14%, var(--glow-warm), transparent 68%),
+    radial-gradient(58% 44% at 100% 4%, var(--glow-cool), transparent 70%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: calc(15px * var(--scale));
+  line-height: 1.62;
+  letter-spacing: 0.006em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "kern" 1, "liga" 1;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* 纸面颗粒：一层极淡的噪点，是「质感」的主要来源 */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.032;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+[data-theme="dark"] body::after {
+  opacity: 0.05;
+  mix-blend-mode: soft-light;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+::selection { background: var(--text); color: var(--bg); }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* 细滚动条 */
+* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 99px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* ============================================================
+   顶栏
+   ============================================================ */
+.topbar {
+  height: 72px;
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  padding: 0 34px;
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  background: var(--bg-elevated);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(24px) saturate(150%);
+  z-index: 20;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text);
+  user-select: none;
+  white-space: nowrap;
+}
+.brand-mark {
+  width: 35px;
+  height: 35px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 11px;
+  color: var(--accent-deep);
+  background: linear-gradient(145deg, var(--surface), var(--surface-2));
+  box-shadow: var(--shadow-key), 0 5px 16px -10px var(--accent-ring);
+}
+.brand-mark svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.brand-copy { display: flex; flex-direction: column; gap: 1px; }
+.brand-copy strong {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: 0.09em;
+}
+.brand-copy small {
+  color: var(--faint);
+  font-size: 9px;
+  line-height: 1.4;
+  letter-spacing: 0.12em;
+}
+
+.nav {
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(23, 22, 15, 0.025);
+}
+[data-theme="dark"] .nav { background: rgba(255, 255, 255, 0.025); }
+
+.nav-btn {
+  position: relative;
+  min-width: 54px;
+  font-size: 12.5px;
+  color: var(--muted);
+  padding: 5px 13px;
+  border-radius: 999px;
+  letter-spacing: 0.05em;
+  transition: color 0.18s var(--ease), background-color 0.18s var(--ease),
+    box-shadow 0.18s var(--ease);
+}
+.nav-btn:hover { color: var(--text); }
+.nav-btn.is-active {
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm), 0 0 0 1px var(--line);
+}
+
+.topbar-right {
+  margin-left: auto;
+  display: flex;
+  gap: 7px;
+}
+
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  color: var(--muted);
+  font-size: 13px;
+  transition: color 0.18s var(--ease), background-color 0.18s var(--ease),
+    border-color 0.18s var(--ease), transform 0.18s var(--ease);
+}
+.icon-btn svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.45;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.icon-btn:hover {
+  color: var(--text);
+  border-color: var(--line);
+  background: var(--surface);
+  transform: translateY(-1px);
+}
+.icon-btn:active { transform: translateY(0); }
+[data-theme="dark"] .icon-btn:hover { background: rgba(255, 255, 255, 0.05); }
+
+/* ============================================================
+   视图
+   ============================================================ */
+.view { display: none; }
+.view.is-active { display: block; animation: fadeUp 0.36s var(--ease) both; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: none; }
+}
+
+.main {
+  min-height: calc(100vh - 72px);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 练习页期间锁住文档滚动（统计/词库页不受影响）。
+   只要文档不可滚动，任何 focus / 滚动锚定都无法把整页顶上去。 */
+@media (min-width: 861px) {
+  html.is-drill-locked,
+  body.is-drill-locked {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+}
+

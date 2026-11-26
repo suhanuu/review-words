@@ -1,0 +1,118 @@
+/* 本文件由原 style.css 第 3749–3864 行原样切出，文件名前的数字就是加载顺序，不要调换 */
+
+/* ============================================================
+   今日薄弱词汇 · 独立选词页
+   只在本层追加，靠层叠覆盖前面的规则，不改动已有样式
+   ============================================================ */
+#weakPoolCount { margin-left: auto; }
+.weak-pool-card .writing-card-head { flex-wrap: wrap; }
+.weak-word-chip.is-selected {
+  border-color: var(--accent-ring);
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+  cursor: default;
+}
+.weak-word-chip.is-selected small { color: var(--accent-deep); }
+
+.weak-picker-page { max-width: var(--shell, 1040px); }
+.weak-picker-tip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--text-soft);
+  font-size: var(--fs-sm, 13.5px);
+  line-height: 1.7;
+}
+.weak-picker-tip > span { flex: 1 1 320px; }
+.weak-picker-tip .ghost-btn { flex: 0 0 auto; padding: 7px 14px; font-size: var(--fs-xs, 12.5px); }
+.weak-picker-tip.is-warn { border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
+.weak-picker-tip.is-low { border-color: var(--line-strong); }
+
+.weak-picker-group {
+  margin-top: 18px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+.weak-picker-group-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.weak-picker-group-head strong { font-size: var(--fs-h, 18px); font-weight: 500; }
+.weak-picker-group-head > span { color: var(--muted); font-size: var(--fs-xs, 12.5px); }
+.weak-picker-group-head .ghost-btn { padding: 6px 12px; font-size: var(--fs-xs, 12.5px); }
+.weak-picker-group-head .ghost-btn:nth-of-type(1) { margin-left: auto; }
+.weak-picker-group-empty, .weak-picker-empty {
+  margin: 6px 2px 0;
+  color: var(--muted);
+  font-size: var(--fs-xs, 12.5px);
+  line-height: 1.7;
+}
+.weak-picker-empty { margin-top: 20px; }
+
+.weak-picker-bar {
+  /* 吸底：词表再长也能随时确认，不用先滚到底 */
+  position: sticky;
+  bottom: 12px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: 0 -12px 28px -22px rgba(14, 15, 17, 0.5);
+}
+.weak-picker-bar #weakPickerCount { font-size: var(--fs-body, 15px); font-weight: 500; }
+.weak-picker-bar #weakPickerHint {
+  flex: 1 1 260px;
+  color: var(--muted);
+  font-size: var(--fs-xs, 12.5px);
+  line-height: 1.6;
+}
+.weak-picker-bar .primary-btn { margin-left: auto; }
+.weak-picker-bar.is-warn { border-color: var(--warn); background: linear-gradient(var(--warn-soft), var(--warn-soft)), var(--surface); }
+.weak-picker-bar.is-warn #weakPickerHint { color: var(--warn); }
+.weak-picker-bar.is-low { border-color: var(--line-strong); }
+
+@media (min-width: 861px) {
+  #view-weak-words.is-active {
+    display: block;
+    height: 100%;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
+  }
+  #view-weak-words .weak-picker-page { min-height: 100%; padding-bottom: 36px; }
+}
+@media (max-width: 860px) {
+  /* 这里不能写 overflow-x:hidden + overflow-y:visible：
+     两者混用会让 y 被算成 auto，整块变成不滚动的容器，吸底确认条就失效了 */
+  #view-weak-words.is-active { overflow: visible; }
+}
+@media (max-width: 720px) {
+  .weak-picker-group { padding: 14px; }
+  .weak-picker-group-head .ghost-btn:nth-of-type(1) { margin-left: 0; }
+  .weak-picker-tip .ghost-btn, .weak-picker-bar .primary-btn { margin-left: 0; width: 100%; }
+  .weak-picker-bar #weakPickerHint { flex-basis: 100%; }
+
+  /* 卡片头：标题与入口按钮同一行，计数独占第二行，避免计数被折成两行 */
+  .weak-pool-card .writing-card-head #weakPoolCount { order: 3; flex: 1 0 100%; text-align: left; }
+  .weak-pool-card .writing-card-head #btnOpenWeakPicker { margin-left: auto; }
+
+  /* 确认条吸底，抬起到底部导航上方；页面底部留出条+导航的高度 */
+  #view-weak-words .weak-picker-page { padding-bottom: 96px; }
+  .weak-picker-bar {
+    margin-top: 16px;
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 8px);
+  }
+}

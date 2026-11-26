@@ -1,0 +1,234 @@
+/* 本文件由原 style.css 第 2199–2430 行原样切出，文件名前的数字就是加载顺序，不要调换 */
+
+/* ============================================================
+   响应式
+   ============================================================ */
+@media (max-width: 720px) {
+  .topbar { padding: 0 14px; gap: 12px; height: 60px; }
+  .brand { gap: 8px; }
+  .brand-mark { width: 30px; height: 30px; border-radius: 9px; }
+  .brand-mark svg { width: 18px; height: 18px; }
+  .brand-copy strong { font-size: 11.5px; letter-spacing: 0.06em; }
+  .brand-copy small { display: none; }
+  .nav { gap: 1px; padding: 3px; }
+  .nav-btn { min-width: 42px; padding: 5px 8px; font-size: 11.5px; }
+  .topbar-right { gap: 2px; }
+  .icon-btn { width: 30px; height: 30px; }
+  .main { min-height: calc(100vh - 60px); }
+  .drill { min-height: calc(100vh - 60px); padding: 18px 14px 16px; }
+  .study-shell { min-height: 560px; border-radius: 22px; }
+  .drill-top { min-height: 54px; padding: 0 18px; gap: 12px; font-size: 9.5px; }
+  .progress-label { min-width: 88px; }
+  .timer { min-width: 40px; }
+  .stage { padding: 28px 16px 32px; }
+  .stage-kicker { margin-bottom: 22px; }
+  .page { padding: 36px 18px 84px; }
+  .page-title { font-size: 28px; }
+  .stat-cards { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .done-stats { gap: 12px; }
+  .done-stat { min-width: 110px; padding: 16px; }
+  .word { font-size: clamp(40px, 12vw, 64px); }
+  .answer { font-size: clamp(22px, 5.6vw, 28px); }
+  .chart-block { padding: 18px 16px 12px; }
+  .table-card { padding: 4px 12px; overflow-x: hidden; }
+  .word-tools { align-items: stretch; flex-direction: column; gap: 8px; }
+
+  /* 手机上横着放不下五列：藏掉音标（点「详细」能看到），其余按比例铺满 */
+  .word-table { min-width: 0; }
+  .word-table th.col-p,
+  .word-table td.p { display: none; }
+  .word-table th.col-w { width: 28%; }
+  .word-table th.col-a { width: 32%; }
+  .word-table th.col-s { width: 26%; }
+  .word-table th.col-d { width: 14%; }
+  .word-table td { padding: 9px 6px 9px 0; }
+  .word-table .row-detail {
+    padding: 3px 6px;
+    font-size: 10.5px;
+    white-space: nowrap;
+  }
+
+  /* 首字母条压成一行，可左右滑动 */
+  .letter-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin-bottom: 10px;
+    scrollbar-width: none;
+  }
+  .letter-bar::-webkit-scrollbar { display: none; }
+  .letter-btn { flex: 0 0 auto; }
+}
+
+@media (max-width: 480px) {
+  .topbar { padding: 0 10px; gap: 8px; }
+  .brand-copy strong { font-size: 10.5px; }
+  .nav-btn { min-width: 38px; padding: 5px 7px; }
+  .rate-row { gap: 7px; }
+  .rate { min-width: 92px; padding: 10px 12px; gap: 7px; }
+  .rate kbd { padding: 3px 4px; }
+  .phonetic-row { margin-bottom: 28px; }
+  .hints { font-size: 9.5px; letter-spacing: 0.02em; }
+  .done-actions { flex-direction: column; width: 100%; max-width: 260px; }
+}
+
+@media (max-width: 390px) {
+  .brand-mark { display: none; }
+}
+
+@media (max-height: 780px) and (min-width: 721px) {
+  .drill { padding-top: 22px; }
+  .study-shell { min-height: 530px; }
+  .stage { padding-top: 24px; padding-bottom: 26px; }
+  .stage-kicker { margin-bottom: 18px; }
+  .word { font-size: clamp(52px, 7vw, 78px); }
+  .phonetic-row { margin-bottom: 26px; }
+}
+
+/* 矮屏 + 键盘展开的压缩规则见上方「键盘指法」一节 */
+
+/* ============================================================
+   全站一屏：桌面端文档本身永不滚动
+   每个视图都被约束成「顶栏以下的全部高度」，内容在这个高度内自适应；
+   只有词库表格这种天然无限长的列表在自己的卡片里滚动。
+   ============================================================ */
+@media (min-width: 861px) {
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  .main {
+    height: calc(100vh - 72px);
+    height: calc(100dvh - 72px);
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #view-stats.is-active,
+  #view-words.is-active,
+  #view-done.is-active {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* ---------- 统计：标题 + 四张卡 + 两张图，图表分掉剩余高度 ---------- */
+  #view-stats .page,
+  #view-words .page {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    padding: 24px 32px 16px;
+  }
+  #view-stats .page-title,
+  #view-words .page-title {
+    font-size: 26px;
+    margin-bottom: 6px;
+  }
+  #view-stats .page-sub,
+  #view-words .page-sub {
+    margin-bottom: 14px;
+  }
+
+  #view-stats .stat-cards {
+    flex: 0 0 auto;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  #view-stats .stat-card {
+    padding: 14px 16px 12px;
+  }
+  #view-stats .stat-card .num { font-size: 23px; }
+  #view-stats .stat-card .lbl { margin-top: 5px; }
+
+  #view-stats .chart-row {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  #view-stats .chart-block {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0;
+    padding: 14px 20px 10px;
+  }
+  #view-stats .chart-head { flex: 0 0 auto; margin-bottom: 8px; }
+  #view-stats .chart {
+    flex: 1 1 0;
+    min-height: 0;
+    position: relative;
+  }
+  #view-stats .chart svg {
+    position: absolute;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  #view-stats .empty-note { padding: 12px 0; }
+
+  /* ---------- 词库：标题/搜索固定，表格卡片内部滚动 ---------- */
+  #view-words .word-tools { flex: 0 0 auto; margin-bottom: 10px; }
+  #view-words .table-card {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+  }
+  #view-words .word-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--surface);
+  }
+  #view-words .dict-head { flex: 0 0 auto; }
+  #view-words .letter-bar { flex: 0 0 auto; margin: 0 0 10px; }
+
+  /* ---------- 完成页 ---------- */
+  #view-done .done {
+    height: 100%;
+    min-height: 0;
+    padding: 24px;
+  }
+  #view-done .done-title { margin-bottom: 28px; }
+  #view-done .done-stats { margin-bottom: 30px; }
+}
+
+/* 更矮的窗口：两张图改为左右并排，把竖向空间换成每张图的可读高度 */
+@media (min-width: 861px) and (max-height: 620px) {
+  #view-stats .page-sub { display: none; }
+  #view-stats .chart-row { flex-direction: row; gap: 12px; }
+}
+
+/* 更矮的窗口：统计卡片与标题再收一档，保证两张图仍有可读高度 */
+@media (min-width: 861px) and (max-height: 760px) {
+  #view-stats .page,
+  #view-words .page { padding: 16px 26px 12px; }
+  #view-stats .page-title,
+  #view-words .page-title { font-size: 22px; margin-bottom: 4px; }
+  #view-stats .page-sub,
+  #view-words .page-sub { margin-bottom: 10px; font-size: 11.5px; }
+  #view-stats .stat-card { padding: 10px 13px 9px; }
+  #view-stats .stat-card .num { font-size: 20px; }
+  #view-stats .chart-block { padding: 10px 16px 8px; }
+  #view-stats .chart-head { margin-bottom: 5px; }
+  #view-done .done-title { margin-bottom: 18px; font-size: clamp(24px, 3vw, 32px); }
+  #view-done .done-stats { margin-bottom: 20px; }
+  #view-done .done-stat { padding: 14px 18px; }
+  #view-done .done-stat .num { font-size: 26px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+

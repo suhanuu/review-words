@@ -1,0 +1,115 @@
+/* ============================================================
+   考研单词学习 — design tokens
+   ============================================================ */
+:root {
+  /* 纸感底色：暖白偏米，避免纯白的廉价感 */
+  --bg: #f4f1ea;
+  --bg-elevated: rgba(255, 253, 248, 0.72);
+  --surface: #fffdf8;
+  --surface-2: #f7f4ec;
+  --field: rgba(255, 253, 248, 0.9);
+
+  --text: #17160f;
+  --text-soft: #2c2b23;
+  --muted: #6b6a61;
+  --faint: #a5a49b;
+
+  --line: rgba(23, 22, 15, 0.09);
+  --line-strong: rgba(23, 22, 15, 0.17);
+  --hairline: rgba(255, 255, 255, 0.75);
+
+  /* 靛青：打字进度的主色，低饱和才不刺眼 */
+  --accent: #3f6f9e;
+  --accent-deep: #2b5478;
+  --accent-soft: rgba(63, 111, 158, 0.10);
+  --accent-ring: rgba(63, 111, 158, 0.16);
+
+  --ok: #3d7a5a;
+  --ok-soft: rgba(61, 122, 90, 0.10);
+  --warn: #9a742f;
+  --warn-soft: rgba(154, 116, 47, 0.10);
+  --bad: #b04632;
+  --bad-soft: rgba(176, 70, 50, 0.10);
+
+  --pending: #c3bfb1;
+  --py: #c0bcae;
+
+  --glow-warm: rgba(255, 233, 194, 0.55);
+  --glow-cool: rgba(199, 216, 234, 0.45);
+  --stage-glow: rgba(63, 111, 158, 0.07);
+
+  --shadow-xs: 0 1px 2px rgba(23, 22, 15, 0.04);
+  --shadow-sm: 0 1px 2px rgba(23, 22, 15, 0.05), 0 2px 8px -4px rgba(23, 22, 15, 0.08);
+  --shadow-md: 0 2px 4px rgba(23, 22, 15, 0.04), 0 12px 32px -16px rgba(23, 22, 15, 0.18);
+  --shadow-lg: 0 2px 3px rgba(23, 22, 15, 0.025), 0 24px 70px -34px rgba(45, 48, 44, 0.28), 0 1px 0 rgba(255, 255, 255, 0.88) inset;
+  --shadow-key: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 1px 2px rgba(23, 22, 15, 0.06);
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
+    "Songti SC", "Noto Serif SC", "Times New Roman", serif;
+  --font-serif: var(--font-display);
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-xl: 28px;
+  --ease: cubic-bezier(0.22, 0.68, 0.24, 1);
+  --scale: 1;
+
+  /* 指法手：淡色线稿，作为键盘的背景信息而非主角 */
+  --hand-fill: #cfd2d4;
+  --hand-line: #7b7e82;
+  --hand-hl: #2969d0;
+  --hand-nail: #a9acb0;
+}
+
+[data-theme="dark"] {
+  --bg: #0e0f11;
+  --bg-elevated: rgba(18, 20, 23, 0.72);
+  --surface: #16181b;
+  --surface-2: #1b1e22;
+  --field: rgba(22, 24, 27, 0.92);
+
+  --text: #eceae2;
+  --text-soft: #d6d4cb;
+  --muted: #9b9b93;
+  --faint: #75767d;
+
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.17);
+  --hairline: rgba(255, 255, 255, 0.06);
+
+  --accent: #86b0d8;
+  --accent-deep: #a8c8e6;
+  --accent-soft: rgba(134, 176, 216, 0.12);
+  --accent-ring: rgba(134, 176, 216, 0.18);
+
+  --ok: #6fc08d;
+  --ok-soft: rgba(111, 192, 141, 0.12);
+  --warn: #d0aa63;
+  --warn-soft: rgba(208, 170, 99, 0.12);
+  --bad: #e08066;
+  --bad-soft: rgba(224, 128, 102, 0.13);
+
+  --hand-fill: #d7d9dc;
+  --hand-line: rgba(255, 255, 255, 0.52);
+  --hand-hl: #6fa8ee;
+  --hand-nail: #8f959c;
+
+  --pending: #4a4e56;
+  --py: #63666e;
+
+  --glow-warm: rgba(120, 92, 48, 0.16);
+  --glow-cool: rgba(48, 84, 120, 0.22);
+  --stage-glow: rgba(134, 176, 216, 0.08);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 10px -4px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.35), 0 16px 40px -20px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 2px 3px rgba(0, 0, 0, 0.2), 0 28px 80px -34px rgba(0, 0, 0, 0.72), 0 1px 0 rgba(255, 255, 255, 0.055) inset;
+  --shadow-key: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+

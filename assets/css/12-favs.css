@@ -1,0 +1,412 @@
+/* 本文件由原 style.css 第 2431–2840 行原样切出，文件名前的数字就是加载顺序，不要调换 */
+
+/* ============================================================
+   收藏
+   ============================================================ */
+
+/* 顶栏导航上的数量角标：不占按钮宽度，手机也不会把导航挤变形 */
+.nav-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--warn);
+  color: var(--bg);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-style: normal;
+  line-height: 15px;
+  text-align: center;
+  letter-spacing: 0;
+  box-shadow: 0 0 0 2px var(--bg-elevated);
+}
+.nav-badge[hidden] { display: none; }
+
+/* 星标按钮：练习页 / 词库行 / 收藏列表共用同一套视觉 */
+.fav-btn {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.16s var(--ease), background-color 0.16s var(--ease),
+    transform 0.16s var(--ease);
+}
+.fav-btn svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+.fav-btn:hover { color: var(--warn); background: var(--warn-soft); }
+.fav-btn:active { transform: scale(0.9); }
+.fav-btn.is-on { color: var(--warn); background: var(--warn-soft); }
+.fav-btn.is-on svg { fill: currentColor; }
+
+/* 词库表格行内的小星标：塞在单词左边，不新增一列 */
+.row-fav {
+  width: 19px;
+  height: 19px;
+  margin-right: 7px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  vertical-align: -3px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  transition: color 0.16s var(--ease), background-color 0.16s var(--ease);
+}
+.row-fav svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; }
+.row-fav:hover { color: var(--warn); background: var(--warn-soft); }
+.row-fav.is-on { color: var(--warn); }
+.row-fav.is-on svg { fill: currentColor; }
+
+/* ---------- 我的收藏 ---------- */
+.fav-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm), 0 1px 0 var(--hairline) inset;
+  padding: 6px 10px;
+}
+
+.fav-list { display: flex; flex-direction: column; }
+.fav-list[hidden] { display: none; }
+
+.fav-row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 12px;
+  border-bottom: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.16s var(--ease);
+}
+.fav-row:last-child { border-bottom: none; }
+.fav-row:hover { background: var(--surface-2); }
+.fav-row:focus-visible { outline: 2px solid var(--accent-ring); outline-offset: -2px; }
+
+.fav-body { min-width: 0; }
+.fav-line { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.fav-word {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--text);
+  letter-spacing: 0.005em;
+}
+.fav-ph {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fav-def {
+  margin-top: 3px;
+  font-size: 12.5px;
+  color: var(--text-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fav-time {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+/* 空状态 */
+.fav-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 46px 20px 50px;
+  text-align: center;
+}
+.fav-empty[hidden] { display: none; }
+.fav-empty-icon {
+  width: 34px;
+  height: 34px;
+  margin-bottom: 3px;
+  fill: none;
+  stroke: var(--faint);
+  stroke-width: 1.25;
+  stroke-linejoin: round;
+}
+.fav-empty-title { font-size: 14px; color: var(--text); letter-spacing: 0.04em; }
+.fav-empty-desc { max-width: 290px; font-size: 12px; line-height: 1.75; color: var(--muted); }
+.fav-empty-btn { margin-top: 8px; padding: 8px 20px; font-size: 12.5px; }
+
+/* ---------- 桌面：整页一屏，卡片内部滚动 ---------- */
+@media (min-width: 861px) {
+  #view-favs.is-active {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+  #view-favs .page {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    padding: 24px 32px 16px;
+  }
+  #view-favs .page-title { font-size: 26px; margin-bottom: 6px; }
+  #view-favs .page-sub { margin-bottom: 14px; }
+  #view-favs .fav-card {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  #view-favs .fav-empty { height: 100%; }
+}
+
+@media (min-width: 861px) and (max-height: 760px) {
+  #view-favs .page { padding: 16px 26px 12px; }
+  #view-favs .page-title { font-size: 22px; margin-bottom: 4px; }
+  #view-favs .page-sub { margin-bottom: 10px; font-size: 11.5px; }
+  #view-favs .fav-row { padding: 9px 12px; }
+}
+
+/* ---------- 窄屏 ---------- */
+@media (max-width: 720px) {
+  /* 手机上按钮里的空白放不下角标，改成跟在「收藏」后面的上标小数字 */
+  .nav-badge {
+    position: static;
+    display: inline-block;
+    min-width: 0;
+    height: 13px;
+    line-height: 13px;
+    padding: 0 4px;
+    margin-left: 3px;
+    font-size: 8.5px;
+    vertical-align: 2px;
+    box-shadow: none;
+  }
+  .fav-card { padding: 4px 8px; }
+  .fav-row { grid-template-columns: 24px minmax(0, 1fr) auto; gap: 9px; padding: 10px 6px; }
+  .fav-word { font-size: 14.5px; }
+  .fav-ph { font-size: 10.5px; }
+  .fav-def { font-size: 12px; }
+  .fav-time { font-size: 9.5px; }
+  .fav-empty { padding: 40px 16px 46px; }
+}
+
+@media (max-width: 480px) {
+  .fav-time { display: none; }
+}
+
+/* ---------- 新版模块：书架与作文训练 ---------- */
+.writing-page { max-width: 1180px; margin: 0 auto; }
+.writing-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.writing-card, .book-card { min-width: 0; padding: 20px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-sm); }
+.writing-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; color: var(--text); }
+.writing-status, .book-tag { color: var(--muted); font-size: 11px; }
+.writing-label { display: block; margin: 12px 0 7px; color: var(--text-soft); font-size: 12px; }
+.article-source, .article-translation, .writing-input { display: block; width: 100%; min-height: 118px; padding: 12px 14px; resize: vertical; border: 1px solid var(--line); border-radius: 12px; outline: none; color: var(--text); background: var(--surface-2); font: 13px/1.75 var(--font-sans); }
+.article-translation { min-height: 76px; }
+.writing-input { min-height: 180px; font-family: var(--font-mono); }
+.article-source:focus, .writing-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+.writing-controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
+.writing-modes { display: flex; gap: 6px; padding: 4px; border-radius: 10px; background: var(--surface-2); }
+.mode-btn { padding: 7px 10px; border-radius: 8px; color: var(--muted); font-size: 11px; }
+.mode-btn.is-active { color: var(--text); background: var(--surface); box-shadow: var(--shadow-key); }
+.typing-prompt { max-height: 180px; overflow: auto; padding: 12px; border-radius: 10px; color: var(--text-soft); background: var(--surface-2); font: 12px/1.8 var(--font-mono); white-space: pre-wrap; }
+.typing-metrics { display: flex; flex-wrap: wrap; gap: 18px; margin: 12px 0; color: var(--muted); font-size: 11px; }
+.typing-metrics b { color: var(--text); font-variant-numeric: tabular-nums; }
+.writing-keyboard { max-height: none; margin-top: 16px; opacity: 1; overflow: visible; transform: none; }
+.writing-keyboard .keyboard-panel { width: min(100%, 760px); }
+.bookshelf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 22px; }
+.book-card { display: flex; align-items: center; gap: 16px; }
+.book-card p { margin: 7px 0; color: var(--muted); font-size: 12px; }
+.book-cover { display: grid; flex: 0 0 58px; height: 76px; place-items: center; border-radius: 8px; color: white; background: linear-gradient(145deg, #a64d45, #71352f); font-size: 26px; font-weight: 700; box-shadow: 0 5px 14px #0002; }
+.book-coming .book-cover { color: var(--muted); background: var(--surface-2); box-shadow: none; }
+.book-tag { display: inline-block; padding: 3px 8px; border-radius: 20px; background: var(--surface-2); }
+@media (max-width: 800px) { .writing-grid { grid-template-columns: 1fr; } .writing-controls { align-items: stretch; flex-direction: column; } .writing-modes { align-self: flex-start; } }
+
+@media (max-width: 860px) { .writing-keyboard { display: block; } .writing-keyboard .kb-wrap { width: 100%; } .writing-keyboard .hands { display: none; } }
+
+.bookshelf-toolbar { display:flex; flex-wrap:wrap; align-items:end; gap:12px; margin:22px 0 16px; padding:18px; border:1px solid var(--line); border-radius:14px; background:var(--surface); }
+.book-import-label { display:grid; gap:7px; color:var(--muted); font-size:12px; min-width:220px; }
+.book-import-label input { max-width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:9px; color:var(--text); background:var(--surface-2); font:inherit; }
+.book-import-hint { flex-basis:100%; margin:0; color:var(--muted); font-size:12px; line-height:1.7; }
+.book-switch { display:block; margin-top:10px; padding:7px 12px; font-size:12px; }
+.book-card.is-current { outline:2px solid var(--accent); outline-offset:3px; }
+
+
+/* 单词自评揭晓：先展示中文释义，详细资料仍默认收起在「详细释义」抽屉中。 */
+.review-result {
+  width: min(100%, 640px);
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--text-soft);
+  background: var(--surface-2, var(--surface));
+  border: 1px solid var(--line);
+}
+.review-result.grade-1 {
+  color: var(--bad, #cf4545);
+  background: var(--bad-soft, rgba(207,69,69,.08));
+}
+.review-result.grade-2 {
+  color: #a66b12;
+  background: rgba(230, 170, 55, .12);
+}
+.review-result.grade-3 {
+  color: var(--accent, #18834b);
+  background: var(--accent-soft);
+}
+.meaning-next-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 172px;
+  padding: 11px 20px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  color: #fff;
+  background: var(--accent);
+  box-shadow: var(--shadow-key);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: transform .16s ease, filter .16s ease;
+}
+.meaning-next-btn:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.meaning-next-btn:active { transform: translateY(0); }
+.meaning-next-btn:focus-visible { outline: 3px solid var(--accent-ring); outline-offset: 3px; }
+.meaning-next-btn[hidden] { display: none !important; }
+.rate-row.is-finished { display: none; }
+.drill .full-def.show { display: block; opacity: 1; transform: none; }
+@media (max-height: 620px) and (min-width: 861px) {
+  .drill .full-def.show { display: block; }
+  .drill .meaning-block { --meaning-h: 88px; }
+  .drill .action-zone { height: 64px; }
+}
+
+/* User-owned OpenAI-compatible API settings for writing practice */
+.ai-settings { margin: 16px 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); }
+.ai-settings summary { display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text); font-size: 13px; font-weight: 650; }
+.ai-settings-summary { color: var(--muted); font-size: 11px; font-weight: 400; }
+.ai-settings-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.ai-settings-fields label { display: grid; gap: 7px; color: var(--text-soft); font-size: 12px; }
+.ai-settings-fields label:first-child { grid-column: 1 / -1; }
+.ai-settings-fields input { width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 9px; color: var(--text); background: var(--surface); font: 13px var(--font-sans); }
+.ai-settings-fields input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+.ai-settings-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ai-security-note { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.7; }
+#aiConfigStatus { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
+@media (max-width: 560px) { .ai-settings-fields { grid-template-columns: 1fr; } .ai-settings-fields label:first-child { grid-column: auto; } .ai-settings-actions { flex-direction: column; align-items: stretch; } }
+
+/* 今日薄弱词汇：一词一枚可勾选的胶囊标签 */
+.weak-word-list { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.weak-word-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-soft);
+  font-size: 12.5px;
+  line-height: 1.2;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.16s var(--ease), background-color 0.16s var(--ease),
+    color 0.16s var(--ease);
+}
+.weak-word-chip:hover { border-color: var(--line-strong); color: var(--text); }
+.weak-word-chip input {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.weak-word-chip span {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+}
+.weak-word-chip small { color: var(--muted); font-size: 10.5px; letter-spacing: 0.02em; }
+.weak-word-chip:has(input:checked) { border-color: var(--accent-ring); background: var(--accent-soft); }
+.weak-word-chip:has(input:checked) small { color: var(--accent-deep); }
+
+/* 作文页底部操作条：难度选择、生成按钮、状态文字各就各位，手机上自动换行 */
+.ai-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
+.ai-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+.ai-controls select {
+  padding: 7px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+  font: 12.5px var(--font-sans);
+}
+.ai-controls #aiStatus { flex: 1 1 220px; min-width: 0; margin: 0; }
+
+/* 手机端顶栏：导航按钮不再折成两行，空间不够时在导航条内部横向滑动，
+   右侧设置/主题图标永远留在屏幕里，页面本身不出现横向滚动。 */
+@media (max-width: 720px) {
+  .topbar { overflow: hidden; }
+  .brand, .topbar-right { flex: 0 0 auto; }
+  .nav {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav-btn { flex: 0 0 auto; white-space: nowrap; }
+}
+@media (max-width: 480px) {
+  .topbar { padding: 0 10px; gap: 6px; }
+  /* 站名让位给导航，只保留书本图标 */
+  .brand-copy { display: none; }
+  .brand-mark { display: grid; width: 30px; height: 30px; border-radius: 9px; }
+  .brand-mark svg { width: 17px; height: 17px; }
+  .nav { gap: 1px; padding: 3px; }
+  .nav-btn { min-width: 34px; padding: 5px 7px; font-size: 11px; }
+  .topbar-right { gap: 1px; }
+  .icon-btn { width: 28px; height: 28px; }
+}
+

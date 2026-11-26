@@ -1,0 +1,198 @@
+/* 本文件由原 style.css 第 1875–2070 行原样切出，文件名前的数字就是加载顺序，不要调换 */
+
+/* ============================================================
+   词库页
+   ============================================================ */
+.word-tools {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+.word-tools input {
+  flex: 1;
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  outline: none;
+  padding: 9px 16px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--text);
+  box-shadow: var(--shadow-xs);
+  transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+.word-tools input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.word-tools input::placeholder { color: var(--faint); }
+/* 标题行：左边「词库」，右边词数 */
+.dict-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+.dict-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--faint);
+  letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* 首字母快捷条：点一下只看这个字母开头的词，再点一次取消 */
+.letter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin: -2px 0 14px;
+}
+.letter-btn {
+  min-width: 25px;
+  height: 25px;
+  padding: 0 5px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 0.16s var(--ease), background-color 0.16s var(--ease), border-color 0.16s var(--ease);
+}
+.letter-btn:hover { color: var(--text); background: var(--accent-soft); }
+.letter-btn.is-active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent-ring);
+}
+
+/* 表格卡片：让词库像一本摊开的词典 */
+.table-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm), 0 1px 0 var(--hairline) inset;
+  padding: 6px 22px 4px;
+  overflow: hidden;
+}
+
+.word-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+.word-table th {
+  text-align: left;
+  font-weight: 500;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+  padding: 14px 10px 12px 0;
+  border-bottom: 1px solid var(--line-strong);
+}
+.word-table th.col-w { width: 23%; }
+.word-table th.col-p { width: 18%; }
+.word-table th.col-a { width: 36%; }
+.word-table th.col-s { width: 15%; }
+.word-table th.col-d { width: 8%; }
+.word-table td {
+  padding: 9px 10px 9px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  vertical-align: baseline;
+  transition: background-color 0.16s var(--ease);
+}
+.word-table tbody tr { cursor: pointer; }
+.word-table tbody tr:last-child td { border-bottom: none; }
+.word-table tr:hover td { background: rgba(23, 22, 15, 0.022); }
+[data-theme="dark"] .word-table tr:hover td { background: rgba(255, 255, 255, 0.032); }
+.word-table td.w {
+  font-family: var(--font-display);
+  font-size: 15.5px;
+  color: var(--text);
+  letter-spacing: 0.005em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.word-table td.p {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.word-table td.a {
+  color: var(--text-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.word-table td.s { white-space: nowrap; }
+
+/* 「加进词书」：词库里的词不在当前词书时显示 */
+.row-add {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.16s var(--ease), border-color 0.16s var(--ease), background-color 0.16s var(--ease);
+}
+.row-add:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* 搜不到 / 首次加载 */
+.dict-empty {
+  padding: 48px 12px 56px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--faint);
+  letter-spacing: 0.02em;
+}
+.word-table .dict-loading {
+  padding: 56px 12px 62px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--faint);
+  letter-spacing: 0.02em;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--faint);
+  border: 1px solid var(--line);
+}
+.badge.ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+  border-color: transparent;
+}
+.badge.bad {
+  background: var(--bad-soft);
+  color: var(--bad);
+  border-color: transparent;
+}
+
