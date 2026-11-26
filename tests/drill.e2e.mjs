@@ -185,15 +185,17 @@ try {
   check('老记录 → 补上很熟时刻', migrated && migrated.masteredAt > 0);
   check('老记录 → 到期按新阶梯对齐', migrated && Math.abs(migrated.dueAt - (migrated.lastAt + dayMs)) < 5000);
 
-  // 5) 毕业：step 10 再熟悉一次 = 11，出队
+  // 5) 换 FSRS-6 之后不再有「毕业」：走到第 10 档继续按 FSRS 排期，最长 365 天
   const grad = await cdp.eval(`(() => {
     const r = { step: 10, seen: 3, forgot: 0 };
     window.__review.applyGrade(r, 3);
-    return { step: r.step, done: r.done, dueAt: r.dueAt };
+    return { step: r.step, done: r.done, dueAt: r.dueAt, iv: r.iv, sch: r.fsrs && r.fsrs.sch };
   })()`);
-  check('180 天那档过了 → step 11', grad.step === 11, JSON.stringify(grad.step));
-  check('毕业标记', grad.done === 1, JSON.stringify(grad.done));
-  check('毕业后不再排队', grad.dueAt === 0, JSON.stringify(grad.dueAt));
+  check('第 10 档之后再熟悉也不毕业', grad.done === 0, JSON.stringify(grad.done));
+  check('step 镜像封在毕业前一档', grad.step === 10, JSON.stringify(grad.step));
+  check('记录里挂上了 FSRS-6 卡片', grad.sch === 6, JSON.stringify(grad.sch));
+  check('照常排到未来', grad.dueAt > Date.now(), String(grad.dueAt));
+  check('间隔不超过 365 天', grad.iv <= 365 * dayMs, String(Math.round(grad.iv / dayMs)) + ' 天');
 } catch (e) {
   fails++;
   console.error('执行出错：', e.message);

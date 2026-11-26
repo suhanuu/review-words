@@ -100,7 +100,19 @@ node tests/store.e2e.mjs     # 端到端：把 setItem 打成抛错，确认弹�
 ## L. 其余自动化冒烟
 
 ```
-node tests/schedule.test.js  # 背词节奏规则（assets/schedule.js）
-node tests/drill.e2e.mjs     # 背词页：评价落库、右上角“熟悉”、老记录迁移
+node tests/schedule.test.js  # 学习期节奏规则（assets/schedule.js）
+node tests/scheduler.test.js # 复习期 FSRS-6：曲线、封顶 365 天、旧进度迁移幂等
+node tests/drill.e2e.mjs     # 背词页：评价落库、右上角“熟悉”、老记录迁移、不再毕业
 node tests/today.e2e.mjs     # 今天页：两个入口、今日单词计数、跨天清批
 ```
+
+复习期的行为在 2026-11 换成了 FSRS-6（`assets/vendor/ts-fsrs-6.0.1.umd.js`）：
+
+- 学习期（还没很熟）不动，还是“忘了 15 分钟 / 模糊 20 分钟 / 熟悉明天见”；
+- 很熟之后每次评价由 FSRS 算间隔，间隔上限 365 天，不再有“毕业”；
+- 旧数据打开时按原阶梯天数折算成稳定度（1/2/4/7/15/30/90/180 天），到期时间不改，
+  记录里写 `fsrs.sch = 6`，重复打开不会二次折算；
+- 已经毕业的老词（`done = 1`）保持不再出现。
+
+`tests/scheduler.test.js` 里钉死的曲线是 6 → 27 → 102 → 328 →（封顶）365 天。
+换 ts-fsrs 版本时如果这两条挂了，说明权重变了，要重新确认行为，别直接改期望值。

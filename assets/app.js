@@ -18,11 +18,12 @@
   var MIN = 60000;
   var DAY = 86400000;
 
-  // 背词节奏（规则全在 assets/schedule.js，那边有单测）：
-  // 学习期 step 0–2：忘了 15 分钟、模糊 20 分钟、熟悉 1 天；
-  // 复习期 step 3–10：1/2/4/7/15/30/90/180 天，走完 180 天那档毕业。
+  // 背词节奏：
+  // 学习期 step 0–2：规则在 assets/schedule.js，忘了 15 分钟、模糊 20 分钟、熟悉 1 天；
+  // 复习期（很熟过）：规则在 assets/modules/core/scheduler.js，FSRS-6，最长 365 天，不再毕业。
   var MASTERED = RWSchedule.MASTERED;
-  var LADDER_MAX = RWSchedule.LADDER_DAYS[RWSchedule.LADDER_DAYS.length - 1] * DAY;
+  // 复习间隔上限：FSRS 封顶 365 天（老阶梯最多 180 天）
+  var LADDER_MAX = RWScheduler.MAX_DAYS * DAY;
   var DEFAULTS = {
     theme: 'light',
     sound: true,
@@ -74,6 +75,9 @@
       }
       if (r.masteredAt === undefined) r.masteredAt = 0;
       if (r.done === undefined) r.done = 0;
+      // 很熟过、还没毕业的词换成 FSRS 卡片：稳定度按原阶梯天数折算，到期时间不动。
+      // 带 rec.fsrs.sch = 6 的不会再折算一遍（幂等），重复打开页面也不会把进度推快。
+      RWScheduler.migrate(r, Date.now());
     });
     return {
       settings: Object.assign({}, DEFAULTS, raw.settings || {}),
@@ -93,7 +97,8 @@
 
   // 记录字段（沿用旧结构，只多两个字段）：
   //   word          → db.records 的键
-  //   step          连续熟悉次数（0–10，11 = 毕业）
+  //   step          连续熟悉次数（0–10，界面上只当进度展示，到期时间由 FSRS 决定）
+  //   fsrs          FSRS 记忆状态 { sch, s 稳定度, d 难度, state, last }
   //   iv / dueAt    下次间隔（毫秒）与到期时刻
   //   last / lastAt 上次评价等级与时刻（last：1 忘了 / 2 模糊 / 3 熟悉）
   //   seen / wrong  复习次数与错误次数
@@ -187,27 +192,18 @@
   }
 
   // ================= 背词节奏 =================
-  // 规则（学习期 / 复习阶梯 / 毕业）全在 assets/schedule.js，那边带单测；
-  // 这里只负责把结果落到记录上。全部按「实际完成评价的时刻」起算，存时间戳。
+  // 学习期（还没很熟）的规则在 assets/schedule.js，很熟之后交给 assets/modules/core/scheduler.js
+  // 里的 FSRS-6；两个文件都带单测。这里只负责把结果落到记录上，全部按「实际完成评价的时刻」起算。
 
   // 写入一条复习记录
   function applyGrade(rec, grade) {
     var now = Date.now();
-    var plan = RWSchedule.next(rec.step || 0, grade);
-    rec.step = plan.step;
+    var plan = RWScheduler.grade(rec, grade, now);
     rec.last = grade;
     rec.lastAt = now;
-    if (plan.graduated) {
-      rec.done = 1;
-      rec.iv = 0;
-      rec.dueAt = 0;            // 毕业：不再进队列
-    } else {
-      rec.done = 0;
-      rec.iv = plan.delay;
-      rec.dueAt = now + plan.delay;
-    }
     if (rec.step >= MASTERED && !rec.masteredAt) rec.masteredAt = now;
     if (grade === 1) rec.forgot = (rec.forgot || 0) + 1;
+    return plan;
   }
 
   // ================= 取词 =================
@@ -3071,6 +3067,7 @@
   // 回归脚本用：把节奏计算与队列查询暴露出来，便于逐条核对验收场景
   window.__review = {
     schedule: RWSchedule,
+    scheduler: RWScheduler,
     applyGrade: applyGrade,
     masteredOn: masteredOn,
     masteredTotal: masteredTotal,
