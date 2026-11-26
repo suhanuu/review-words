@@ -473,7 +473,7 @@
     if (name === 'today') renderToday();
     if (name === 'stats') Stats.renderStats();
     if (name === 'words') Words.renderWords(true);
-    if (name === 'favs') renderFavs();
+    if (name === 'favs') Favs.renderFavs();
     if (name === 'books') renderBookshelf();
     // 键盘和手部提示只属于作文训练，不再出现在背词页；手部 SVG 第一次进打字页才拉。
     if (name === 'typing') KB.mountHands();
@@ -488,7 +488,7 @@
     if (lock) watchBegin(); else watchEnd();
     if (!lock) window.scrollTo(0, 0);
     // 切走再回来时星标要跟上（收藏页里取消过收藏，学习页的星标也得灭掉）
-    syncFavUI();
+    Favs.syncFavUI();
   }
 
   // ================= 学习流程 =================
@@ -666,7 +666,7 @@
     clearAnswer();
     renderProgress();
     renderMasterBtn();
-    syncFavUI();
+    Favs.syncFavUI();
     el('hints').textContent = hintText(w, state.origin);
 
     if (db.settings.autoplay) speak(w.w);
@@ -1162,117 +1162,18 @@
     openDetail(w.w, w.ph ? '/' + String(w.ph).replace(/^\/|\/$/g, '') + '/' : '', w.def);
   }
 
-  // ================= 收藏 =================
-  // 数据只存 { 单词: 收藏时间戳 }，释义、音标一律回词库现取，不复制词条。
-  // 时间戳有双重作用：既判断收藏与否，也用来做「最新收藏排最前」的排序。
-  var FAV_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.7l2.55 5.2 5.72.83-4.14 4.03.98 5.7L12 16.75l-5.11 2.69.98-5.7-4.14-4.03 5.72-.83z"/></svg>';
+  // ================= 收藏（独立模块） ===================
+  // 收藏/取关、收藏页渲染、星标与顶栏数字都在 assets/modules/pages/favs.js。
+  var Favs = window.RWFavs.create({
+    el: el,
+    db: function () { return db; },
+    state: function () { return state; },
+    save: save,
+    esc: esc,
+    humanGap: humanGap,
+    wordByKey: wordByKey
+  });
 
-  function isFav(word) {
-    return !!(word && db.favs && db.favs[word]);
-  }
-
-  // 有效收藏数：词表换过之后，收藏里可能有词库里已经找不到的旧词，
-  // 那些照样留在数据里（不删除用户数据），但不计入显示数量。
-  function favItems() {
-    var idx = wordByKey();
-    return Object.keys(db.favs)
-      .sort(function (a, b) { return db.favs[b] - db.favs[a]; })
-      .map(function (k) { return idx[k]; })
-      .filter(Boolean);
-  }
-
-  function toggleFav(word) {
-    if (!word) return false;
-    if (!db.favs) db.favs = {};
-    var on;
-    if (db.favs[word]) { delete db.favs[word]; on = false; }
-    else { db.favs[word] = Date.now(); on = true; }
-    save();
-    syncFavUI();
-    // 收藏页正在看的时候：新收藏整体重排（要排到最前），取消收藏只摘掉那一行，
-    // 免得整张列表重画、滚动位置跳回顶部
-    if (state.view === 'favs') {
-      if (on) renderFavs();
-      else dropFavRow(word);
-    }
-    return on;
-  }
-
-  function dropFavRow(word) {
-    var rows = document.querySelectorAll('#favList .fav-row');
-    for (var i = 0; i < rows.length; i++) {
-      if (rows[i].dataset.w === word) { rows[i].parentNode.removeChild(rows[i]); break; }
-    }
-    var n = favItems().length;
-    if (!n) { renderFavs(); return; }
-    var sub = el('favSub');
-    if (sub) sub.innerHTML = '共 <b>' + n + '</b> 个词，最新收藏的排在最前面，点词看词根和例句。';
-  }
-
-  function favTime(ts) {
-    var d = Date.now() - (ts || 0);
-    if (!ts) return '';
-    if (d < 50000) return '刚刚';
-    return humanGap(d) + '前';
-  }
-
-  function favRow(w) {
-    var ph = w.ph ? '/' + String(w.ph).replace(/^\/|\/$/g, '') + '/' : '';
-    var ts = db.favs[w.w] || 0;
-    return '<div class="fav-row" data-w="' + esc(w.w) + '" data-ph="' + esc(ph) + '"' +
-      ' data-def="' + esc(w.def || w.a) + '" role="button" tabindex="0">' +
-      '<button class="fav-btn is-on" type="button" data-fav="' + esc(w.w) + '"' +
-      ' title="取消收藏" aria-label="取消收藏 ' + esc(w.w) + '">' + FAV_SVG + '</button>' +
-      '<div class="fav-body">' +
-      '<div class="fav-line"><span class="fav-word">' + esc(w.w) + '</span>' +
-      '<span class="fav-ph">' + esc(ph) + '</span></div>' +
-      '<div class="fav-def">' + esc(w.a || w.def) + '</div>' +
-      '</div>' +
-      '<span class="fav-time">' + esc(favTime(ts)) + '</span>' +
-      '</div>';
-  }
-
-  function renderFavs() {
-    var items = favItems();
-    var host = el('favList');
-    var empty = el('favEmpty');
-    var sub = el('favSub');
-    if (!host) return;
-
-    if (!items.length) {
-      host.innerHTML = '';
-      host.hidden = true;
-      if (empty) empty.hidden = false;
-      if (sub) sub.textContent = '还没收藏任何单词。';
-      return;
-    }
-
-    host.innerHTML = items.map(favRow).join('');
-    host.hidden = false;
-    if (empty) empty.hidden = true;
-    if (sub) {
-      sub.innerHTML = '共 <b>' + items.length + '</b> 个词，最新收藏的排在最前面，点词看词根和例句。';
-    }
-  }
-
-  // 练习页星标、顶栏数字、收藏页列表，统一在这里对齐
-  function syncFavUI() {
-    var btn = el('btnFav');
-    if (btn) {
-      var on = state.current ? isFav(state.current.w) : false;
-      btn.classList.toggle('is-on', on);
-      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-      btn.title = on ? '取消收藏' : '收藏这个词';
-      btn.setAttribute('aria-label', on ? '取消收藏' : '收藏这个词');
-    }
-
-    var n = favItems().length;
-    var badge = el('navFavCount');
-    if (badge) {
-      badge.textContent = n;
-      badge.hidden = !n;
-    }
-  }
 
   // ================= 设置 =================
   function applySettings() {
@@ -1618,7 +1519,7 @@
     el('btnFav').addEventListener('click', function (e) {
       e.stopPropagation();
       if (!state.current) return;
-      var on = toggleFav(state.current.w);
+      var on = Favs.toggleFav(state.current.w);
       if (on) beep(660, 0.05);
     });
 
@@ -1627,7 +1528,7 @@
       var star = e.target && e.target.closest ? e.target.closest('.fav-btn') : null;
       if (star) {
         e.stopPropagation();
-        toggleFav(star.dataset.fav);
+        Favs.toggleFav(star.dataset.fav);
         return;
       }
       var row = e.target && e.target.closest ? e.target.closest('.fav-row') : null;
@@ -1975,9 +1876,10 @@
     DAY: DAY,
     MIN: MIN,
     // 收藏相关的只读接口，给回归脚本核对持久化与排序
-    isFav: isFav,
-    toggleFav: toggleFav,
-    favItems: favItems,
+    isFav: Favs.isFav,
+    toggleFav: Favs.toggleFav,
+    favItems: Favs.favItems,
+    syncFavUI: Favs.syncFavUI,
     // 手部 SVG 是懒加载的，回归脚本要能确认：没进打字页就不下载
     ensureHands: KB.ensureHands,
     mountHands: KB.mountHands
@@ -1994,6 +1896,6 @@
   resetStaleBatch();   // 过了 12 点，昨天没学完的次数清零
   setView('today');
   // 万一没有可学的词（整本书都进了复习间隔），也要把收藏数字摆对
-  syncFavUI();
+  Favs.syncFavUI();
 
 })();

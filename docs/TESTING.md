@@ -106,6 +106,7 @@ node tests/review-log.test.js   # 复习日志：按月分键、统计口径、�
 node tests/format.test.js       # 日期键、相对时间、倒计时、时长文案、月度序列
 node tests/stats.e2e.mjs        # 统计页：数字卡、月度图、当月浮层、打字区切换、记录页
 node tests/words.e2e.mjs        # 词库页：词典懒加载、首字母条、中文搜索、加进词书
+node tests/favs.e2e.mjs         # 收藏：练习页星标、顶栏数字、收藏页增删
 node tests/lazy-hands.e2e.mjs   # 手部 SVG 只在进打字页时加载
 node tests/drill.e2e.mjs        # 背词页：评价落库、右上角“熟悉”、老记录迁移、不再毕业
 node tests/today.e2e.mjs        # 今天页：两个入口、今日单词、跨天清批、复习日志与统计页数字
