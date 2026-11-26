@@ -203,6 +203,8 @@
     rec.lastAt = now;
     if (rec.step >= MASTERED && !rec.masteredAt) rec.masteredAt = now;
     if (grade === 1) rec.forgot = (rec.forgot || 0) + 1;
+    // 复习日志单独按月存（core/review-log.js），不占词书那个 JSON
+    RWLog.append(activeBookId, grade, plan.delay, now);
     return plan;
   }
 
@@ -1352,7 +1354,20 @@
     el('wordsLatest').textContent = pts.length ? pts[pts.length - 1].v + ' 个' : '';
     renderChart(document.querySelector('.chart[data-series="words"]'), pts, 0, 'var(--ok)', ' 个');
 
+    renderReviewLog();
     renderTypingZone();
+  }
+
+  // 复习日志（core/review-log.js）：这本词书今天/本月评价了多少次、忘了多少、平均隔几天。
+  // 和上面的「今日单词」不是一回事：同一个词今天评价三次就记三次，看的是练习强度。
+  function renderReviewLog() {
+    var today = todayKey();
+    var d = RWLog.dayStats(activeBookId, today);
+    var m = RWLog.stats(activeBookId, today.slice(0, 7));
+    if (el('revlogToday')) el('revlogToday').textContent = d.count;
+    if (el('revlogMonth')) el('revlogMonth').textContent = m.count;
+    if (el('revlogForgot')) el('revlogForgot').innerHTML = (m.count ? Math.round(m.rate * 100) : 0) + '<small>%</small>';
+    if (el('revlogGap')) el('revlogGap').innerHTML = (m.count ? Math.round(m.avgDays * 10) / 10 : 0) + '<small>天</small>';
   }
 
   // ---------- 当月折线浮层 ----------
@@ -2454,6 +2469,7 @@
     raw.records = {};
     raw.days = {};
     RWStore.set(key, raw);
+    RWLog.clearBook(book.id);   // 复习日志跟着这本书一起重置，别的书不动
 
     if (book.id === activeBookId) {
       db = load();
@@ -3053,6 +3069,7 @@
     el('btnReset').addEventListener('click', function () {
       if (!confirm('会清空所有学习记录、收藏和导入的词，确定吗？')) return;
       RWStore.remove(storeKey());
+      RWLog.clearBook(activeBookId);
       db = load();
       wordCache = null;
       wordIndex = null;

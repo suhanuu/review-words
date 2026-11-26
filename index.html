@@ -338,6 +338,19 @@
       </div>
 
       <div class="zone-head">
+        <span class="zone-name">复习</span>
+        <span class="zone-rule"></span>
+        <span class="zone-tag">按每次评价算</span>
+      </div>
+
+      <div class="stat-cards">
+        <div class="stat-card"><div class="num" id="revlogToday">0</div><div class="lbl">今日评价</div></div>
+        <div class="stat-card"><div class="num" id="revlogMonth">0</div><div class="lbl">本月评价</div></div>
+        <div class="stat-card"><div class="num" id="revlogForgot">0<small>%</small></div><div class="lbl">忘了占比</div></div>
+        <div class="stat-card"><div class="num" id="revlogGap">0<small>天</small></div><div class="lbl">平均间隔</div></div>
+      </div>
+
+      <div class="zone-head">
         <span class="zone-name">打字</span>
         <span class="zone-rule"></span>
         <div class="typing-lang-seg" role="group" aria-label="练习语言">
@@ -591,6 +604,7 @@
 <script src="./assets/modules/core/scheduler.js"></script>
 <script src="./assets/modules/core/ui-toast.js"></script>
 <script src="./assets/modules/core/store.js"></script>
+<script src="./assets/modules/core/review-log.js"></script>
 <script src="./assets/modules/core/persistence-bootstrap.js"></script>
 </body>
 </html>

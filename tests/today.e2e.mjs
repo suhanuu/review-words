@@ -192,6 +192,8 @@ try {
     await cdp.eval('document.getElementById("drillIndex").textContent'));
 
   const doneBeforeReview = await cdp.eval('window.__review.todayDone()');
+  const bookId = await cdp.eval('window.RWStore.getText(window.RWStore.KEYS.activeBook) || "redbook-2024"');
+  const logBeforeReview = await cdp.eval('window.RWLog.dayStats(' + JSON.stringify(bookId) + ', window.RWLog.dayOf()).count');
   // 第一个词点「忘了」：会不会掉回学习池？
   const firstReviewWord = await cdp.eval('document.getElementById("wordText").textContent');
   await cdp.eval('document.querySelector(\'.rate[data-grade="1"]\').click()');
@@ -227,6 +229,22 @@ try {
   check('复习卡显示已复习 5 / 10', /已复习 5 \/ 10/.test(reviewChipAfter), reviewChipAfter);
   const reviewNoteAfter = await cdp.eval('document.getElementById("todayReviewNote").textContent');
   check('复习卡说明里有已复习词数', /已复习 5 词/.test(reviewNoteAfter), reviewNoteAfter);
+
+  // 复习日志：这一轮 5 个词各评价 1 次，日志里就该有 5 条
+  const logToday = await cdp.eval('window.RWLog.dayStats(' + JSON.stringify(bookId) + ', window.RWLog.dayOf()).count');
+  check('复习日志多出 5 条', logToday === logBeforeReview + 5, logBeforeReview + ' -> ' + logToday);
+
+  // 统计页要显示得出来
+  await cdp.eval(`document.querySelector('.nav-btn[data-view="stats"]').click()`);
+  await sleep(500);
+  const logCards = await cdp.eval(`(() => {
+    const g = (id) => (document.getElementById(id) || {}).textContent || '';
+    return { today: g('revlogToday'), month: g('revlogMonth'), forgot: g('revlogForgot'), gap: g('revlogGap') };
+  })()`);
+  check('统计页今日评价 = 日志条数', logCards.today === String(logToday), JSON.stringify(logCards));
+  check('统计页本月评价 ≥ 今日', Number(logCards.month) >= logToday, logCards.month);
+  check('统计页显示忘了占比', /%$/.test(logCards.forgot), logCards.forgot);
+  check('统计页显示平均间隔', /天$/.test(logCards.gap), logCards.gap);
 } catch (e) {
   fails++;
   console.error('执行出错：', e.message);

@@ -100,11 +100,20 @@ node tests/store.e2e.mjs     # 端到端：把 setItem 打成抛错，确认弹�
 ## L. 其余自动化冒烟
 
 ```
-node tests/schedule.test.js  # 学习期节奏规则（assets/schedule.js）
-node tests/scheduler.test.js # 复习期 FSRS-6：曲线、封顶 365 天、旧进度迁移幂等
-node tests/drill.e2e.mjs     # 背词页：评价落库、右上角“熟悉”、老记录迁移、不再毕业
-node tests/today.e2e.mjs     # 今天页：两个入口、今日单词计数、跨天清批
+node tests/schedule.test.js     # 学习期节奏规则（assets/schedule.js）
+node tests/scheduler.test.js    # 复习期 FSRS-6：曲线、封顶 365 天、旧进度迁移幂等
+node tests/review-log.test.js   # 复习日志：按月分键、统计口径、每月 3000 条上限、清书不串账
+node tests/drill.e2e.mjs        # 背词页：评价落库、右上角“熟悉”、老记录迁移、不再毕业
+node tests/today.e2e.mjs        # 今天页：两个入口、今日单词、跨天清批、复习日志与统计页数字
 ```
+
+### 复习日志（2026-11 新增）
+
+- 键名：`reviewwords.revlog.<词书 id>.<YYYY-MM>`，每条 `[时间戳, 评价(1/2/3), 排到的间隔天数]`；
+- 只记录评分，不参与排期；右上角“熟悉”（标记完成）不记，因为那不是一次复习；
+- 每个月最多 3000 条，超了丢最老的；“重新学习”这本书会连它的日志一起清，别的书不动；
+- 统计页“复习”那一排：今日评价 / 本月评价 / 忘了占比 / 平均间隔，口径都来自这份日志。
+  注意它和“今日单词”不是一回事——同一个词今天评价三次就记三次。
 
 复习期的行为在 2026-11 换成了 FSRS-6（`assets/vendor/ts-fsrs-6.0.1.umd.js`）：
 
