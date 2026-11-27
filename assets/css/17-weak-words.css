@@ -135,3 +135,27 @@
   .weak-row-def { max-width: 38%; }
   .weak-picker-bar { bottom: 68px; }
 }
+
+/* 桌面端：主内容区本身锁死滚动，所以这一页要自己滚，不然词一多就翻不动 */
+@media (min-width: 861px) {
+  #view-weak-words.is-active {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+  #view-weak-words .page {
+    flex: 1 1 auto;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: 48px;
+  }
+}
+
+/* 日历收起按钮 */
+.weak-cal-toggle { margin-left: 6px; padding: 6px 12px; font-size: 12.5px; }
+.weak-cal[hidden] { display: none; }

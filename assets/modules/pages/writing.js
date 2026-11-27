@@ -160,6 +160,19 @@
   var weakMonth = ""; // 'YYYY-MM'
   var weakDay = "";   // 'YYYY-MM-DD'
   var picking = false;
+  var UI_KEY = (KEYS && KEYS.uiPrefs) || "reviewwords.ui.v1";
+  function uiPrefs() {
+    var o = get(UI_KEY, {});
+    return o && typeof o === "object" ? o : {};
+  }
+  var calCollapsed = !!uiPrefs().weakCalCollapsed;
+  function setCalCollapsed(v) {
+    calCollapsed = !!v;
+    var p = uiPrefs();
+    p.weakCalCollapsed = calCollapsed;
+    RWStore.set(UI_KEY, p);
+    renderWeakCalendar();
+  }
 
   function pad2(n) {
     return n < 10 ? "0" + n : "" + n;
@@ -213,6 +226,9 @@
   function renderWeakCalendar() {
     var host = $("weakCal");
     if (!host) return;
+    host.hidden = calCollapsed;
+    var toggle = $("btnWeakCalToggle");
+    if (toggle) toggle.textContent = calCollapsed ? "展开" : "收起";
     var counts = RWWeakHistory.monthCounts(active(), weakMonth);
     var y = Number(weakMonth.slice(0, 4)),
       m = Number(weakMonth.slice(5, 7));
@@ -350,6 +366,7 @@
       cal = $("weakCal"),
       list = $("weakList"),
       back = $("btnWeakBack"),
+      calToggle = $("btnWeakCalToggle"),
       allBtn = $("btnWeakPickAll"),
       ok = $("btnWeakConfirm"),
       cancel = $("btnWeakCancel");
@@ -377,6 +394,7 @@
       }
     });
     if (back) back.addEventListener("click", closeWeakPage);
+    if (calToggle) calToggle.addEventListener("click", function () { setCalCollapsed(!calCollapsed); });
     if (allBtn) allBtn.addEventListener("click", pickAllOfDay);
     if (ok) ok.addEventListener("click", confirmPicking);
     if (cancel) cancel.addEventListener("click", closeWeakPage);

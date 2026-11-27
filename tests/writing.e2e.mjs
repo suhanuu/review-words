@@ -112,6 +112,7 @@ try {
   await cdp.ready;
   await cdp.send('Runtime.enable');
   await cdp.send('Page.enable');
+  await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
 
   await waitFor(() => cdp.eval('!!(window.__review && document.getElementById("view-writing"))'));
 
@@ -152,6 +153,44 @@ try {
   check('日历是 7 列（7 个星期标题）',
     (await cdp.eval(`document.querySelectorAll('#weakCal .weak-cal-w').length`)) === 7);
   check('今天空状态', await cdp.eval(`document.getElementById('weakEmpty').hidden === false`));
+
+  // 3.5) 塞满一天的词，验证桌面端这一页能自己上下滚
+  const longDay = await cdp.eval(`(() => {
+    const d = new Date();
+    const pad = (n) => (n < 10 ? '0' + n : '' + n);
+    const dayNum = Math.max(1, d.getDate() - 2);
+    const key = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(dayNum);
+    const book = window.RWStore.getText(window.RWStore.KEYS.activeBook) || 'redbook-2024';
+    const list = (window.WORD_BANK || []).slice(0, 24);
+    list.forEach((w, i) => window.RWWeakHistory.add(book, w.w, i % 2 ? 2 : 1, new Date(key + 'T10:00:00').getTime()));
+    const btn = document.querySelector('#weakCal [data-day="' + key + '"]');
+    if (btn) btn.click();
+    return key;
+  })()`);
+  await sleep(500);
+  const scroll = await cdp.eval(`(() => {
+    const page = document.querySelector('#view-weak-words .page');
+    const cs = getComputedStyle(page);
+    return {
+      overflowY: cs.overflowY,
+      scrollH: page.scrollHeight,
+      clientH: page.clientHeight,
+      rows: document.querySelectorAll('#weakList .weak-row').length
+    };
+  })()`);
+  check('词表很长（24 个词）', scroll.rows === 24, JSON.stringify(scroll.rows));
+  check('页面自己可以上下滚', scroll.overflowY === 'auto', scroll.overflowY);
+  check('内容比视口高，确实需要滚', scroll.scrollH > scroll.clientH + 20, scroll.scrollH + ' / ' + scroll.clientH);
+
+  // 3.6) 日历可以收起
+  await cdp.eval(`document.getElementById('btnWeakCalToggle').click()`);
+  await sleep(300);
+  check('收起后日历隐藏', await cdp.eval(`document.getElementById('weakCal').hidden === true`));
+  check('按钮变「展开」', (await cdp.eval(`document.getElementById('btnWeakCalToggle').textContent`)) === '展开');
+  check('收起后词表还在', (await cdp.eval(`document.querySelectorAll('#weakList .weak-row').length`)) === 24);
+  await cdp.eval(`document.getElementById('btnWeakCalToggle').click()`);
+  await sleep(300);
+  check('再点一次日历回来', await cdp.eval(`document.getElementById('weakCal').hidden === false`));
 
   // 3) 点昨天：昨天有两个薄弱词
   const yesterday = await cdp.eval(`(() => {
