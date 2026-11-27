@@ -408,7 +408,7 @@
 
 /* ---------- 打字练习记录页 ---------- */
 .typing-hist-page { max-width: 980px; margin: 0 auto; padding: 34px 32px 60px; }
-.typing-hist-tools { display: flex; align-items: center; gap: 14px; margin: 4px 0 14px; }
+.typing-hist-tools { display: flex; align-items: center; gap: 14px; margin: 18px 0 14px; }
 .typing-hist-sum {
   margin-left: auto;
   font-size: 11px;
