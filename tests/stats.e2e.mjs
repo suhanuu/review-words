@@ -167,6 +167,19 @@ try {
   check('复习日志卡片渲染', /^\d+$/.test(logCards.today) && /^\d+$/.test(logCards.month), JSON.stringify(logCards));
   check('忘了占比有百分号', /%$/.test(logCards.forgot), logCards.forgot);
   check('平均间隔有单位', /天$/.test(logCards.gap), logCards.gap);
+  // 7) 手机底部导航的「更多」面板（modules/ui/mobile-nav.js）
+  await cdp.eval(`document.getElementById('btnMore').click()`);
+  await sleep(300);
+  check('「更多」面板打开', await cdp.eval(`document.getElementById('moreSheet').classList.contains('open')`));
+  await cdp.eval(`document.querySelector('#moreSheet [data-goto="books"]').click()`);
+  await sleep(400);
+  check('点面板里的书架能跳过去', await cdp.eval(`document.getElementById('view-books').classList.contains('is-active')`));
+  check('跳转后面板自动关闭', (await cdp.eval(`document.getElementById('moreSheet').classList.contains('open')`)) === false);
+  await cdp.eval(`document.getElementById('btnMore').click()`);
+  await sleep(200);
+  await cdp.eval(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);
+  await sleep(300);
+  check('按 Esc 能关掉面板', (await cdp.eval(`document.getElementById('moreSheet').classList.contains('open')`)) === false);
 } catch (e) {
   fails++;
   console.error('执行出错：', e.message);
