@@ -169,6 +169,23 @@ try {
   })()`);
   check('写进了当前词书的自定义词条', inBook === true);
 
+  // 5) 详细资料弹层（modules/pages/detail.js）：点「详细」能开、能关
+  const detailWord = await cdp.eval(`(() => {
+    const btn = document.querySelector('#wordTableBody button.row-detail');
+    if (!btn) return null;
+    const w = btn.dataset.w;
+    btn.click();
+    return w;
+  })()`);
+  await waitFor(() => cdp.eval(`document.getElementById('detailSheet').classList.contains('show')`), 8000);
+  check('详细资料弹层打开', true);
+  check('弹层标题就是这个词', (await cdp.eval('document.getElementById("detailWord").textContent')) === detailWord, String(detailWord));
+  await waitFor(() => cdp.eval(`!document.querySelector('#detailBody .detail-tip')`), 8000);
+  check('资料加载完了（不再是「正在取资料」）',
+    (await cdp.eval(`!(document.querySelector('#detailBody .detail-tip'))`)) === true);
+  await cdp.eval(`document.getElementById('detailClose').click()`);
+  await sleep(300);
+  check('弹层关得掉', (await cdp.eval(`document.getElementById('detailSheet').classList.contains('show')`)) === false);
   // 5) 清空搜索，表恢复全量
   await cdp.eval(`(() => {
     const input = document.getElementById('wordSearch');
