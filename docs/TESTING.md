@@ -33,6 +33,16 @@
 9. 一个词都不选时点"生成作文"，确认自动打开选词页并给出提示；选超过 24 个时确认明确拒绝；选 13–24 个时确认生成前有一次确认提示。
 10. 没有配置 AI API 时，手动粘贴英文和中文翻译，仍能正常练习。
 
+### 薄弱词页（按日期）
+
+作文训练页那张「薄弱词」卡片上，「查看」进只读的薄弱词页，「选词」进勾选模式。
+页面上是一条 7 列日历（周一开始）+ 当天的词表：
+
+1. 有记录的日子按当天词数显示不同深浅，点哪天下面换哪天的词；
+2. 词表只有单词、音标、释义，按当天出错次数排序，不显示次数和「忘了/模糊」；
+3. 今天的格子带小圆点，未来的日子点不动；
+4. 选词模式下每行前面有方块，底部「已选 N 个 / 确认选择」，还可以「全选这天」；
+5. 数据从这次升级开始记；升级前的老记录按「最后一次评价时间」回填了一天。
 ## E. AI 生成（浏览器直连 OpenAI 兼容 API）
 1. 在作文训练页展开"AI API 设置"，填写 API Base URL、API Key、模型名称，先"测试连接"再"保存 API 设置"。
 2. 选 6–12 个目标词进行首次测试。
@@ -103,13 +113,14 @@ node tests/store.e2e.mjs     # 端到端：把 setItem 打成抛错，确认弹�
 node tests/schedule.test.js     # 学习期节奏规则（assets/schedule.js）
 node tests/scheduler.test.js    # 复习期 FSRS-6：曲线、封顶 365 天、旧进度迁移幂等
 node tests/review-log.test.js   # 复习日志：按月分键、统计口径、每月 3000 条上限、清书不串账
+node tests/weak-history.test.js # 薄弱词历史：按日记、按月分键、次数排序、回填、清书不串账
 node tests/format.test.js       # 日期键、相对时间、倒计时、时长文案、月度序列
 node tests/stats.e2e.mjs        # 统计页：数字卡、月度图、当月浮层、打字区切换、记录页
 node tests/words.e2e.mjs        # 词库页：词典懒加载、首字母条、中文搜索、加进词书
 node tests/favs.e2e.mjs         # 收藏：练习页星标、顶栏数字、收藏页增删
 node tests/bookshelf.e2e.mjs    # 书架：卡片、改名、新建导入、重新学习、删除
 node tests/backup.e2e.mjs       # 备份：导出提示、坏文件提示、恢复后覆盖并重载
-node tests/writing.e2e.mjs      # 作文页：薄弱词池、选词页、文章历史、手动开始打字
+node tests/writing.e2e.mjs      # 作文页 + 薄弱词页：7 列日历、按日期看词、选词模式、文章历史
 node tests/lazy-hands.e2e.mjs   # 手部 SVG 只在进打字页时加载
 node tests/drill.e2e.mjs        # 背词页：评价落库、右上角“熟悉”、老记录迁移、不再毕业
 node tests/today.e2e.mjs        # 今天页：两个入口、今日单词、跨天清批、复习日志与统计页数字
