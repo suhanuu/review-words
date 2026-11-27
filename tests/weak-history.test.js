@@ -73,6 +73,11 @@ eq('27 号有 5 个词', counts['27'], 5);
 eq('只有 1 天有记录', His.daysWithData('redbook-2024', '2026-11'), 1);
 eq('没记录的月份是空对象', JSON.stringify(His.monthCounts('redbook-2024', '2026-09')), '{}');
 
+// ---------- 3.5 反查：这些词出现在这个月的哪些天 ----------
+eq('反查 27 号含 abandon', His.daysContaining('redbook-2024', '2026-11', ['abandon']).join(','), '2026-11-27');
+eq('反查多个词只返回到过的天', His.daysContaining('redbook-2024', '2026-11', ['abandon', 'sustain']).length, 1);
+eq('反查不存在返回空', JSON.stringify(His.daysContaining('redbook-2024', '2026-11', ['zzz'])), '[]');
+eq('12 月反查只查 12 月', His.daysContaining('redbook-2024', '2026-12', ['sustain']).join(','), '2026-12-01');
 // ---------- 4. 词书之间互不串 ----------
 His.add('another-book', 'abandon', 1, T);
 eq('别的书读不到这本的历史', His.day('another-book', '2026-11-27').length, 1);

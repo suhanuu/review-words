@@ -110,6 +110,21 @@
     return out;
   }
 
+  // 这些词在这个月的哪些天出现过：返回 ['2026-11-26', ...]，日历上要给它们做标记
+  function daysContaining(bookId, month, words) {
+    var data = monthData(bookId, month);
+    var want = {};
+    (words || []).forEach(function (w) { want[String(w)] = true; });
+    var out = [];
+    Object.keys(data).forEach(function (day) {
+      var bucket = data[day] || {};
+      for (var w in bucket) {
+        if (want[w]) { out.push(month + '-' + day); return; }
+      }
+    });
+    return out;
+  }
+
   // 某个月里有记录的天数
   function daysWithData(bookId, month) {
     return Object.keys(monthCounts(bookId, month)).length;
@@ -146,6 +161,7 @@
     add: add,
     day: day,
     monthCounts: monthCounts,
+    daysContaining: daysContaining,
     daysWithData: daysWithData,
     backfill: backfill,
     clearBook: clearBook

@@ -78,6 +78,18 @@
   font-weight: 600;
 }
 .weak-cal-day.is-future { color: var(--faint); background: transparent; cursor: default; }
+/* 这一天里有「已选进目标词」的词：右上角一个小点 */
+.weak-cal-day.has-pick::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.weak-cal-day.has-pick.is-on::before { background: var(--accent-deep); }
 
 /* 当天标题 */
 .weak-day-head { display: flex; align-items: center; gap: 10px; margin: 24px 0 12px; }
@@ -130,7 +142,8 @@
   box-shadow: var(--shadow-md);
 }
 .weak-picker-bar span { color: var(--text-soft); font-size: 13.5px; }
-.weak-picker-bar .primary-btn { margin-left: auto; }
+.weak-picker-bar .primary-btn { margin-left: 8px; }
+.weak-picker-bar .weak-clear { margin-left: auto; }
 
 /* hidden 属性要压过 .ghost-btn / flex 的 display */
 .weak-picker-bar[hidden], .weak-day-head .ghost-btn[hidden] { display: none; }

@@ -265,6 +265,37 @@ try {
   })()`);
   check('选完词之后才显示词片', cardAfter.chips.length === 2 && cardAfter.listHidden === false, JSON.stringify(cardAfter));
   check('选完词之后显示已选数量', /^已选 2 \/ \d+ 个$/.test(cardAfter.count), cardAfter.count);
+  check('确认后的提示是真实条数', /已选 2 个目标词/.test(await cdp.eval(`document.getElementById('rwToast').textContent`)),
+    await cdp.eval(`document.getElementById('rwToast').textContent`));
+
+  // 再进一次选词：上次的词要被标出来，而不是「已选 2 个却看不见」
+  await cdp.eval(`document.getElementById('btnOpenWeakPick').click()`);
+  await sleep(600);
+  const again = await cdp.eval(`(() => ({
+    count: document.getElementById('weakPickerCount').textContent,
+    rows: document.querySelectorAll('#weakList .weak-row').length,
+    marked: document.querySelectorAll('#weakCal .weak-cal-day.has-pick').length,
+    checkedBoxes: document.querySelectorAll('#weakList .weak-row-box.is-on').length
+  }))()`);
+  check('再进选词时已选数还在', again.count === '已选 2 个', JSON.stringify(again));
+  check('自动落在有已选词的那天（能看到 2 行）', again.rows === 2, JSON.stringify(again));
+  check('日历上给有已选词的日子做了标记', again.marked >= 1, JSON.stringify(again));
+  check('那天的词是勾着的', again.checkedBoxes === 2, JSON.stringify(again));
+
+  // 清空重选
+  await cdp.eval(`document.getElementById('btnWeakClear').click()`);
+  await sleep(400);
+  const cleared = await cdp.eval(`(() => ({
+    count: document.getElementById('weakPickerCount').textContent,
+    checkedBoxes: document.querySelectorAll('#weakList .weak-row-box.is-on').length,
+    marked: document.querySelectorAll('#weakCal .weak-cal-day.has-pick').length
+  }))()`);
+  check('清空后已选 0 个', cleared.count === '已选 0 个', JSON.stringify(cleared));
+  check('清空后勾选框全部取消', cleared.checkedBoxes === 0, JSON.stringify(cleared));
+  check('清空后日历标记也消失', cleared.marked === 0, JSON.stringify(cleared));
+  await cdp.eval(`document.getElementById('btnWeakCancel').click()`);
+  await sleep(400);
+  check('取消不影响已保存的选择', (await cdp.eval(`document.querySelectorAll('#weakWordList .weak-word-chip').length`)) === 2);
 
   // 5) 文章历史：空状态能打开、能返回
   await cdp.eval(`document.getElementById('btnShowHistory').click()`);

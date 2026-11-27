@@ -212,6 +212,23 @@
   }
 
   // ---------- 日历：7 列，周一开始 ----------
+  // 已选的词落在哪些天（只算当前显示的月份，够日历用）
+  function pickedDayMap() {
+    var map = {};
+    if (!draft.length) return map;
+    RWWeakHistory.daysContaining(active(), weakMonth, draft).forEach(function (k) {
+      map[k] = true;
+    });
+    return map;
+  }
+  function dayHasPicked(dayKey) {
+    return !!pickedDayMap()[dayKey];
+  }
+  function latestPickedDay() {
+    var days = RWWeakHistory.daysContaining(active(), weakMonth, draft);
+    return days.length ? days.sort().pop() : "";
+  }
+
   function renderWeakCalendar() {
     var host = $("weakCal");
     if (!host) return;
@@ -219,6 +236,7 @@
     var toggle = $("btnWeakCalToggle");
     if (toggle) toggle.textContent = calCollapsed ? "展开" : "收起";
     var counts = RWWeakHistory.monthCounts(active(), weakMonth);
+    var pickedDays = pickedDayMap();
     var y = Number(weakMonth.slice(0, 4)),
       m = Number(weakMonth.slice(5, 7));
     var daysInMonth = new Date(y, m, 0).getDate();
@@ -236,7 +254,8 @@
         (level ? " has-" + level : "") +
         (key === weakDay ? " is-on" : "") +
         (key === today ? " is-today" : "") +
-        (key > today ? " is-future" : "");
+        (key > today ? " is-future" : "") +
+        (pickedDays[key] ? " has-pick" : "");
       html += '<button type="button" class="' + cls + '"' +
         (key > today ? " disabled" : ' data-day="' + key + '"') + ">" + d + "</button>";
     }
@@ -306,6 +325,11 @@
     if (!weakMonth) weakMonth = monthOf(todayKey());
     if (!weakDay) weakDay = todayKey();
     draft = picking ? getSelection().slice() : [];
+    // 已选的词可能不在今天：挑本月最近一天有它们的日子显示，省得「已选 2 个」却看不到
+    if (picking && draft.length && !dayHasPicked(weakDay)) {
+      var latest = latestPickedDay();
+      if (latest) weakDay = latest;
+    }
     renderWeakPage();
     switchInternalView("weak-words");
     syncNav("writing");
@@ -344,9 +368,10 @@
       showToast("先勾几个词。", true);
       return;
     }
+    var n = draft.length; // 先记下来：closeWeakPage 会把 draft 清空
     saveSelection(draft);
     closeWeakPage();
-    showToast("已选 " + draft.length + " 个目标词");
+    showToast("已选 " + n + " 个目标词");
   }
 
   function bindWeakPage() {
@@ -357,6 +382,7 @@
       back = $("btnWeakBack"),
       calToggle = $("btnWeakCalToggle"),
       allBtn = $("btnWeakPickAll"),
+      clearBtn = $("btnWeakClear"),
       ok = $("btnWeakConfirm"),
       cancel = $("btnWeakCancel");
 
@@ -385,6 +411,10 @@
     if (back) back.addEventListener("click", closeWeakPage);
     if (calToggle) calToggle.addEventListener("click", function () { setCalCollapsed(!calCollapsed); });
     if (allBtn) allBtn.addEventListener("click", pickAllOfDay);
+    if (clearBtn) clearBtn.addEventListener("click", function () {
+      draft = [];
+      renderWeakPage();
+    });
     if (ok) ok.addEventListener("click", confirmPicking);
     if (cancel) cancel.addEventListener("click", closeWeakPage);
   }
