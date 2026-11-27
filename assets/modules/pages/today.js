@@ -59,7 +59,7 @@ window.RWToday = {
       el('todayLearnBig').innerHTML = '<span class="tick">✓</span><small>今日已完成</small>';
       el('todayLearnNote').textContent = '已学习 ' + learnedCount + ' 词';
       learnBtn.className = 'ghost-btn today-btn';
-      learnBtn.textContent = '再学 10 个';
+      learnBtn.textContent = '继续学习';
       learnBtn.dataset.action = 'learn';
       learnCard.classList.remove('is-hot');
       learnCard.classList.add('is-done');

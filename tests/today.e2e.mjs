@@ -138,7 +138,7 @@ try {
   const todayBig = await cdp.eval('document.getElementById("todayLearnBig").textContent');
   check('今天页显示今日已完成', /已完成/.test(todayBig), todayBig);
   const learnBtn = await cdp.eval('document.getElementById("btnStartLearn").textContent');
-  check('学习按钮变「再学 10 个」', /再学 10 个/.test(learnBtn), learnBtn);
+  check('学习按钮变「继续学习」', /继续学习/.test(learnBtn), learnBtn);
 
   // 5.5) 学习设置：把目标改成 30，卡片立刻变 10 / 30
   await cdp.eval('document.getElementById("btnTodaySettings").click()');
