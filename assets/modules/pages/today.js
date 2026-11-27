@@ -47,8 +47,6 @@ window.RWToday = {
     var ds = Stats.dayStats(todayKey());
     var learnedCount = ctx.learnedToday();
     var due = reviewPool(Date.now());
-    var late = due.filter(function (x) { return Date.now() - x.at > DAY; }).length;
-    var nextAt = nextDueIn(Date.now());
 
     // 学习卡：今天新学几个 / 学习目标
     el('todayLearnChip').textContent = '已学习 ' + learnedCount + ' / ' + goalL;
@@ -73,29 +71,28 @@ window.RWToday = {
       learnCard.classList.remove('is-done');
     }
 
-    // 复习卡：今天复习几个 / 复习目标
+    // 复习卡：只报「已复习多少词」，到期的个数放在主数字和按钮上
     el('todayReviewChip').textContent = '已复习 ' + ds.reviewed + ' / ' + goalR;
     el('todayReviewBar').style.width = Math.min(100, goalR ? Math.round(ds.reviewed / goalR * 100) : 0) + '%';
     var reviewCard = el('todayReviewCard');
     var reviewBtn = el('btnStartReview');
     if (ds.reviewed >= goalR) {
       el('todayReviewBig').innerHTML = '<span class="tick">✓</span><small>今日复习已完成</small>';
-      el('todayReviewNote').textContent = '已复习 ' + ds.reviewed + ' 词'
-        + (due.length ? ' · 还有 ' + due.length + ' 个到期' : '');
       reviewCard.classList.add('is-done');
     } else {
       el('todayReviewBig').innerHTML = (goalR - ds.reviewed) + '<small>个到目标</small>';
-      var dueNote = due.length
-        ? ('还有 ' + due.length + ' 个到期' + (late ? ' · 逾期 ' + late + ' 个' : ''))
-        : (nextAt ? '下一个词 ' + countdownText(nextAt) + '回来' : '这本书暂时没有要复习的词了');
-      el('todayReviewNote').textContent = dueNote + ' · 已复习 ' + ds.reviewed + ' 词';
       reviewCard.classList.remove('is-done');
     }
+    el('todayReviewNote').textContent = '已复习 ' + ds.reviewed + ' 词';
+
     reviewBtn.disabled = !due.length;
     reviewBtn.className = due.length
       ? (learnedCount >= goalL ? 'primary-btn today-btn' : 'ghost-btn today-btn')
       : 'ghost-btn today-btn';
-    reviewBtn.textContent = due.length ? '开始复习 ' + due.length + ' 个' : '暂时没有要复习的';
+    // 今天已经复习过就写「继续复习」，否则「开始复习」
+    reviewBtn.textContent = due.length
+      ? ((ds.reviewed > 0 ? '继续复习 ' : '开始复习 ') + due.length + ' 个')
+      : '暂时没有要复习的';
     el('todayReviewCard').classList.toggle('is-hot', due.length > 0 && learnedCount >= goalL);
 
     // 底下那行汇总
