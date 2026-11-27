@@ -41,34 +41,41 @@
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   background: var(--surface);
+  row-gap: 2px;
 }
 .weak-cal-w { text-align: center; font-size: 11.5px; color: var(--faint); padding-bottom: 2px; }
 .weak-cal-blank { visibility: hidden; }
+/* 没有数据的日子就是一个数字，不画框；有数据才上色，颜色从 --accent 派生 */
 .weak-cal-day {
   position: relative;
   height: 44px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface-2);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
   color: var(--muted);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
-  transition: background .12s ease, border-color .12s ease, color .12s ease;
+  transition: background-color .12s ease, box-shadow .12s ease, color .12s ease;
 }
-.weak-cal-day:hover:not(:disabled) { border-color: var(--line-strong); color: var(--text); }
-.weak-cal-day.has-1 { background: rgba(63, 111, 158, .10); color: var(--text-soft); border-color: transparent; }
-.weak-cal-day.has-2 { background: rgba(63, 111, 158, .22); color: var(--text); border-color: transparent; }
-.weak-cal-day.has-3 { background: rgba(63, 111, 158, .36); color: #fff; border-color: transparent; }
-.weak-cal-day.has-4 { background: rgba(63, 111, 158, .54); color: #fff; border-color: transparent; }
-.weak-cal-day.has-5 { background: var(--accent); color: #fff; border-color: transparent; }
+.weak-cal-day:hover:not(:disabled) { background: var(--btn-secondary-hover); color: var(--text); }
+.weak-cal-day.has-1 { background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--text); }
+.weak-cal-day.has-2 { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); }
+.weak-cal-day.has-3 { background: color-mix(in srgb, var(--accent) 30%, transparent); color: var(--text); }
+.weak-cal-day.has-4 { background: color-mix(in srgb, var(--accent) 48%, transparent); color: var(--bg); }
+.weak-cal-day.has-5 { background: color-mix(in srgb, var(--accent) 72%, transparent); color: var(--bg); }
 .weak-cal-day.is-today { font-weight: 700; }
 .weak-cal-day.is-today::after {
   content: ""; position: absolute; left: 50%; bottom: 5px; width: 4px; height: 4px;
   margin-left: -2px; border-radius: 50%; background: currentColor; opacity: .55;
 }
-.weak-cal-day.is-on { box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--accent); }
-.weak-cal-day.is-future { color: var(--faint); background: transparent; border-style: dashed; cursor: default; }
+.weak-cal-day.is-on {
+  box-shadow: inset 0 0 0 2px var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+  font-weight: 600;
+}
+.weak-cal-day.is-future { color: var(--faint); background: transparent; cursor: default; }
 
 /* 当天标题 */
 .weak-day-head { display: flex; align-items: center; gap: 10px; margin: 24px 0 12px; }

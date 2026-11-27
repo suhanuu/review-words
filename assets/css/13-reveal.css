@@ -129,8 +129,8 @@ body.is-typing-screen .main { min-height: 100vh; }
   -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 22px,#000 calc(100% - 30px),transparent 100%);
   mask-image:linear-gradient(to bottom,transparent 0,#000 22px,#000 calc(100% - 30px),transparent 100%); }
 .typing-char { white-space:pre-wrap; border-radius:3px; }
-.typing-char.is-correct { color:#219653; }
-.typing-char.is-wrong { color:#dc3545; background:rgba(220,53,69,.10); }
+.typing-char.is-correct { color: var(--ok); }
+.typing-char.is-wrong { color: var(--bad); background: var(--bad-soft); }
 .typing-char.is-current { border-left:2px solid var(--accent); }
 .typing-live-metrics { color:var(--muted); font-size:12px; font-weight:400; }
 .typing-live-metrics b { color:var(--text); font-variant-numeric:tabular-nums; }
@@ -181,7 +181,7 @@ body.is-typing-screen .main { min-height: 100vh; }
  .typing-live-metrics { display:block; line-height:1.8; }
 }
 .article-source-preview { width:100%; min-height:118px; padding:12px 14px; border:1px solid var(--line); border-radius:12px; color:var(--text); background:var(--surface-2); font:15px/1.9 var(--font-sans); white-space:pre-wrap; overflow-wrap:anywhere; }
-.target-word-mark { color:#1769aa; background:rgba(23,105,170,.12); border-radius:3px; padding:0 2px; }
+.target-word-mark { color: var(--accent); background: var(--accent-soft); border-radius: 3px; padding: 0 2px; }
 
 /* 本轮优化：多词性释义、作文生成状态条；编辑文章按钮已移除 */
 .drill.is-reveal .answer {
@@ -235,7 +235,7 @@ body.is-typing-screen .main { min-height: 100vh; }
   width: 0;
   height: 100%;
   border-radius: inherit;
-  background: #347db8;
+  background: var(--accent);
   transition: width .25s ease, background-color .2s ease;
 }
 .ai-progress-text {
@@ -249,14 +249,14 @@ body.is-typing-screen .main { min-height: 100vh; }
 .ai-progress.is-idle .ai-progress-track { opacity: .45; }
 .ai-progress.is-loading .ai-progress-fill {
   width: 38%;
-  background: #347db8;
+  background: var(--accent);
   animation: rw-progress-indeterminate 1.25s ease-in-out infinite;
 }
 .ai-progress.is-loading .ai-progress-text { color: var(--muted); }
-.ai-progress.is-success .ai-progress-fill { width: 100%; background: #347db8; }
-.ai-progress.is-success .ai-progress-text { color: #347db8; font-weight: 600; }
-.ai-progress.is-error .ai-progress-fill { width: 100%; background: #d9534f; }
-.ai-progress.is-error .ai-progress-text { color: #d9534f; font-weight: 600; }
+.ai-progress.is-success .ai-progress-fill { width: 100%; background: var(--accent); }
+.ai-progress.is-success .ai-progress-text { color: var(--accent); font-weight: 600; }
+.ai-progress.is-error .ai-progress-fill { width: 100%; background: var(--bad); }
+.ai-progress.is-error .ai-progress-text { color: var(--bad); font-weight: 600; }
 @keyframes rw-progress-indeterminate {
   0% { transform: translateX(-110%); }
   55% { transform: translateX(130%); }

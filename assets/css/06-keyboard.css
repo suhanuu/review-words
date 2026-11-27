@@ -169,9 +169,9 @@
 }
 /* 深色下键面本来就暗，提示键要再亮一点才看得出来 */
 [data-theme="dark"] .kb-key.is-hint {
-  color: #e8f1fa;
+  color: var(--text);
   background:
-    linear-gradient(180deg, rgba(134, 176, 216, 0.26), rgba(255, 255, 255, 0.015) 82%),
+    linear-gradient(180deg, var(--accent-soft), rgba(255, 255, 255, 0.015) 82%),
     var(--surface);
 }
 @media (prefers-reduced-motion: reduce) {
@@ -186,7 +186,7 @@
   background: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-ring), 0 0 14px var(--accent-ring);
 }
-[data-theme="dark"] .kb-key.is-down { color: #121417; }
+[data-theme="dark"] .kb-key.is-down { color: var(--btn-primary-text); }
 .kb-key.kb-space::after {
   content: "";
   width: 17px;
