@@ -101,7 +101,7 @@ try {
   check('顶栏是学习进度', /学习 /.test(await cdp.eval('document.getElementById("drillIndex").textContent')),
     await cdp.eval('document.getElementById("drillIndex").textContent'));
 
-  // 3) 一直点熟悉，把 10 个轮三遍
+  // 3) 一直点熟悉：点过一遍的词当天就不再出现，一轮 10 个走完就进收尾
   const wordOf = () => cdp.eval('document.getElementById("wordText").textContent');
   let seen = [];
   for (let i = 0; i < 80; i++) {
@@ -116,17 +116,21 @@ try {
   }
   check('轮完进收尾页', await cdp.eval('document.getElementById("view-done").classList.contains("is-active")'));
   const title = await cdp.eval('document.getElementById("doneTitle").textContent');
-  check('收尾卡说 10 个都背熟了', /10/.test(title), title);
+  check('收尾卡说 10 个都过了一遍', /10 个今天都过了一遍/.test(title), title);
+  check('这一轮只出现了 10 个词（没有重复轮）', seen.length === 10, JSON.stringify(seen.length));
 
-  // 4) 数据层：10 个词进了今天批次且都很熟了，且都在复习池里等明天
+  // 4) 数据层：10 个词今天都点过熟悉（但都还没攒满 3 次，所以没进复习池）
   const stats = await cdp.eval(`(() => {
     const s = window.__review.batchStats();
     const pool = window.__review.reviewPool(Date.now()).length;
-    const r = window.__review;
-    return JSON.stringify({ total: s.total, done: s.done, due: pool });
+    const recs = window.__review.records();
+    const steps = Object.keys(recs).filter(k => recs[k].learnedOn).map(k => recs[k].step);
+    return JSON.stringify({ total: s.total, done: s.done, due: pool, steps: steps });
   })()`);
   const st = JSON.parse(stats);
   check('今天批次 10 个都完成', st.total === 10 && st.done === 10, stats);
+  check('这 10 个词都是 step 1（跨天累计，不是当天刷满）', st.steps.length === 10 && st.steps.every((x) => x === 1), JSON.stringify(st.steps));
+  check('还没进复习池', st.due === 0, String(st.due));
 
   // 5) 回今天，学习卡变完成态
   await cdp.eval('document.getElementById("btnDoneToday").click()');
@@ -147,7 +151,7 @@ try {
   const big30 = await cdp.eval('document.getElementById("todayLearnBig").textContent');
   check('大数字变「20 个到目标」', /20/.test(big30), big30);
 
-  // 6) 跨天清零：把 3 个没很熟的词标成昨天的批次，看会不会清零回炉
+  // 6) 跨天：昨天的批次标记清掉、第二天能再过一遍，但进度（step）要保留
   const reset = await cdp.eval(`(() => {
     const recs = window.__review.records();
     const words = Object.keys(recs).slice(0, 3);
@@ -155,12 +159,14 @@ try {
       recs[w].masteredAt = 0;
       recs[w].step = 2;
       recs[w].batch = '2020-01-01';
+      recs[w].learnedOn = '2020-01-01';
     });
     window.__review.resetStaleBatch();
-    return JSON.stringify(words.map(w => ({ w, step: recs[w].step, batch: recs[w].batch })));
+    return JSON.stringify(words.map(w => ({ w, step: recs[w].step, batch: recs[w].batch, learnedOn: recs[w].learnedOn })));
   })()`);
   const rs = JSON.parse(reset);
-  check('跨天没学完的清零回炉', rs.length === 3 && rs.every((x) => x.step === 0 && x.batch === ''), reset);
+  check('跨天清掉批次标记', rs.length === 3 && rs.every((x) => x.batch === '' && x.learnedOn === ''), reset);
+  check('跨天保留熟悉次数', rs.every((x) => x.step === 2), reset);
 
   // 7) 复习入口：塞 5 个「以前学过、今天到期」的词（不能是今天批次里的）
   await cdp.eval(`(() => {

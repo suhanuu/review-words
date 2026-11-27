@@ -21,6 +21,7 @@ window.RWDrill = {
     var getRec = ctx.getRec, applyGrade = ctx.applyGrade, dayEntry = ctx.dayEntry;
     var MASTERED = ctx.mastered, DAY = ctx.day;
     var countdownText = ctx.fmt.countdownText, humanGap = ctx.fmt.humanGap, mmss = ctx.fmt.mmss;
+    var todayKey = ctx.fmt.todayKey;
     var esc = ctx.esc, beep = ctx.beep, speak = ctx.speak;
     var prefetchDetail = ctx.prefetchDetail, preloadNext = ctx.preloadNext;
 
@@ -91,7 +92,7 @@ window.RWDrill = {
       setDonePrimary(due ? '继续复习' : '回今天', due ? 'review' : 'today');
     } else {
       el('doneKicker').textContent = '今天的新词学完了';
-      el('doneTitle').textContent = (st.total || BATCH_SIZE) + ' 个都背熟了';
+      el('doneTitle').textContent = (st.total || BATCH_SIZE) + ' 个今天都过了一遍';
       setDonePrimary(due ? '去复习 ' + due + ' 个' : '再学 10 个', due ? 'review' : 'learn');
     }
 
@@ -352,9 +353,11 @@ window.RWDrill = {
     if (grade === 3) d.clean += 1;
     if (wasNew) d.newWords += 1;
 
-    // 学习池是「一直轮」：没攒满 3 次的排回队尾，等这一轮过完再来
-    if (state.mode === 'learn' && rec.step < MASTERED && !rec.masteredAt) {
-      state.queue.push(w);
+    // 学习池：点「熟悉」当天就算过了，不再排回队列（进度跨天累计，攒满 3 次才很熟）；
+    // 忘了 / 模糊的留在队列里继续轮，直到过掉或换榜。
+    if (state.mode === 'learn' && !rec.masteredAt) {
+      if (grade === 3) rec.learnedOn = todayKey();
+      else state.queue.push(w);
     }
 
     ctx.save();

@@ -186,6 +186,14 @@
     }
     return n;
   }
+  // 今天点过「熟悉」的词数（含已经攒满 3 次、变成很熟的）
+  function learnedToday() {
+    var today = todayKey(), ks = Object.keys(db.records), n = 0;
+    for (var i = 0; i < ks.length; i++) {
+      if (db.records[ks[i]].learnedOn === today) n++;
+    }
+    return n;
+  }
 
 
 
@@ -275,12 +283,15 @@
     return !r.masteredAt && !r.done;
   }
 
-  // 今天批次里还没很熟的词（保持书里的顺序）
+  // 今天批次里还没过完的词（保持书里的顺序）
+  // 「今天过完」= 今天点过一次「熟悉」（learnedOn === 今天），当天不再排进来；
+  // 没点熟悉的（包括忘了/模糊的）继续留在队列里轮。
   function todayBatch() {
     var today = todayKey();
     return allWords().filter(function (w) {
       var r = db.records[w.w];
-      return r && r.batch === today && isOpen(w);
+      if (!r || r.batch !== today || !isOpen(w)) return false;
+      return r.learnedOn !== today;
     });
   }
 
@@ -296,8 +307,9 @@
     for (var i = 0; i < ws.length && need > 0; i++) {
       var w = ws[i];
       var r = db.records[w.w];
-      if (r && r.batch === today) continue;   // 已经在今天批次里
-      if (!isOpen(w)) continue;               // 很熟过 / 被划掉的不要
+      if (r && r.batch === today) continue;        // 已经在今天批次里
+      if (r && r.learnedOn === today) continue;    // 今天已经过过一遍了
+      if (!isOpen(w)) continue;                    // 很熟过 / 被划掉的不要
       getRec(w.w).batch = today;
       batch.push(w);
       need--;
@@ -307,19 +319,15 @@
     return batch;
   }
 
-  // 过了 12 点：昨天没攒满 3 次的次数清零、退回池子
+  // 过了 12 点：昨天那一批「今天过完」的标记清掉，第二天可以再过一遍。
+  // 进度（step）保留：熟悉一次记一次，攒满 3 次才很熟，跨天累计。
   function resetStaleBatch() {
     var today = todayKey();
     var changed = false;
     Object.keys(db.records).forEach(function (k) {
       var r = db.records[k];
-      if (!r.batch || r.batch === today) return;
-      if (r.masteredAt || r.done) { r.batch = ''; return; }
-      r.step = 0;
-      r.iv = 0;
-      r.dueAt = 0;
-      r.batch = '';
-      changed = true;
+      if (r.batch && r.batch !== today) { r.batch = ''; changed = true; }
+      if (r.learnedOn && r.learnedOn !== today) { r.learnedOn = ''; changed = true; }
     });
     if (changed) save();
   }
@@ -332,7 +340,7 @@
       var r = db.records[k];
       if (r.batch !== today) return;
       total++;
-      if (r.masteredAt) done++;
+      if (r.masteredAt || r.learnedOn === today) done++;
     });
     return { total: total, done: done, left: Math.max(0, total - done) };
   }
@@ -534,6 +542,7 @@
     nextDueIn: nextDueIn,
     dayEntry: dayEntry,
     masteredTotal: masteredTotal,
+    learnedToday: learnedToday,
     renderProgress: function () { return Drill.renderProgress(); },
     day: DAY,
     db: function () { return db; },

@@ -45,30 +45,29 @@ window.RWToday = {
     var goalL = Stats.dailyGoal();
     var goalR = Stats.reviewGoal();
     var ds = Stats.dayStats(todayKey());
+    var learnedCount = ctx.learnedToday();
     var due = reviewPool(Date.now());
     var late = due.filter(function (x) { return Date.now() - x.at > DAY; }).length;
     var nextAt = nextDueIn(Date.now());
 
     // 学习卡：今天新学几个 / 学习目标
-    el('todayLearnChip').textContent = '已学习 ' + ds.learned + ' / ' + goalL;
-    el('todayLearnBar').style.width = Math.min(100, goalL ? Math.round(ds.learned / goalL * 100) : 0) + '%';
+    el('todayLearnChip').textContent = '已学习 ' + learnedCount + ' / ' + goalL;
+    el('todayLearnBar').style.width = Math.min(100, goalL ? Math.round(learnedCount / goalL * 100) : 0) + '%';
     var learnCard = el('todayLearnCard');
     var learnBtn = el('btnStartLearn');
-    if (ds.learned >= goalL) {
+    if (learnedCount >= goalL) {
       el('todayLearnBig').innerHTML = '<span class="tick">✓</span><small>今日已完成</small>';
-      el('todayLearnNote').textContent = '已学习 ' + ds.learned + ' 词'
-        + (left ? ' · 这一轮还剩 ' + left + ' 个' : '');
+      el('todayLearnNote').textContent = '已学习 ' + learnedCount + ' 词';
       learnBtn.className = 'ghost-btn today-btn';
       learnBtn.textContent = '再学 10 个';
       learnBtn.dataset.action = 'learn';
       learnCard.classList.remove('is-hot');
       learnCard.classList.add('is-done');
     } else {
-      el('todayLearnBig').innerHTML = (goalL - ds.learned) + '<small>个到目标</small>';
-      el('todayLearnNote').textContent = '今天新学 ' + ds.learned + ' 个'
-        + (left ? ' · 这一轮还剩 ' + left + ' 个' : '');
+      el('todayLearnBig').innerHTML = (goalL - learnedCount) + '<small>个到目标</small>';
+      el('todayLearnNote').textContent = '今天已过 ' + learnedCount + ' 个';
       learnBtn.className = 'primary-btn today-btn';
-      learnBtn.textContent = ds.learned > 0 || st.done > 0 ? '继续学习' : '开始学习';
+      learnBtn.textContent = learnedCount > 0 || st.done > 0 ? '继续学习' : '开始学习';
       learnBtn.dataset.action = 'learn';
       learnCard.classList.add('is-hot');
       learnCard.classList.remove('is-done');
@@ -94,10 +93,10 @@ window.RWToday = {
     }
     reviewBtn.disabled = !due.length;
     reviewBtn.className = due.length
-      ? (ds.learned >= goalL ? 'primary-btn today-btn' : 'ghost-btn today-btn')
+      ? (learnedCount >= goalL ? 'primary-btn today-btn' : 'ghost-btn today-btn')
       : 'ghost-btn today-btn';
     reviewBtn.textContent = due.length ? '开始复习 ' + due.length + ' 个' : '暂时没有要复习的';
-    el('todayReviewCard').classList.toggle('is-hot', due.length > 0 && ds.learned >= goalL);
+    el('todayReviewCard').classList.toggle('is-hot', due.length > 0 && learnedCount >= goalL);
 
     // 底下那行汇总
     el('todayMastered').textContent = ds.total;
