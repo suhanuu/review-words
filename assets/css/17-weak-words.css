@@ -8,6 +8,8 @@
 
 /* ---------- 作文页卡片 ---------- */
 #weakPoolCount { margin-left: auto; }
+/* 查看 / 选词 两个按钮作为一组靠右，没选词时也不会散在中间 */
+.weak-pool-actions { display: flex; gap: 8px; margin-left: auto; }
 .weak-pool-card .writing-card-head { flex-wrap: wrap; }
 .weak-word-chip.is-selected {
   border-color: var(--accent-ring);

@@ -17,7 +17,8 @@
   font-weight: 400;
   line-height: 1.25;
   letter-spacing: -0.012em;
-  margin: 0 0 10px;
+  /* 副标题删掉之后，标题下沿留一点呼吸，否则下面的分组标签贴太近 */
+  margin: 0 0 20px;
 }
 .page-title::after {
   content: "";

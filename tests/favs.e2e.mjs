@@ -141,13 +141,13 @@ try {
       n: list.length,
       word: first ? first.dataset.w : '',
       time: first ? first.querySelector('.fav-time').textContent : '',
-      sub: document.getElementById('favSub').textContent
+      hasSub: !!document.getElementById('favSub')
     };
   })()`);
   check('收藏页只一行', rows.n === 1, JSON.stringify(rows));
   check('显示收藏的词', rows.word === word, rows.word);
   check('时间是「刚刚」', /刚刚/.test(rows.time), rows.time);
-  check('副标题写了 1 个词', /1/.test(rows.sub), rows.sub);
+  check('副标题那行小字已经删掉', rows.hasSub === false, JSON.stringify(rows));
 
   // 在收藏页取消收藏：行要消失、回到空状态
   await cdp.eval(`document.querySelector('#favList .fav-btn').click()`);
@@ -157,14 +157,13 @@ try {
       n: document.querySelectorAll('#favList .fav-row').length,
       hidden: document.getElementById('favList').hidden,
       empty: document.getElementById('favEmpty').hidden,
-      sub: document.getElementById('favSub').textContent,
       count: document.getElementById('navFavCount').textContent
     };
   })()`);
   check('取消后列表清空', after.n === 0, JSON.stringify(after));
   check('列表隐藏、空状态显示', after.hidden === true && after.empty === false);
   check('顶栏数字消失', after.count === '' || after.count === '0', after.count);
-  check('副标题变回「还没收藏」', /还没收藏/.test(after.sub), after.sub);
+  check('空状态卡片还在', await cdp.eval(`!!document.getElementById('favEmpty').textContent.trim()`));
 
   // 回到背词页，星标应该灭了
   await cdp.eval(`document.querySelector('.nav-btn[data-view="today"]').click()`);

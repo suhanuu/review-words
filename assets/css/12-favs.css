@@ -281,6 +281,8 @@
 
 /* 今日薄弱词汇：一词一枚可勾选的胶囊标签 */
 .weak-word-list { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+/* 没选词时整块隐藏（flex 会压掉 [hidden]，所以显式写一条） */
+.weak-word-list[hidden] { display: none; }
 .weak-word-chip {
   display: inline-flex;
   align-items: center;

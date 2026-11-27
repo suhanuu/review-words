@@ -138,13 +138,16 @@ try {
   await sleep(500);
   const card = await cdp.eval(`(() => {
     const list = document.getElementById('weakWordList');
+    const count = document.getElementById('weakPoolCount');
     return {
-      count: (document.getElementById('weakPoolCount') || {}).textContent || '',
+      count: (count || {}).textContent || '',
+      countHidden: !!(count && count.hidden),
+      listHidden: !!(list && list.hidden),
       chips: list ? Array.from(list.querySelectorAll('.weak-word-chip')).map(n => n.textContent) : []
     };
   })()`);
-  check('卡片显示已选数量', /已选 \d+ \/ \d+ 个/.test(card.count), card.count);
-  check('词片里不再带「忘了/模糊」', card.chips.every((t) => !/忘了|模糊/.test(t)), JSON.stringify(card.chips));
+  check('没选词时不显示已选数量', card.count === '' && card.countHidden === true, JSON.stringify(card));
+  check('没选词时不显示词片', card.chips.length === 0 && card.listHidden === true, JSON.stringify(card));
 
   // 2) 点「查看」：进薄弱词页，看的是今天（今天没有记录，所以是空状态）
   await cdp.eval(`document.getElementById('btnOpenWeakPicker').click()`);
@@ -251,6 +254,17 @@ try {
     const book = Object.keys(m)[0];
     return Array.isArray(m[book]) && m[book].length === 2;
   })()`));
+  const cardAfter = await cdp.eval(`(() => {
+    const list = document.getElementById('weakWordList');
+    const count = document.getElementById('weakPoolCount');
+    return {
+      count: (count || {}).textContent || '',
+      listHidden: !!(list && list.hidden),
+      chips: list ? Array.from(list.querySelectorAll('.weak-word-chip')).map(n => n.textContent) : []
+    };
+  })()`);
+  check('选完词之后才显示词片', cardAfter.chips.length === 2 && cardAfter.listHidden === false, JSON.stringify(cardAfter));
+  check('选完词之后显示已选数量', /^已选 2 \/ \d+ 个$/.test(cardAfter.count), cardAfter.count);
 
   // 5) 文章历史：空状态能打开、能返回
   await cdp.eval(`document.getElementById('btnShowHistory').click()`);

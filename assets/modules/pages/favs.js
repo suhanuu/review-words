@@ -54,8 +54,6 @@ window.RWFavs = {
     }
     var n = favItems().length;
     if (!n) { renderFavs(); return; }
-    var sub = ctx.el('favSub');
-    if (sub) sub.innerHTML = '共 <b>' + n + '</b> 个词，最新收藏的排在最前面，点词看词根和例句。';
   }
 
   function favTime(ts) {
@@ -85,14 +83,12 @@ window.RWFavs = {
     var items = favItems();
     var host = ctx.el('favList');
     var empty = ctx.el('favEmpty');
-    var sub = ctx.el('favSub');
     if (!host) return;
 
     if (!items.length) {
       host.innerHTML = '';
       host.hidden = true;
       if (empty) empty.hidden = false;
-      if (sub) sub.textContent = '还没收藏任何单词。';
       return;
     }
 

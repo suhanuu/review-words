@@ -83,7 +83,6 @@
       <div class="today-head">
         <div>
           <h2 class="page-title">今天</h2>
-          <p class="page-sub" style="margin-bottom:0">先把新词过了，再清复习。</p>
         </div>
         <div class="today-head-right">
           <span class="today-date" id="todayDate"></span>
@@ -210,8 +209,7 @@
   <section class="view" id="view-writing">
     <div class="page writing-page">
       <h2 class="page-title">作文训练</h2>
-      <p class="page-sub">把薄弱词汇放进真实语境。先阅读英文原文和中文翻译，再进入独立的全屏打字练习。</p>
-      <section class="writing-card weak-pool-card"><div class="writing-card-head"><strong>薄弱词</strong><span id="weakPoolCount" class="writing-status"></span><button class="ghost-btn" id="btnOpenWeakPicker" type="button">查看</button><button class="ghost-btn" id="btnOpenWeakPick" type="button">选词</button></div><div id="weakWordList" class="weak-word-list"></div>
+      <section class="writing-card weak-pool-card"><div class="writing-card-head"><strong>薄弱词</strong><span id="weakPoolCount" class="writing-status"></span><div class="weak-pool-actions"><button class="ghost-btn" id="btnOpenWeakPicker" type="button">查看</button><button class="ghost-btn" id="btnOpenWeakPick" type="button">选词</button></div></div><div id="weakWordList" class="weak-word-list"></div>
         <details class="ai-settings" id="aiSettingsPanel">
           <summary>AI API 设置 <span class="ai-settings-summary">配置你自己的 API 服务</span></summary>
           <div class="ai-settings-fields">
@@ -310,7 +308,6 @@
       <div class="bookshelf-head">
         <div>
           <h2 class="page-title">我的书架</h2>
-          <p class="page-sub">每本词书都有独立的学习记录、复习计划和收藏，切换词书不会重置。</p>
         </div>
         <button class="primary-btn" id="btnNewBook" type="button">+ 新建词书</button>
       </div>
@@ -322,7 +319,6 @@
   <section class="view" id="view-stats">
     <div class="page">
       <h2 class="page-title">统计</h2>
-      <p class="page-sub">练字的成果和背词的进度，分开看。</p>
 
       <div class="zone-head">
         <span class="zone-name">背词</span>
@@ -474,7 +470,6 @@
   <section class="view" id="view-favs">
     <div class="page">
       <h2 class="page-title">我的收藏</h2>
-      <p class="page-sub" id="favSub">还没收藏任何单词。</p>
 
       <div class="fav-card">
         <div class="fav-list" id="favList" hidden></div>

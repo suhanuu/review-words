@@ -123,7 +123,8 @@
   #view-stats .page-title,
   #view-words .page-title {
     font-size: 26px;
-    margin-bottom: 6px;
+    /* 副标题删掉后，标题和下面第一组标签之间留一点空 */
+    margin-bottom: 14px;
   }
   #view-stats .page-sub,
   #view-words .page-sub {

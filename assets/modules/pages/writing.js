@@ -41,8 +41,8 @@
     RECOMMEND_MAX = 12,
     SWEET_MIN = 8,
     SWEET_MAX = 10,
-    HARD_MAX = 24,
-    DEFAULT_PICK = 10;
+    HARD_MAX = 24;
+
   // 文案只在这里拼：以后调整区间，页面上的说明、计数、确认弹窗会一起变
   function rangeText() {
     return RECOMMEND_MIN + "–" + RECOMMEND_MAX;
@@ -117,24 +117,10 @@
   function saveSelectionMap(m) {
     RWStore.set(SELECTION, m);
   }
-  function defaultSelection() {
-    return weak()
-      .slice(0, DEFAULT_PICK)
-      .map(function (x) {
-        return x.word;
-      });
-  }
-  // 三态：未初始化（无键 / null）自动选 10；用户清空（[]）不回填；池变动只做 prune
+  // 只认用户自己选过的词：没选过就是空，页面不替他预填
   function getSelection() {
     var m = selectionMap(),
       k = active();
-    if (!Object.prototype.hasOwnProperty.call(m, k) || m[k] === null) {
-      var init = defaultSelection();
-      if (!init.length) return []; // 池为空时保持未初始化，等有词后再养
-      m[k] = init;
-      saveSelectionMap(m);
-      return init.slice();
-    }
     var saved = Array.isArray(m[k]) ? m[k].slice() : [],
       pool = Object.create(null);
     weak().forEach(function (x) {
@@ -202,13 +188,13 @@
     return all[w] || { w: w, ph: "", def: "" };
   }
 
-  // 作文页那张卡：只列已选的目标词，文字后面不再带「忘了 / 模糊」
+  // 作文页那张卡：选过词才显示已选的词片，没选过只留「查看 / 选词」两个按钮
   function renderWeak() {
     var host = $("weakWordList");
     if (!host) return;
-    host.innerHTML = "";
     var chosen = getSelection(),
       pool = weak();
+    host.innerHTML = "";
     chosen.forEach(function (w) {
       var lab = document.createElement("label");
       lab.className = "weak-word-chip is-selected";
@@ -217,9 +203,12 @@
       lab.append(span);
       host.appendChild(lab);
     });
-    if (!chosen.length) host.textContent = "还没选目标词。";
+    host.hidden = !chosen.length;
     var count = $("weakPoolCount");
-    if (count) count.textContent = "已选 " + chosen.length + " / " + pool.length + " 个";
+    if (count) {
+      count.hidden = !chosen.length;
+      count.textContent = chosen.length ? "已选 " + chosen.length + " / " + pool.length + " 个" : "";
+    }
   }
 
   // ---------- 日历：7 列，周一开始 ----------
@@ -472,6 +461,12 @@
         (a.wordCount ||
           ((a.content || "").match(/\b[\w'-]+\b/g) || []).length) + " 词";
     fitArticleTextareas();
+  }
+  // 顶部导航的高亮：作文这几个子页面自己切视图，得手动把「作文训练」点亮
+  function syncNav(name) {
+    document.querySelectorAll(".nav-btn[data-view]").forEach(function (b) {
+      b.classList.toggle("is-active", b.dataset.view === name);
+    });
   }
   function switchInternalView(name) {
     document.querySelectorAll(".view").forEach(function (v) {
