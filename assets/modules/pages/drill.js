@@ -344,7 +344,7 @@ window.RWDrill = {
     var wasNew = rec.seen === 0;
 
     // applyGrade 内部写 step / iv / dueAt / last / lastAt / forgot，这里不再重复写时间
-    applyGrade(rec, grade);
+    applyGrade(rec, grade, w.w);
     rec.seen += 1;
     if (grade < 3) rec.wrong += 1;
 

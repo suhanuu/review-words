@@ -176,6 +176,17 @@ try {
   check('忘了 → step 0', rec && rec.step === 0, JSON.stringify(rec && rec.step));
   check('忘了 → 15 分钟', rec && Math.abs(rec.iv - 15 * 60000) < 1000, JSON.stringify(rec && rec.iv));
 
+  // 薄弱词历史：点「忘了」的这个词要记进当天
+  const wh = await cdp.eval(`(() => {
+    const book = window.RWStore.getText(window.RWStore.KEYS.activeBook) || 'redbook-2024';
+    const day = window.RWWeakHistory.dayOf();
+    const rows = window.RWWeakHistory.day(book, day);
+    const hit = rows.find(r => r.word === ${JSON.stringify(w3)});
+    return JSON.stringify({ n: rows.length, hit });
+  })()`);
+  const whData = JSON.parse(wh);
+  check('忘了的词进了薄弱词历史', !!whData.hit && whData.hit.forgot === 1, wh);
+
   // 4) 老数据迁移：先离开 app（不然离开时的自动保存会把注入的数据冲掉），
   //    在同一个源的空页面上塞一条老格式记录，再回来让 app 读它。
   await cdp.eval("location.href = '/docs/mockups/stats-sketch.html'");

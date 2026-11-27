@@ -38,6 +38,7 @@
     defaultBookId: DEFAULT_BOOK_ID,
     defaultSettings: DEFAULTS,
     log: RWLog,
+    weakHistory: RWWeakHistory,
     parseImport: function (text) { return Words.parseImport(text); },
     activeId: function () { return activeBookId; },
     reloadCurrent: function () {
@@ -98,13 +99,20 @@
       // 带 rec.fsrs.sch = 6 的不会再折算一遍（幂等），重复打开页面也不会把进度推快。
       RWScheduler.migrate(r, Date.now());
     });
+    // 升级前的薄弱词历史：每条记录只有「最后一次评价」，按那天回填一次就够，
+    // 用 whBackfilled 标记，避免每次打开都重复累加
+    if (!raw.whBackfilled) {
+      RWWeakHistory.backfill(activeBookId, recs);
+      raw.whBackfilled = 1;
+    }
     return {
       settings: Object.assign({}, DEFAULTS, raw.settings || {}),
       records: recs,
       days: raw.days || {},
       custom: raw.custom || [],
       // 收藏：{ 单词: 收藏时间戳 }，时间戳只用来排序（最新收藏排最前）
-      favs: (raw.favs && typeof raw.favs === 'object') ? raw.favs : {}
+      favs: (raw.favs && typeof raw.favs === 'object') ? raw.favs : {},
+      whBackfilled: raw.whBackfilled ? 1 : 0
     };
   }
 
@@ -202,7 +210,7 @@
   // 里的 FSRS-6；两个文件都带单测。这里只负责把结果落到记录上，全部按「实际完成评价的时刻」起算。
 
   // 写入一条复习记录
-  function applyGrade(rec, grade) {
+  function applyGrade(rec, grade, word) {
     var now = Date.now();
     var plan = RWScheduler.grade(rec, grade, now);
     rec.last = grade;
@@ -211,6 +219,8 @@
     if (grade === 1) rec.forgot = (rec.forgot || 0) + 1;
     // 复习日志单独按月存（core/review-log.js），不占词书那个 JSON
     RWLog.append(activeBookId, grade, plan.delay, now);
+    // 薄弱词历史：只记「忘了 / 模糊」，按月分键（core/weak-history.js）
+    if (word && (grade === 1 || grade === 2)) RWWeakHistory.add(activeBookId, word, grade, now);
     return plan;
   }
 
@@ -860,6 +870,7 @@
       if (!confirm('会清空所有学习记录、收藏和导入的词，确定吗？')) return;
       RWStore.remove(storeKey());
       RWLog.clearBook(activeBookId);
+      RWWeakHistory.clearBook(activeBookId);
       db = load();
       wordCache = null;
       wordIndex = null;
@@ -875,6 +886,7 @@
   window.__review = {
     schedule: RWSchedule,
     scheduler: RWScheduler,
+    weakHistory: RWWeakHistory,
     applyGrade: applyGrade,
     masteredOn: masteredOn,
     masteredTotal: masteredTotal,

@@ -171,7 +171,8 @@ window.RWBookshelf = {
     raw.records = {};
     raw.days = {};
     ctx.store.set(key, raw);
-    ctx.log.clearBook(book.id);   // 复习日志跟着这本书一起重置，别的书不动
+    ctx.log.clearBook(book.id);         // 复习日志跟着这本书一起重置，别的书不动
+    ctx.weakHistory.clearBook(book.id); // 薄弱词历史同理
 
     if (book.id === ctx.activeId()) {
       ctx.reloadCurrent();

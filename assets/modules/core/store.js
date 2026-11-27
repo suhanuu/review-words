@@ -41,7 +41,8 @@
     dailyTasks: 'reviewwords.dailyTasks.v1',
     aiSettings: 'reviewwords.aiSettings.v1',
     weakSelection: 'reviewwords.weakSelection.v1',
-    reviewLogPrefix: 'reviewwords.revlog.'  // reviewwords.revlog.<词书 id>.<YYYY-MM>，由 review-log.js 追加
+    reviewLogPrefix: 'reviewwords.revlog.',   // reviewwords.revlog.<词书 id>.<YYYY-MM>，由 review-log.js 追加
+    weakHistoryPrefix: 'reviewwords.weakhis.' // reviewwords.weakhis.<词书 id>.<YYYY-MM>，由 weak-history.js 追加
   };
 
   // 备份导出/恢复认这两个前缀
