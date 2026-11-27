@@ -186,11 +186,12 @@ try {
   })()`);
   await cdp.eval('document.querySelector(\'.nav-btn[data-view="today"]\').click()');
   await sleep(400);
-  const reviewNote0 = await cdp.eval('document.getElementById("todayReviewNote").textContent');
-  check('复习卡说明只写已复习词数', /^已复习 \d+ 词$/.test(reviewNote0), reviewNote0);
-  check('复习按钮带上待复习数', /5 个/.test(await cdp.eval('document.getElementById("btnStartReview").textContent')),
-    await cdp.eval('document.getElementById("btnStartReview").textContent'));
-  check('第一次是「开始复习」', /^开始复习 5 个$/.test(await cdp.eval('document.getElementById("btnStartReview").textContent')),
+  const reviewChip0 = await cdp.eval('document.getElementById("todayReviewChip").textContent');
+  check('复习卡右上角只写已复习词数', /^已复习 0 词$/.test(reviewChip0), reviewChip0);
+  check('复习卡说明是空的', (await cdp.eval('document.getElementById("todayReviewNote").textContent')) === '');
+  check('大数字是待复习个数', /^5个待复习$/.test(await cdp.eval('document.getElementById("todayReviewBig").textContent')),
+    await cdp.eval('document.getElementById("todayReviewBig").textContent'));
+  check('按钮只写「开始复习」', (await cdp.eval('document.getElementById("btnStartReview").textContent')) === '开始复习',
     await cdp.eval('document.getElementById("btnStartReview").textContent'));
 
   await cdp.eval('document.getElementById("btnStartReview").click()');
@@ -234,9 +235,9 @@ try {
   await cdp.eval('document.getElementById("btnDoneToday").click()');
   await sleep(400);
   const reviewChipAfter = await cdp.eval('document.getElementById("todayReviewChip").textContent');
-  check('复习卡显示已复习 5 / 10', /已复习 5 \/ 10/.test(reviewChipAfter), reviewChipAfter);
-  const reviewNoteAfter = await cdp.eval('document.getElementById("todayReviewNote").textContent');
-  check('复习卡说明里有已复习词数', /已复习 5 词/.test(reviewNoteAfter), reviewNoteAfter);
+  check('复习卡显示已复习 5 词', reviewChipAfter === '已复习 5 词', reviewChipAfter);
+  check('清完后大数字变完成态', /今天清完了/.test(await cdp.eval('document.getElementById("todayReviewBig").textContent')),
+    await cdp.eval('document.getElementById("todayReviewBig").textContent'));
 
   // 已经复习过之后再塞 3 个到期词：按钮应该写「继续复习」，不再写「开始复习」
   await cdp.eval(`(() => {
@@ -261,12 +262,12 @@ try {
   await sleep(300);
   await cdp.eval(`document.querySelector('.nav-btn[data-view="today"]').click()`);
   await sleep(500);
-  check('复习过之后按钮变「继续复习 3 个」',
-    /^继续复习 3 个$/.test(await cdp.eval('document.getElementById("btnStartReview").textContent')),
+  check('复习过之后按钮变「继续复习」',
+    (await cdp.eval('document.getElementById("btnStartReview").textContent')) === '继续复习',
     await cdp.eval('document.getElementById("btnStartReview").textContent'));
-  check('说明还是只写已复习词数',
-    /^已复习 5 词$/.test(await cdp.eval('document.getElementById("todayReviewNote").textContent')),
-    await cdp.eval('document.getElementById("todayReviewNote").textContent'));
+  check('右上角还是今天的复习词数',
+    (await cdp.eval('document.getElementById("todayReviewChip").textContent')) === '已复习 5 词',
+    await cdp.eval('document.getElementById("todayReviewChip").textContent'));
 
   // 复习日志：这一轮 5 个词各评价 1 次，日志里就该有 5 条
   const logToday = await cdp.eval('window.RWLog.dayStats(' + JSON.stringify(bookId) + ', window.RWLog.dayOf()).count');

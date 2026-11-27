@@ -71,29 +71,26 @@ window.RWToday = {
       learnCard.classList.remove('is-done');
     }
 
-    // 复习卡：只报「已复习多少词」，到期的个数放在主数字和按钮上
-    el('todayReviewChip').textContent = '已复习 ' + ds.reviewed + ' / ' + goalR;
-    el('todayReviewBar').style.width = Math.min(100, goalR ? Math.round(ds.reviewed / goalR * 100) : 0) + '%';
+    // 复习卡：不设目标。大数字 = 还有几个到期，右上角 = 今天已经复习了几个词
+    el('todayReviewChip').textContent = '已复习 ' + ds.reviewed + ' 词';
     var reviewCard = el('todayReviewCard');
     var reviewBtn = el('btnStartReview');
-    if (ds.reviewed >= goalR) {
-      el('todayReviewBig').innerHTML = '<span class="tick">✓</span><small>今日复习已完成</small>';
-      reviewCard.classList.add('is-done');
-    } else {
-      el('todayReviewBig').innerHTML = (goalR - ds.reviewed) + '<small>个到目标</small>';
+    if (due.length) {
+      el('todayReviewBig').innerHTML = due.length + '<small>个待复习</small>';
       reviewCard.classList.remove('is-done');
+    } else {
+      el('todayReviewBig').innerHTML = '<span class="tick">✓</span><small>今天清完了</small>';
+      reviewCard.classList.add('is-done');
     }
-    el('todayReviewNote').textContent = '已复习 ' + ds.reviewed + ' 词';
+    el('todayReviewNote').textContent = '';
 
     reviewBtn.disabled = !due.length;
     reviewBtn.className = due.length
       ? (learnedCount >= goalL ? 'primary-btn today-btn' : 'ghost-btn today-btn')
       : 'ghost-btn today-btn';
     // 今天已经复习过就写「继续复习」，否则「开始复习」
-    reviewBtn.textContent = due.length
-      ? ((ds.reviewed > 0 ? '继续复习 ' : '开始复习 ') + due.length + ' 个')
-      : '暂时没有要复习的';
-    el('todayReviewCard').classList.toggle('is-hot', due.length > 0 && learnedCount >= goalL);
+    reviewBtn.textContent = due.length ? (ds.reviewed > 0 ? '继续复习' : '开始复习') : '暂时没有要复习的';
+    reviewCard.classList.toggle('is-hot', due.length > 0 && learnedCount >= goalL);
 
     // 底下那行汇总
     el('todayMastered').textContent = ds.total;
