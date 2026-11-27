@@ -1,3 +1,29 @@
+/* ============================================================
+   Review Words · 作文训练（作文与 AI + 薄弱词选词）
+
+   原来叫 reviewwords-enhancements.js——一个什么都往里塞的补丁文件。
+   现在它已经拆出去三块：
+     core/ui-toast.js        提示条
+     ui/mobile-nav.js        手机「更多」面板
+     pages/backup.js         备份导出与恢复
+   剩下的就是「作文训练」这一件事，所以改成 pages/writing.js：
+
+     1) 薄弱词池与选词页（第 1 段）
+        · 从学习记录里挑出「忘了 / 模糊」的词，按优先级排；
+        · 每本书一份选择（reviewwords.weakSelection.v1），默认自动选 10 个；
+        · 独立选词页支持按组勾选、按优先级自动选、确认后回作文页。
+
+     2) 文章、历史与 AI 生成（第 2 段）
+        · 浏览器直连 OpenAI 兼容接口生成文章（API Key 只存本机，不进备份）；
+        · 目标词覆盖校验、生成进度提示、文章历史（勾选/删除）；
+        · 手动粘贴文章也能练，不需要 AI。
+
+     3) 打字成绩记录（第 3 段）
+        · 提交作文打字时，把速度/准确率/错误数写进 reviewwords.typingRecords.v1，
+          统计页的打字区读的就是这份数据。
+
+   依赖：core/store.js（读写与键名）、core/ui-toast.js（提示条）。
+   ============================================================ */
 (function () {
   "use strict";
   var $ = function (id) {
@@ -45,6 +71,7 @@
     });
     return m;
   }
+  // ---------- 1. 薄弱词池与选词 ----------
   function weak() {
     var d = archive(),
       rec = d.records || {},
@@ -300,6 +327,7 @@
     syncNav("writing");
     showToast("已保存 " + draft.length + " 个目标词");
   }
+  // ---------- 2. 文章、历史与 AI 生成 ----------
   function articles() {
     return get(ARTICLES, []);
   }
@@ -927,6 +955,7 @@
       $("btnGenerateArticle").disabled = false;
     }
   }
+  // ---------- 3. 打字成绩记录 ----------
   function editDistance(a, b) {
     var prev = Array.from({ length: b.length + 1 }, function (_, i) {
         return i;

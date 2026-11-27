@@ -6,10 +6,10 @@
     今天（学习入口）   view-today            app.js · 今天页
     练习（背词）      view-drill            app.js · 背词 + modules/core/scheduler.js（FSRS-6）
     完成              view-done             app.js · 收尾
-    作文训练          view-writing          app.js · 作文 + modules/reviewwords-enhancements.js
+    作文训练          view-writing          app.js · 作文 + modules/pages/writing.js
     全屏打字练习      view-typing           app.js · 打字 + hands.js（第一次进本页才加载）
-    文章历史          view-article-history  reviewwords-enhancements.js · 历史
-    今日薄弱词汇      view-weak-words       reviewwords-enhancements.js · 选词页
+    文章历史          view-article-history  pages/writing.js · 历史
+    今日薄弱词汇      view-weak-words       pages/writing.js · 选词页
     书架              view-books            app.js · 书架
     统计              view-stats            app.js · 统计与图表
     打字练习记录      view-typing-history   app.js · 打字成绩
@@ -210,7 +210,7 @@
   </section>
 
 
-  <!-- ============ 作文训练 · 对应 app.js 作文 + modules/reviewwords-enhancements.js ============ -->
+  <!-- ============ 作文训练 · 对应 app.js 作文 + modules/pages/writing.js ============ -->
   <section class="view" id="view-writing">
     <div class="page writing-page">
       <h2 class="page-title">作文训练</h2>
@@ -267,7 +267,7 @@
     </div>
   </section>
 
-  <!-- ============ 文章历史 · 对应 modules/reviewwords-enhancements.js ============ -->
+  <!-- ============ 文章历史 · 对应 modules/pages/writing.js ============ -->
   <section class="view" id="view-article-history" aria-label="文章历史">
     <div class="page article-history-page">
       <div class="history-page-head"><button type="button" class="ghost-btn" id="btnHistoryBack">← 返回作文训练</button><h2 class="page-title">文章历史</h2></div>
@@ -281,7 +281,7 @@
     </div>
   </section>
 
-  <!-- ============ 今日薄弱词汇（选词页） · 对应 modules/reviewwords-enhancements.js ============ -->
+  <!-- ============ 今日薄弱词汇（选词页） · 对应 modules/pages/writing.js ============ -->
   <section class="view" id="view-weak-words" aria-label="今日薄弱词汇">
     <div class="page weak-picker-page">
       <div class="history-page-head">
@@ -627,6 +627,7 @@
 <script src="./assets/modules/core/review-log.js"></script>
 <script src="./assets/modules/core/format.js"></script>
 <script src="./assets/modules/pages/backup.js"></script>
+<script src="./assets/modules/pages/writing.js"></script>
 <script src="./assets/modules/pages/typing.js"></script>
 <script src="./assets/modules/pages/detail.js"></script>
 <script src="./assets/modules/pages/drill.js"></script>

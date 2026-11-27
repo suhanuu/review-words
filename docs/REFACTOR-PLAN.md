@@ -134,8 +134,9 @@ GitHub Pages 只能托管静态文件，不能安全保存 Gemini/Groq/OpenRoute
     words（词库）、favs（收藏）、bookshelf（书架）、detail（详细资料）、typing（全屏打字）
 - `app.js` 从 3,100 行降到 900 行左右，只剩：存储与记录、取词池、状态、
   提示音与发音、视图切换、设置抽屉、bind()、启动。
-- `reviewwords-enhancements.js` 已用 prettier 展开成正常排版（1,215 行），
-  功能还没并进对应模块，是下一步。
+- `reviewwords-enhancements.js` 已撤掉：提示条、手机导航、备份先后拆出去，
+  剩下的作文训练（作文与 AI + 薄弱词选词 + 打字成绩记录）改名成 `pages/writing.js`。
+  如果以后还想再拆，可以按三段拆成 writing / weak-words / typing-record 三个文件。
 - `assets/modules/reviewwords-enhancements.js` 还是压行的写法，先展开再按功能并入模块。
 - 拆分前先给作文、打字、统计、书架补自动化测试（打字与手部懒加载已有
   `tests/lazy-hands.e2e.mjs` 打底）。
