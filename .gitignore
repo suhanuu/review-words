@@ -17,8 +17,8 @@ _data/re/.profile*/
 # 设计稿截图（本地看版式用，加起来好几 MB；草图 html 本身留着）
 docs/mockups/shots/
 
-# 自己临时搭的草稿页：只在本地看效果，不进仓库
-docs/mockups/local-*.html
+# 自己临时搭的草稿：草稿页、截图脚本都只在本地用，不进仓库
+docs/mockups/local-*.*
 
 # 系统杂项
 .DS_Store
