@@ -52,6 +52,12 @@
   --btn-primary-active: #0757ba;
   --btn-primary-text: #ffffff;
 
+  /* 次按钮和导航选中态：GitHub 的浅灰底 */
+  --btn-secondary-bg: #ffffff;
+  --btn-secondary-hover: #f3f4f6;
+  --btn-secondary-active: #ebecf0;
+  --nav-active-bg: #eaeef2;
+
   /* 原来背景上那两层彩色光晕，GitHub 风格不要，留成透明让 base.css 不用改 */
   --glow-warm: rgba(0, 0, 0, 0);
   --glow-cool: rgba(0, 0, 0, 0);
@@ -126,6 +132,11 @@
   --btn-primary-hover: #388bfd;
   --btn-primary-active: #1158c7;
   --btn-primary-text: #ffffff;
+
+  --btn-secondary-bg: #21262d;
+  --btn-secondary-hover: #30363d;
+  --btn-secondary-active: #282e33;
+  --nav-active-bg: #30363d;
 
   --glow-warm: rgba(0, 0, 0, 0);
   --glow-cool: rgba(0, 0, 0, 0);

@@ -11,13 +11,11 @@
   padding: 14px 38px;
   font-size: 13.5px;
   font-weight: 500;
-  transition: transform 0.2s var(--ease), box-shadow 0.24s var(--ease),
-    opacity 0.2s var(--ease);
+  transition: background-color 0.12s var(--ease), color 0.12s var(--ease),
+    border-color 0.12s var(--ease), opacity 0.12s var(--ease);
 }
-.primary-btn:hover {
-  transform: translateY(-1.5px);
-}
-.primary-btn:active { transform: translateY(0); opacity: 0.94; }
+/* 悬停只变底色，不做位移：GitHub 的按钮是「稳」的，不跳 */
+.primary-btn:active { opacity: 0.94; }
 
 .ghost-btn {
   display: inline-flex;

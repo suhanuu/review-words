@@ -313,11 +313,13 @@
   justify-content: center;
   padding: 11px 19px;
   border: 1px solid var(--line);
-  border-radius: 13px;
+  border-radius: var(--r-sm);
   font-size: 13px;
   color: var(--text-soft);
   background: var(--surface);
-  box-shadow: var(--shadow-key);
+  box-shadow: none;
+  transition: background-color 0.12s var(--ease), color 0.12s var(--ease),
+    border-color 0.12s var(--ease);
 }
 .rate[data-grade="1"]:hover { color: var(--bad); background: var(--bad-soft); border-color: var(--bad); }
 .rate[data-grade="2"]:hover { color: var(--warn); background: var(--warn-soft); border-color: var(--warn); }

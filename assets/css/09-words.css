@@ -66,9 +66,9 @@
 }
 .letter-btn:hover { color: var(--text); background: var(--accent-soft); }
 .letter-btn.is-active {
-  color: var(--accent);
-  background: var(--accent-soft);
-  border-color: var(--accent-ring);
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 /* 表格卡片：让词库像一本摊开的词典 */
