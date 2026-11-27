@@ -30,6 +30,14 @@
   background: var(--accent);
   opacity: 0.75;
 }
+/* 子页面（文章历史 / 薄弱词 / 打字记录）：标题小一号，跟返回箭头站成一排 */
+.page-title.is-sub {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: 0;
+  margin-bottom: 0;
+}
+.page-title.is-sub::after { bottom: -4px; width: 18px; opacity: 0.6; }
 .page-sub {
   font-size: 12.5px;
   color: var(--muted);

@@ -202,14 +202,14 @@
 }
 .danger-btn:hover { background: var(--bad); border-color: var(--bad); color: #fff; }
 
-/* 子页面返回：只留一个箭头，标题往左靠 */
-.back-arrow {
+/* 子页面头部：一个箭头按钮 + 小一号的标题，靠在一起 */
+.back-btn {
   flex: 0 0 auto;
-  color: var(--muted);
-  font-size: 15px;
-  line-height: 1;
+  width: 28px;
+  height: 28px;
+  margin-right: -2px;
 }
-.back-arrow:hover { color: var(--text); background: var(--btn-secondary-hover); }
+.back-btn svg { width: 16px; height: 16px; stroke-width: 1.6; }
 /* ---------- 3. 尺寸（桌面/平板） ---------- */
 @media (min-width: 721px) {
   .primary-btn { min-height: var(--btn-h); padding: 0 28px; }

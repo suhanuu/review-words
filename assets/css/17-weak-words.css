@@ -19,7 +19,7 @@
 /* ---------- 独立页 ---------- */
 .weak-page { max-width: var(--shell, 1040px); }
 
-.weak-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.weak-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .weak-head .weak-back { padding: 6px 12px; font-size: 12.5px; }
 .weak-head .page-title { margin: 0; }
 .weak-month { margin-left: auto; display: flex; align-items: center; gap: 4px; }

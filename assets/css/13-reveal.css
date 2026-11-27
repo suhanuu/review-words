@@ -100,7 +100,7 @@ body.is-typing-screen .main { min-height: 100vh; }
 .article-reading-card .article-source { margin-bottom:16px; }
 .article-reading-card .article-translation { background:var(--surface); }
 .article-history-page { max-width:980px; }
-.history-page-head { display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
+.history-page-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .history-page-head .page-title { margin:0; }
 .article-history-list { display:grid; gap:10px; margin-top:22px; }
 .history-bulk-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:14px; margin-top:18px; padding:12px 14px; border:1px solid var(--line); border-radius:12px; background:var(--surface); }
