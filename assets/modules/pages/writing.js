@@ -71,7 +71,7 @@
     });
     return m;
   }
-  // ---------- 1. 薄弱词池与选词 ----------
+  // ---------- 1. 薄弱词：按日期看，从作文页进来时才选词 ----------
   function weak() {
     var d = archive(),
       rec = d.records || {},
@@ -130,7 +130,7 @@
       k = active();
     if (!Object.prototype.hasOwnProperty.call(m, k) || m[k] === null) {
       var init = defaultSelection();
-      if (!init.length) return []; // 池为空时保持未初始化，等有词后再自动选
+      if (!init.length) return []; // 池为空时保持未初始化，等有词后再养
       m[k] = init;
       saveSelectionMap(m);
       return init.slice();
@@ -157,175 +157,229 @@
 
   var selectedHistory = {};
   var draft = [];
+  var weakMonth = ""; // 'YYYY-MM'
+  var weakDay = "";   // 'YYYY-MM-DD'
+  var picking = false;
 
+  function pad2(n) {
+    return n < 10 ? "0" + n : "" + n;
+  }
+  function todayKey() {
+    var d = new Date();
+    return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
+  }
+  function monthOf(key) {
+    return String(key || todayKey()).slice(0, 7);
+  }
+  function monthLabel(key) {
+    return Number(key.slice(5, 7)) + " 月";
+  }
+  function shiftMonth(key, delta) {
+    var y = Number(key.slice(0, 4)),
+      m = Number(key.slice(5, 7)) - 1 + delta,
+      d = new Date(y, m, 1);
+    return d.getFullYear() + "-" + pad2(d.getMonth() + 1);
+  }
+  function dayLabel(key) {
+    var d = new Date(key + "T00:00:00");
+    return (d.getMonth() + 1) + " 月 " + d.getDate() + " 日 周" + "日一二三四五六".charAt(d.getDay());
+  }
+  function wordInfo(w) {
+    var all = words();
+    return all[w] || { w: w, ph: "", def: "" };
+  }
+
+  // 作文页那张卡：只列已选的目标词，文字后面不再带「忘了 / 模糊」
   function renderWeak() {
     var host = $("weakWordList");
     if (!host) return;
     host.innerHTML = "";
     var chosen = getSelection(),
-      pool = weak(),
-      byWord = {};
-    pool.forEach(function (x) {
-      byWord[x.word] = x;
-    });
+      pool = weak();
     chosen.forEach(function (w) {
-      var x = byWord[w] || { word: w, group: "fuzzy" };
       var lab = document.createElement("label");
       lab.className = "weak-word-chip is-selected";
       var span = document.createElement("span");
-      span.textContent = x.word;
-      var small = document.createElement("small");
-      small.textContent = x.group === "forgot" ? "忘了" : "模糊";
-      lab.append(span, small);
+      span.textContent = w;
+      lab.append(span);
       host.appendChild(lab);
     });
-    if (!chosen.length)
-      host.textContent = "暂未选择目标词，点「查看 / 选择」开始。";
-    var fresh = pool.filter(function (x) {
-      return chosen.indexOf(x.word) < 0;
-    }).length;
-    $("weakPoolCount").textContent =
-      "已选 " +
-      chosen.length +
-      " / " +
-      pool.length +
-      " 个词 · 建议 " +
-      rangeText();
-    var note = $("weakPoolNote");
-    if (note)
-      note.textContent = chosen.length
-        ? "本次生成只使用上面的 " +
-          chosen.length +
-          " 个词；点「查看 / 选择」调整。" +
-          (fresh ? "另有 " + fresh + " 个新薄弱词未选。" : "")
-        : "还没有选择目标词，点「查看 / 选择」开始选词。";
+    if (!chosen.length) host.textContent = "还没选目标词。";
+    var count = $("weakPoolCount");
+    if (count) count.textContent = "已选 " + chosen.length + " / " + pool.length + " 个";
   }
 
-  function syncNav(name) {
-    document.querySelectorAll(".nav-btn[data-view]").forEach(function (b) {
-      b.classList.toggle("is-active", b.dataset.view === name);
-    });
-  }
-  function pickerGroup(hostId, countId, group) {
-    var host = $(hostId);
+  // ---------- 日历：7 列，周一开始 ----------
+  function renderWeakCalendar() {
+    var host = $("weakCal");
     if (!host) return;
-    host.innerHTML = "";
-    var items = weakGroups()[group];
-    items.forEach(function (x) {
-      var lab = document.createElement("label");
-      lab.className = "weak-word-chip";
-      var cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.checked = draft.indexOf(x.word) >= 0;
-      cb.addEventListener("change", function () {
-        var i = draft.indexOf(x.word);
-        if (cb.checked && i < 0) draft.push(x.word);
-        else if (!cb.checked && i >= 0) draft.splice(i, 1);
-        updatePickerBar();
-      });
-      var span = document.createElement("span");
-      span.textContent = x.word;
-      lab.append(cb, span);
-      host.appendChild(lab);
-    });
-    if (!items.length) {
-      var p = document.createElement("p");
-      p.className = "weak-picker-group-empty";
-      p.textContent = "这一组暂时没有词。";
-      host.appendChild(p);
+    var counts = RWWeakHistory.monthCounts(active(), weakMonth);
+    var y = Number(weakMonth.slice(0, 4)),
+      m = Number(weakMonth.slice(5, 7));
+    var daysInMonth = new Date(y, m, 0).getDate();
+    var lead = (new Date(y, m - 1, 1).getDay() + 6) % 7;
+    var today = todayKey();
+    var html = ["一", "二", "三", "四", "五", "六", "日"]
+      .map(function (d) { return '<span class="weak-cal-w">' + d + "</span>"; })
+      .join("");
+    for (var i = 0; i < lead; i++) html += '<span class="weak-cal-blank"></span>';
+    for (var d = 1; d <= daysInMonth; d++) {
+      var key = weakMonth + "-" + pad2(d);
+      var n = counts[pad2(d)] || 0;
+      var level = n === 0 ? 0 : n <= 1 ? 1 : n <= 2 ? 2 : n <= 4 ? 3 : n <= 6 ? 4 : 5;
+      var cls = "weak-cal-day" +
+        (level ? " has-" + level : "") +
+        (key === weakDay ? " is-on" : "") +
+        (key === today ? " is-today" : "") +
+        (key > today ? " is-future" : "");
+      html += '<button type="button" class="' + cls + '"' +
+        (key > today ? " disabled" : ' data-day="' + key + '"') + ">" + d + "</button>";
     }
-    if ($(countId)) $(countId).textContent = items.length + " 个词";
+    host.innerHTML = html;
+    var label = $("weakMonthLabel");
+    if (label) label.textContent = monthLabel(weakMonth);
+    var next = $("btnWeakMonthNext");
+    if (next) next.disabled = weakMonth >= monthOf(todayKey());
   }
-  function renderPickerGroups() {
-    pickerGroup("weakGroupForgot", "weakGroupForgotCount", "forgot");
-    pickerGroup("weakGroupFuzzy", "weakGroupFuzzyCount", "fuzzy");
+
+  function renderWeakList() {
+    var host = $("weakList");
+    if (!host) return;
+    var rows = RWWeakHistory.day(active(), weakDay);
+    host.innerHTML = "";
+    if (!rows.length) {
+      host.hidden = true;
+      var empty = $("weakEmpty");
+      if (empty) empty.hidden = false;
+    } else {
+      host.hidden = false;
+      var empty2 = $("weakEmpty");
+      if (empty2) empty2.hidden = true;
+      rows.forEach(function (r) {
+        var info = wordInfo(r.word);
+        var row = document.createElement("button");
+        row.type = "button";
+        row.className = "weak-row" + (picking ? " is-picking" : "");
+        row.dataset.w = r.word;
+        var on = picking && draft.indexOf(r.word) >= 0;
+        row.innerHTML =
+          (picking ? '<span class="weak-row-box' + (on ? " is-on" : "") + '"></span>' : "") +
+          '<span class="weak-row-word">' + escapeHTML(r.word) + "</span>" +
+          '<span class="weak-row-ph">' + escapeHTML(info.ph || "") + "</span>" +
+          '<span class="weak-row-def">' + escapeHTML(info.def || info.a || "") + "</span>";
+        host.appendChild(row);
+      });
+    }
+    var title = $("weakDayTitle");
+    if (title) title.textContent = dayLabel(weakDay);
+    var count = $("weakDayCount");
+    if (count) count.textContent = rows.length ? rows.length + " 个词" : "";
   }
-  function updatePickerBar() {
-    var n = draft.length,
-      bar = $("weakPickerBar"),
-      tip = $("weakPickerTip"),
-      count = $("weakPickerCount"),
-      hint = $("weakPickerHint");
-    var state =
-      n > RECOMMEND_MAX ? "warn" : n > 0 && n < RECOMMEND_MIN ? "low" : "ok";
-    [bar, tip].forEach(function (node) {
-      if (!node) return;
-      node.classList.remove("is-ok", "is-low", "is-warn");
-      node.classList.add("is-" + state);
-    });
-    if (count) count.textContent = "已选 " + n + " 个";
-    if (hint)
-      hint.textContent =
-        n > RECOMMEND_MAX
-          ? "超过建议区间，生成前会再确认一次；目标词多容易漏词、需要重试，更费 token。"
-          : n > 0 && n < RECOMMEND_MIN
-            ? "选得偏少，练习强度可能不足（仍可生成）。"
-            : n
-              ? "在建议区间内。"
-              : "请先选择目标词。";
+
+  function renderWeakPickerBar() {
+    var bar = $("weakPickerBar");
+    if (!bar) return;
+    bar.hidden = !picking;
+    var count = $("weakPickerCount");
+    if (count) count.textContent = "已选 " + draft.length + " 个";
   }
-  function renderWeakPicker() {
-    draft = getSelection().slice();
-    renderPickerGroups();
-    var empty = $("weakPickerEmpty");
-    if (empty) empty.hidden = weak().length > 0;
-    updatePickerBar();
+
+  function renderWeakPage() {
+    if (!weakMonth) weakMonth = monthOf(todayKey());
+    if (!weakDay) weakDay = todayKey();
+    renderWeakCalendar();
+    renderWeakList();
+    renderWeakPickerBar();
+    var allBtn = $("btnWeakPickAll");
+    if (allBtn) allBtn.hidden = !picking;
+    var page = $("view-weak-words");
+    if (page) page.classList.toggle("is-picking", picking);
   }
-  function openWeakPicker() {
-    renderWeakPicker();
+
+  function openWeakPage(mode) {
+    picking = mode === "pick";
+    if (!weakMonth) weakMonth = monthOf(todayKey());
+    if (!weakDay) weakDay = todayKey();
+    draft = picking ? getSelection().slice() : [];
+    renderWeakPage();
     switchInternalView("weak-words");
     syncNav("writing");
   }
-  function sameSet(a, b) {
-    if (a.length !== b.length) return false;
-    var x = a.slice().sort(),
-      y = b.slice().sort();
-    for (var i = 0; i < x.length; i++) {
-      if (x[i] !== y[i]) return false;
-    }
-    return true;
-  }
-  function backWeakPicker() {
-    var saved = getSelection();
-    if (
-      !sameSet(draft, saved) &&
-      !window.confirm("还有勾选没确认，返回会丢掉这些改动。确定返回吗？")
-    )
-      return;
-    draft = saved.slice();
+  function closeWeakPage() {
+    picking = false;
+    draft = [];
     switchInternalView("writing");
     syncNav("writing");
     renderWeak();
   }
-  function setPickerGroup(group, on) {
-    var wordsInGroup = weakGroups()[group].map(function (x) {
-      return x.word;
-    });
-    draft = draft.filter(function (w) {
-      return wordsInGroup.indexOf(w) < 0;
-    });
-    if (on)
-      wordsInGroup.forEach(function (w) {
-        if (draft.indexOf(w) < 0) draft.push(w);
-      });
-    renderPickerGroups();
-    updatePickerBar();
+  function pickDay(day) {
+    if (!day || day > todayKey()) return;
+    weakDay = day;
+    renderWeakPage();
   }
-  function autoPick() {
-    draft = defaultSelection();
-    renderPickerGroups();
-    updatePickerBar();
+  function togglePick(word) {
+    var i = draft.indexOf(word);
+    if (i >= 0) draft.splice(i, 1);
+    else if (draft.length >= HARD_MAX) {
+      showToast("最多只能选 " + HARD_MAX + " 个目标词。", true);
+      return;
+    } else draft.push(word);
+    renderWeakList();
+    renderWeakPickerBar();
   }
-  function confirmWeakPicker() {
-    if (draft.length > HARD_MAX) {
-      showToast("最多只能选 " + HARD_MAX + " 个目标词，请先减少。", true);
+  function pickAllOfDay() {
+    RWWeakHistory.day(active(), weakDay).forEach(function (r) {
+      if (draft.indexOf(r.word) < 0 && draft.length < HARD_MAX) draft.push(r.word);
+    });
+    renderWeakList();
+    renderWeakPickerBar();
+  }
+  function confirmPicking() {
+    if (!draft.length) {
+      showToast("先勾几个词。", true);
       return;
     }
     saveSelection(draft);
-    renderWeak();
-    switchInternalView("writing");
-    syncNav("writing");
-    showToast("已保存 " + draft.length + " 个目标词");
+    closeWeakPage();
+    showToast("已选 " + draft.length + " 个目标词");
+  }
+
+  function bindWeakPage() {
+    var prev = $("btnWeakMonthPrev"),
+      next = $("btnWeakMonthNext"),
+      cal = $("weakCal"),
+      list = $("weakList"),
+      back = $("btnWeakBack"),
+      allBtn = $("btnWeakPickAll"),
+      ok = $("btnWeakConfirm"),
+      cancel = $("btnWeakCancel");
+
+    if (prev) prev.addEventListener("click", function () {
+      weakMonth = shiftMonth(weakMonth, -1);
+      renderWeakPage();
+    });
+    if (next) next.addEventListener("click", function () {
+      weakMonth = shiftMonth(weakMonth, 1);
+      if (weakMonth > monthOf(todayKey())) weakMonth = monthOf(todayKey());
+      renderWeakPage();
+    });
+    if (cal) cal.addEventListener("click", function (e) {
+      var btn = e.target.closest ? e.target.closest("[data-day]") : null;
+      if (btn) pickDay(btn.dataset.day);
+    });
+    if (list) list.addEventListener("click", function (e) {
+      var row = e.target.closest ? e.target.closest(".weak-row") : null;
+      if (!row) return;
+      if (picking) togglePick(row.dataset.w);
+      else {
+        var info = wordInfo(row.dataset.w);
+        if (window.RWDetail) window.RWDetail.openDetail(row.dataset.w, info.ph || "", info.def || info.a || "");
+      }
+    });
+    if (back) back.addEventListener("click", closeWeakPage);
+    if (allBtn) allBtn.addEventListener("click", pickAllOfDay);
+    if (ok) ok.addEventListener("click", confirmPicking);
+    if (cancel) cancel.addEventListener("click", closeWeakPage);
   }
   // ---------- 2. 文章、历史与 AI 生成 ----------
   function articles() {
@@ -761,7 +815,7 @@
     if (!chosenWords.length) {
       $("aiStatus").textContent = "还没有选择目标词。";
       setGenerationProgress("error", "请先选择目标词");
-      openWeakPicker();
+      openWeakPage("pick");
       return;
     }
     if (chosenWords.length > HARD_MAX) {
@@ -770,7 +824,7 @@
         "error",
         "最多 " + HARD_MAX + " 个目标词，请先减少",
       );
-      openWeakPicker();
+      openWeakPage("pick");
       return;
     }
     if (
@@ -980,36 +1034,12 @@
     if (cfg.apiKey) $("aiApiKey").value = cfg.apiKey;
     if (cfg.model) $("aiModel").value = cfg.model;
     renderWeak();
-    // 区间与默认数量只在常量里维护，这里一次性写进说明文案
-    if ($("weakPickerTipText"))
-      $("weakPickerTipText").innerHTML =
-        "建议每次选 <strong>" +
-        rangeText() +
-        "</strong> 个词（推荐 " +
-        sweetText() +
-        "）。目标词过多时模型容易漏词、需要重试，反而更费 token；最多可选 " +
-        HARD_MAX +
-        " 个。";
-    if ($("btnWeakAutoPick"))
-      $("btnWeakAutoPick").textContent =
-        "按优先级自动选 " + DEFAULT_PICK + " 个";
-    $("btnOpenWeakPicker").addEventListener("click", openWeakPicker);
-    if ($("btnWeakPickerBack"))
-      $("btnWeakPickerBack").addEventListener("click", backWeakPicker);
-    if ($("btnWeakAutoPick"))
-      $("btnWeakAutoPick").addEventListener("click", autoPick);
-    if ($("btnWeakConfirm"))
-      $("btnWeakConfirm").addEventListener("click", confirmWeakPicker);
-    document.querySelectorAll("[data-group-all]").forEach(function (b) {
-      b.addEventListener("click", function () {
-        setPickerGroup(b.dataset.groupAll, true);
-      });
-    });
-    document.querySelectorAll("[data-group-none]").forEach(function (b) {
-      b.addEventListener("click", function () {
-        setPickerGroup(b.dataset.groupNone, false);
-      });
-    });
+    // 薄弱词页：只看 / 选词两用，日历和列表都在 bindWeakPage 里接线
+    if ($("btnOpenWeakPicker"))
+      $("btnOpenWeakPicker").addEventListener("click", function () { openWeakPage("view"); });
+    if ($("btnOpenWeakPick"))
+      $("btnOpenWeakPick").addEventListener("click", function () { openWeakPage("pick"); });
+    bindWeakPage();
     $("articleSource").addEventListener("input", function () {
       fitArticleTextareas();
       if ($("articleWordCount"))

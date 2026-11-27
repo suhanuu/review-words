@@ -1,4 +1,4 @@
-// 端到端冒烟：作文训练（modules/pages/writing.js）——薄弱词池、选词页、文章历史
+// 端到端冒烟：作文训练 + 薄弱词页（modules/pages/writing.js）
 // 跑法：node tests/writing.e2e.mjs
 import { spawn } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -115,13 +115,16 @@ try {
 
   await waitFor(() => cdp.eval('!!(window.__review && document.getElementById("view-writing"))'));
 
-  // 先造两个薄弱词：写入一条「忘了」、一条「模糊」的学习记录
+  // 造两个薄弱词：一个「忘了」、一个「模糊」，都记在昨天，方便按日期查看
   await cdp.eval(`(() => {
+    const book = window.RWStore.getText(window.RWStore.KEYS.activeBook) || 'redbook-2024';
     const key = Object.keys(localStorage).find(k => k.indexOf('wordtype.v1:book:') === 0);
     const db = JSON.parse(localStorage.getItem(key) || '{}');
     db.records = db.records || {};
-    db.records['console'] = Object.assign({}, db.records['console'], { seen: 2, last: 1, forgot: 1, lastAt: Date.now() });
-    db.records['consist'] = Object.assign({}, db.records['consist'], { seen: 2, last: 2, forgot: 0, lastAt: Date.now() });
+    const yesterday = Date.now() - 86400000;
+    db.records['console'] = Object.assign({}, db.records['console'], { seen: 2, last: 1, forgot: 1, lastAt: yesterday });
+    db.records['consist'] = Object.assign({}, db.records['consist'], { seen: 2, last: 2, forgot: 0, lastAt: yesterday });
+    db.whBackfilled = 0;
     localStorage.setItem(key, JSON.stringify(db));
     return true;
   })()`);
@@ -129,35 +132,78 @@ try {
   await waitFor(() => cdp.eval('!!(window.__review && document.getElementById("view-today"))'), 15000);
   await sleep(500);
 
-  // 1) 进作文页：薄弱词池要把它俩列出来
+  // 1) 作文页卡片：已选数、词片不带「忘了 / 模糊」小字
   await cdp.eval(`document.querySelector('.nav-btn[data-view="writing"]').click()`);
   await sleep(500);
-  const pool = await cdp.eval(`(() => {
+  const card = await cdp.eval(`(() => {
     const list = document.getElementById('weakWordList');
     return {
       count: (document.getElementById('weakPoolCount') || {}).textContent || '',
       chips: list ? Array.from(list.querySelectorAll('.weak-word-chip')).map(n => n.textContent) : []
     };
   })()`);
-  check('薄弱词池显示了词数', /已选 \d+ \/ 2 个词/.test(pool.count), pool.count);
-  check('池里列出了两个薄弱词', pool.chips.some((t) => /console/.test(t)) && pool.chips.some((t) => /consist/.test(t)), JSON.stringify(pool.chips));
+  check('卡片显示已选数量', /已选 \d+ \/ \d+ 个/.test(card.count), card.count);
+  check('词片里不再带「忘了/模糊」', card.chips.every((t) => !/忘了|模糊/.test(t)), JSON.stringify(card.chips));
 
-  // 2) 进选词页：两组分组、自动选 10 个、确认后回到作文页
+  // 2) 点「查看」：进薄弱词页，看的是今天（今天没有记录，所以是空状态）
   await cdp.eval(`document.getElementById('btnOpenWeakPicker').click()`);
   await sleep(500);
-  check('进到选词页', await cdp.eval(`document.getElementById('view-weak-words').classList.contains('is-active')`));
-  const groups = await cdp.eval(`(() => ({
-    forgot: (document.getElementById('weakGroupForgotCount') || {}).textContent || '',
-    fuzzy: (document.getElementById('weakGroupFuzzyCount') || {}).textContent || ''
-  }))()`);
-  check('忘了组有 1 个词', groups.forgot === '1 个词', groups.forgot);
-  check('模糊组有 1 个词', groups.fuzzy === '1 个词', groups.fuzzy);
+  check('进到薄弱词页', await cdp.eval(`document.getElementById('view-weak-words').classList.contains('is-active')`));
+  check('日历是 7 列（7 个星期标题）',
+    (await cdp.eval(`document.querySelectorAll('#weakCal .weak-cal-w').length`)) === 7);
+  check('今天空状态', await cdp.eval(`document.getElementById('weakEmpty').hidden === false`));
 
-  await cdp.eval(`document.getElementById('btnWeakAutoPick').click()`);
+  // 3) 点昨天：昨天有两个薄弱词
+  const yesterday = await cdp.eval(`(() => {
+    const d = new Date(Date.now() - 86400000);
+    const pad = (n) => (n < 10 ? '0' + n : '' + n);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  })()`);
+  // 如果昨天在别的月份（比如月初），先把月份切过去
+  const months = await cdp.eval(`(() => {
+    const label = document.getElementById('weakMonthLabel').textContent;
+    const d = new Date(Date.now() - 86400000);
+    return JSON.stringify({ shown: label, wantDay:${JSON.stringify(yesterday)}, wantMonth: (d.getMonth() + 1) + ' 月' });
+  })()`);
+  const mm = JSON.parse(months);
+  if (!mm.shown.includes(mm.wantMonth.replace(' 月', ''))) {
+    await cdp.eval(`document.getElementById('btnWeakMonthPrev').click()`);
+    await sleep(300);
+  }
+  await cdp.eval(`(() => {
+    const btn = document.querySelector('#weakCal [data-day="' + ${JSON.stringify(yesterday)} + '"]');
+    if (btn) btn.click();
+    return !!btn;
+  })()`);
+  await sleep(400);
+  const dayView = await cdp.eval(`(() => {
+    const rows = Array.from(document.querySelectorAll('#weakList .weak-row'));
+    return {
+      n: rows.length,
+      words: rows.map(r => r.querySelector('.weak-row-word').textContent),
+      title: document.getElementById('weakDayTitle').textContent,
+      hasCountBadge: rows.some(r => /×\d/.test(r.textContent)),
+      hasTag: rows.some(r => /忘了|模糊/.test(r.textContent))
+    };
+  })()`);
+  check('昨天的词表有 2 个词', dayView.n === 2, JSON.stringify(dayView.words));
+  check('词表里有 console 和 consist', dayView.words.indexOf('console') >= 0 && dayView.words.indexOf('consist') >= 0, JSON.stringify(dayView.words));
+  check('标题是昨天', /\d+ 月 \d+ 日 周/.test(dayView.title), dayView.title);
+  check('词后面不带 ×N', dayView.hasCountBadge === false);
+  check('词后面不带「忘了/模糊」', dayView.hasTag === false);
+
+  // 4) 选词模式：回到作文页点「选词」，勾选这天全部，确认
+  await cdp.eval(`document.getElementById('btnWeakBack').click()`);
+  await sleep(400);
+  check('返回作文页', await cdp.eval(`document.getElementById('view-writing').classList.contains('is-active')`));
+  await cdp.eval(`document.getElementById('btnOpenWeakPick').click()`);
+  await sleep(500);
+  check('进选词模式（底部条出现）', await cdp.eval(`document.getElementById('weakPickerBar').hidden === false`));
+  check('行前出现勾选框', (await cdp.eval(`document.querySelectorAll('#weakList .weak-row-box').length`)) === 2);
+  await cdp.eval(`document.getElementById('btnWeakPickAll').click()`);
   await sleep(300);
-  check('自动选完后计数 = 2', (await cdp.eval(`document.getElementById('weakPickerCount').textContent`)) === '已选 2 个',
+  check('全选这天后计数是 2', (await cdp.eval(`document.getElementById('weakPickerCount').textContent`)) === '已选 2 个',
     await cdp.eval(`document.getElementById('weakPickerCount').textContent`));
-
   await cdp.eval(`document.getElementById('btnWeakConfirm').click()`);
   await sleep(500);
   check('确认后回到作文页', await cdp.eval(`document.getElementById('view-writing').classList.contains('is-active')`));
@@ -167,7 +213,7 @@ try {
     return Array.isArray(m[book]) && m[book].length === 2;
   })()`));
 
-  // 3) 文章历史：空状态能打开、能返回
+  // 5) 文章历史：空状态能打开、能返回
   await cdp.eval(`document.getElementById('btnShowHistory').click()`);
   await sleep(500);
   check('打开文章历史页', await cdp.eval(`document.getElementById('view-article-history').classList.contains('is-active')`));
@@ -175,7 +221,7 @@ try {
   await sleep(400);
   check('从历史页返回作文页', await cdp.eval(`document.getElementById('view-writing').classList.contains('is-active')`));
 
-  // 4) 没有配 AI 时手动粘贴文章也能练（只验证开始打字能进）
+  // 6) 没有配 AI 时手动粘贴文章也能练
   await cdp.eval(`(() => {
     document.getElementById('articleSource').value = 'The quick brown fox.';
     document.getElementById('articleTranslation').value = '敏捷的棕色狐狸。';

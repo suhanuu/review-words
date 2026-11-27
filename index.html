@@ -9,7 +9,7 @@
     作文训练          view-writing          app.js · 作文 + modules/pages/writing.js
     全屏打字练习      view-typing           app.js · 打字 + hands.js（第一次进本页才加载）
     文章历史          view-article-history  pages/writing.js · 历史
-    今日薄弱词汇      view-weak-words       pages/writing.js · 选词页
+    薄弱词（按日）    view-weak-words       pages/writing.js · 日历 + 当天词表 / 选词
     书架              view-books            app.js · 书架
     统计              view-stats            app.js · 统计与图表
     打字练习记录      view-typing-history   app.js · 打字成绩
@@ -215,7 +215,7 @@
     <div class="page writing-page">
       <h2 class="page-title">作文训练</h2>
       <p class="page-sub">把薄弱词汇放进真实语境。先阅读英文原文和中文翻译，再进入独立的全屏打字练习。</p>
-      <section class="writing-card weak-pool-card"><div class="writing-card-head"><strong>今日薄弱词汇</strong><span id="weakPoolCount" class="writing-status">整理中</span><button class="ghost-btn" id="btnOpenWeakPicker" type="button">查看 / 选择</button></div><div id="weakWordList" class="weak-word-list"></div><p class="weak-pool-note" id="weakPoolNote">默认按忘了、模糊的优先级选 10 个词；点「查看 / 选择」调整，建议每次 6–12 个。</p>
+      <section class="writing-card weak-pool-card"><div class="writing-card-head"><strong>薄弱词</strong><span id="weakPoolCount" class="writing-status"></span><button class="ghost-btn" id="btnOpenWeakPicker" type="button">查看</button><button class="ghost-btn" id="btnOpenWeakPick" type="button">选词</button></div><div id="weakWordList" class="weak-word-list"></div>
         <details class="ai-settings" id="aiSettingsPanel">
           <summary>AI API 设置 <span class="ai-settings-summary">配置你自己的 API 服务</span></summary>
           <div class="ai-settings-fields">
@@ -281,35 +281,33 @@
     </div>
   </section>
 
-  <!-- ============ 今日薄弱词汇（选词页） · 对应 modules/pages/writing.js ============ -->
-  <section class="view" id="view-weak-words" aria-label="今日薄弱词汇">
-    <div class="page weak-picker-page">
-      <div class="history-page-head">
-        <button type="button" class="ghost-btn" id="btnWeakPickerBack">← 返回作文训练</button>
-        <h2 class="page-title">今日薄弱词汇</h2>
+  <!-- ============ 薄弱词（按日期看） · 对应 modules/pages/writing.js ============ -->
+  <section class="view" id="view-weak-words" aria-label="薄弱词">
+    <div class="page weak-page">
+      <div class="weak-head">
+        <button type="button" class="ghost-btn weak-back" id="btnWeakBack">← 返回作文训练</button>
+        <h2 class="page-title">薄弱词</h2>
+        <div class="weak-month">
+          <button type="button" class="weak-month-btn" id="btnWeakMonthPrev" aria-label="上个月">‹</button>
+          <span id="weakMonthLabel"></span>
+          <button type="button" class="weak-month-btn" id="btnWeakMonthNext" aria-label="下个月">›</button>
+        </div>
       </div>
-      <p class="page-sub">按来源选词，确认后回到作文训练生成文章。收藏词请在「我的收藏」页查看。</p>
-      <div class="weak-picker-tip" id="weakPickerTip">
-        <span id="weakPickerTipText">建议每次选 <strong>6–12</strong> 个词（推荐 8–10）。目标词过多时模型容易漏词、需要重试，反而更费 token；最多可选 24 个。</span>
-        <button type="button" class="ghost-btn" id="btnWeakAutoPick">按优先级自动选 10 个</button>
+      <div class="weak-cal" id="weakCal"></div>
+      <div class="weak-day-head">
+        <h3 id="weakDayTitle"></h3>
+        <span class="weak-day-count" id="weakDayCount"></span>
+        <button type="button" class="ghost-btn" id="btnWeakPickAll" hidden>全选这天</button>
       </div>
-      <section class="weak-picker-group">
-        <div class="weak-picker-group-head"><strong>忘了</strong><span id="weakGroupForgotCount"></span><button type="button" class="ghost-btn" data-group-all="forgot">全选本组</button><button type="button" class="ghost-btn" data-group-none="forgot">清空本组</button></div>
-        <div class="weak-word-list" id="weakGroupForgot"></div>
-      </section>
-      <section class="weak-picker-group">
-        <div class="weak-picker-group-head"><strong>模糊</strong><span id="weakGroupFuzzyCount"></span><button type="button" class="ghost-btn" data-group-all="fuzzy">全选本组</button><button type="button" class="ghost-btn" data-group-none="fuzzy">清空本组</button></div>
-        <div class="weak-word-list" id="weakGroupFuzzy"></div>
-      </section>
-      <p class="weak-picker-empty" id="weakPickerEmpty" hidden>还没有「忘了」或「模糊」的词。先去学习页评价几个单词，再回来选词。</p>
-      <div class="weak-picker-bar" id="weakPickerBar">
+      <div class="weak-list" id="weakList"></div>
+      <p class="weak-empty" id="weakEmpty" hidden>这天没有薄弱词。</p>
+      <div class="weak-picker-bar" id="weakPickerBar" hidden>
         <span id="weakPickerCount">已选 0 个</span>
-        <span id="weakPickerHint"></span>
+        <button type="button" class="ghost-btn" id="btnWeakCancel">取消</button>
         <button type="button" class="primary-btn" id="btnWeakConfirm">确认选择</button>
       </div>
     </div>
   </section>
-
   <!-- ============ 书架 · 对应 app.js 书架 ============ -->
   <section class="view" id="view-books">
     <div class="page">

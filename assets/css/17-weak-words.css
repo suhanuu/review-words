@@ -1,9 +1,12 @@
 /* 本文件最初由 style.css 第 3749–3864 行切出，文件名前的数字就是加载顺序，不要调换 */
 
 /* ============================================================
-   今日薄弱词汇 · 独立选词页
-   只在本层追加，靠层叠覆盖前面的规则，不改动已有样式
+   薄弱词
+   1) 作文页那张卡上的词片
+   2) 独立页：日历（7 列，周一开始）+ 当天词表；从作文页进来选词时才出现勾选
    ============================================================ */
+
+/* ---------- 作文页卡片 ---------- */
 #weakPoolCount { margin-left: auto; }
 .weak-pool-card .writing-card-head { flex-wrap: wrap; }
 .weak-word-chip.is-selected {
@@ -12,107 +15,123 @@
   color: var(--accent-deep);
   cursor: default;
 }
-.weak-word-chip.is-selected small { color: var(--accent-deep); }
 
-.weak-picker-page { max-width: var(--shell, 1040px); }
-.weak-picker-tip {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+/* ---------- 独立页 ---------- */
+.weak-page { max-width: var(--shell, 1040px); }
+
+.weak-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.weak-head .weak-back { padding: 6px 12px; font-size: 12.5px; }
+.weak-head .page-title { margin: 0; }
+.weak-month { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.weak-month span { min-width: 56px; text-align: center; font-size: 14px; letter-spacing: .02em; }
+.weak-month-btn {
+  width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 9px;
+  background: var(--surface); color: var(--text-soft); font-size: 15px; line-height: 1; cursor: pointer;
+}
+.weak-month-btn:hover:not(:disabled) { border-color: var(--line-strong); }
+.weak-month-btn:disabled { color: var(--faint); cursor: default; }
+
+/* 日历：7 列 */
+.weak-cal {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
   margin-top: 18px;
-  padding: 12px 16px;
+  padding: 14px 16px 16px;
   border: 1px solid var(--line);
   border-radius: var(--r-md);
+  background: var(--surface);
+}
+.weak-cal-w { text-align: center; font-size: 11.5px; color: var(--faint); padding-bottom: 2px; }
+.weak-cal-blank { visibility: hidden; }
+.weak-cal-day {
+  position: relative;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
   background: var(--surface-2);
-  color: var(--text-soft);
-  font-size: var(--fs-sm, 13.5px);
-  line-height: 1.7;
-}
-.weak-picker-tip > span { flex: 1 1 320px; }
-.weak-picker-tip .ghost-btn { flex: 0 0 auto; padding: 7px 14px; font-size: var(--fs-xs, 12.5px); }
-.weak-picker-tip.is-warn { border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
-.weak-picker-tip.is-low { border-color: var(--line-strong); }
-
-.weak-picker-group {
-  margin-top: 18px;
-  padding: 18px 20px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-}
-.weak-picker-group-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
-.weak-picker-group-head strong { font-size: var(--fs-h, 18px); font-weight: 500; }
-.weak-picker-group-head > span { color: var(--muted); font-size: var(--fs-xs, 12.5px); }
-.weak-picker-group-head .ghost-btn { padding: 6px 12px; font-size: var(--fs-xs, 12.5px); }
-.weak-picker-group-head .ghost-btn:nth-of-type(1) { margin-left: auto; }
-.weak-picker-group-empty, .weak-picker-empty {
-  margin: 6px 2px 0;
   color: var(--muted);
-  font-size: var(--fs-xs, 12.5px);
-  line-height: 1.7;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background .12s ease, border-color .12s ease, color .12s ease;
 }
-.weak-picker-empty { margin-top: 20px; }
+.weak-cal-day:hover:not(:disabled) { border-color: var(--line-strong); color: var(--text); }
+.weak-cal-day.has-1 { background: rgba(63, 111, 158, .10); color: var(--text-soft); border-color: transparent; }
+.weak-cal-day.has-2 { background: rgba(63, 111, 158, .22); color: var(--text); border-color: transparent; }
+.weak-cal-day.has-3 { background: rgba(63, 111, 158, .36); color: #fff; border-color: transparent; }
+.weak-cal-day.has-4 { background: rgba(63, 111, 158, .54); color: #fff; border-color: transparent; }
+.weak-cal-day.has-5 { background: var(--accent); color: #fff; border-color: transparent; }
+.weak-cal-day.is-today { font-weight: 700; }
+.weak-cal-day.is-today::after {
+  content: ""; position: absolute; left: 50%; bottom: 5px; width: 4px; height: 4px;
+  margin-left: -2px; border-radius: 50%; background: currentColor; opacity: .55;
+}
+.weak-cal-day.is-on { box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--accent); }
+.weak-cal-day.is-future { color: var(--faint); background: transparent; border-style: dashed; cursor: default; }
 
-.weak-picker-bar {
-  /* 吸底：词表再长也能随时确认，不用先滚到底 */
-  position: sticky;
-  bottom: 12px;
-  z-index: 6;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-top: 22px;
-  padding: 14px 16px;
+/* 当天标题 */
+.weak-day-head { display: flex; align-items: center; gap: 10px; margin: 24px 0 12px; }
+.weak-day-head h3 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: .01em; }
+.weak-day-count { color: var(--muted); font-size: 13px; }
+.weak-day-head .ghost-btn { margin-left: auto; padding: 6px 12px; font-size: 12.5px; }
+
+/* 词表 */
+.weak-list { display: flex; flex-direction: column; gap: 8px; }
+.weak-row {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%;
+  padding: 13px 16px;
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   background: var(--surface);
-  box-shadow: 0 -12px 28px -22px rgba(14, 15, 17, 0.5);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
 }
-.weak-picker-bar #weakPickerCount { font-size: var(--fs-body, 15px); font-weight: 500; }
-.weak-picker-bar #weakPickerHint {
-  flex: 1 1 260px;
-  color: var(--muted);
-  font-size: var(--fs-xs, 12.5px);
-  line-height: 1.6;
+.weak-row:hover { border-color: var(--line-strong); box-shadow: var(--shadow-sm); }
+.weak-row-word { font-size: 16.5px; font-weight: 600; letter-spacing: .01em; }
+.weak-row-ph { color: var(--faint); font-size: 12.5px; white-space: nowrap; }
+.weak-row-def {
+  margin-left: auto; max-width: 52%;
+  color: var(--muted); font-size: 13px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.weak-row-box {
+  flex: 0 0 18px; width: 18px; height: 18px;
+  border: 1.5px solid var(--line-strong); border-radius: 6px;
+  background: var(--surface);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.weak-row-box.is-on { border-color: var(--accent); background: var(--accent); }
+.weak-row-box.is-on::after { content: "✓"; color: #fff; font-size: 12px; line-height: 1; }
+.weak-row.is-picking { background: var(--surface-2); }
+.weak-row.is-picking:hover { background: var(--surface); }
+
+.weak-empty { margin-top: 36px; padding: 36px 16px; border: 1px dashed var(--line-strong); border-radius: var(--r-md); text-align: center; color: var(--muted); font-size: 14px; }
+
+/* 选词模式底部条 */
+.weak-picker-bar {
+  position: sticky; bottom: 12px;
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 18px; padding: 12px 16px;
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+.weak-picker-bar span { color: var(--text-soft); font-size: 13.5px; }
 .weak-picker-bar .primary-btn { margin-left: auto; }
-.weak-picker-bar.is-warn { border-color: var(--warn); background: linear-gradient(var(--warn-soft), var(--warn-soft)), var(--surface); }
-.weak-picker-bar.is-warn #weakPickerHint { color: var(--warn); }
-.weak-picker-bar.is-low { border-color: var(--line-strong); }
 
-@media (min-width: 861px) {
-  #view-weak-words.is-active {
-    display: block;
-    height: 100%;
-    min-height: 0;
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior-y: contain;
-    scrollbar-gutter: stable;
-  }
-  #view-weak-words .weak-picker-page { min-height: 100%; padding-bottom: 36px; }
-}
-@media (max-width: 860px) {
-  /* 这里不能写 overflow-x:hidden + overflow-y:visible：
-     两者混用会让 y 被算成 auto，整块变成不滚动的容器，吸底确认条就失效了 */
-  #view-weak-words.is-active { overflow: visible; }
-}
+/* hidden 属性要压过 .ghost-btn / flex 的 display */
+.weak-picker-bar[hidden], .weak-day-head .ghost-btn[hidden] { display: none; }
+
 @media (max-width: 720px) {
-  .weak-picker-group { padding: 14px; }
-  .weak-picker-group-head .ghost-btn:nth-of-type(1) { margin-left: 0; }
-  .weak-picker-tip .ghost-btn, .weak-picker-bar .primary-btn { margin-left: 0; width: 100%; }
-  .weak-picker-bar #weakPickerHint { flex-basis: 100%; }
-
-  /* 卡片头：标题与入口按钮同一行，计数独占第二行，避免计数被折成两行 */
-  .weak-pool-card .writing-card-head #weakPoolCount { order: 3; flex: 1 0 100%; text-align: left; }
-  .weak-pool-card .writing-card-head #btnOpenWeakPicker { margin-left: auto; }
-
-  /* 确认条吸底，抬起到底部导航上方；页面底部留出条+导航的高度 */
-  #view-weak-words .weak-picker-page { padding-bottom: 96px; }
-  .weak-picker-bar {
-    margin-top: 16px;
-    bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 8px);
-  }
+  .weak-head { gap: 10px; }
+  .weak-head .page-title { font-size: 22px; order: -1; width: 100%; }
+  .weak-month { margin-left: 0; }
+  .weak-cal { padding: 12px 10px; gap: 4px; }
+  .weak-cal-day { height: 38px; font-size: 12px; border-radius: 8px; }
+  .weak-row-def { max-width: 38%; }
+  .weak-picker-bar { bottom: 68px; }
 }
