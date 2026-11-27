@@ -1,4 +1,4 @@
-﻿// 用 node 跑：node tests/scheduler.test.js
+// 用 node 跑：node tests/scheduler.test.js
 // 只测 assets/modules/core/scheduler.js（学习期走 schedule.js、复习期走 ts-fsrs 6.0.1）。
 const Sch = require('../assets/modules/core/scheduler.js');
 const S = require('../assets/schedule.js');
@@ -55,7 +55,9 @@ for (let i = 0; i < 6; i++) {
   chain.push(Math.round(rec.iv / DAY));
   t = rec.dueAt;
 }
-// FSRS-6 在 S=1 天、难度 ~2.1 的复习卡上点「熟悉」，给的间隔比老的 1/2/4/7 阶梯激进：\n// 1 天 → 6 天 → 27 天 → 102 天 → 328 天 →（封顶）365 天\n eq('一路熟悉的天数序列', chain.join(','), '6,27,102,328,365,365');
+// FSRS-6 在 S=1 天、难度 ~2.1 的复习卡上点「熟悉」，95% 保持率下给的间隔：
+// 1 天 → 3 天 → 7 天 → 18 天 → 40 天 → 84 天（90% 时是 6/27/102/328）
+eq('一路熟悉的天数序列', chain.join(','), '3,7,18,40,84,165');
 eq('全都封在 365 天以内', Math.max.apply(null, chain) <= 365, 'true');
 eq('复习期用的是 FSRS 卡片', rec.fsrs.sch, 6);
 

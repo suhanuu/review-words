@@ -23,7 +23,7 @@ Node 里 `require()` 也直接拿到导出对象。
 
 - 只用同步接口 `new FSRS(参数)` + `fsrs.repeat(card, now)[Rating.X]`，
   不用 6.x 新增的异步 `DefaultScheduler`——页面是同步 IIFE，异步会把评分链路整条改掉。
-- 参数：`request_retention 0.9`、`maximum_interval 365`、`enable_fuzz false`、
+- 参数：`request_retention 0.95`（考研要认得牢）、`maximum_interval 365`、`enable_fuzz false`、
   `learning_steps/relearning_steps ['15m']`、`w` 显式取库里的 `default_w`（就是 FSRS-6 那 21 个权重）。
 - 库的默认 `maximum_interval` 是 36500 天（100 年），不设就会被排到几十年后。
 
@@ -31,7 +31,7 @@ Node 里 `require()` 也直接拿到导出对象。
 
 `node tests/scheduler.test.js` 里钉了两条曲线：
 
-- 1 天稳定度的复习卡一路点“熟悉”：6 → 27 → 102 → 328 →（封顶）365 天；
+- 1 天稳定度的复习卡一路点“熟悉”：3 → 7 → 18 → 40 → 84 → 165 天（95% 保持率）；
 - 一直点下去也不会出现超过 365 天的间隔。
 
 换版本时这两条会因为权重变化而失败——那是提醒你重新确认行为，不是测试写错了。

@@ -132,5 +132,6 @@ node tests/today.e2e.mjs        # 今天页：两个入口、今日单词、跨�
   记录里写 `fsrs.sch = 6`，重复打开不会二次折算；
 - 已经毕业的老词（`done = 1`）保持不再出现。
 
-`tests/scheduler.test.js` 里钉死的曲线是 6 → 27 → 102 → 328 →（封顶）365 天。
-换 ts-fsrs 版本时如果这两条挂了，说明权重变了，要重新确认行为，别直接改期望值。
+`tests/scheduler.test.js` 里钉死的曲线是 95% 保持率下的 3 → 7 → 18 → 40 → 84 → 165 天。
+换 ts-fsrs 版本、或调整 `core/scheduler.js` 的 `request_retention` 时，这条会挂——
+那是提醒你重新确认行为，别直接改期望值。

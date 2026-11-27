@@ -61,7 +61,7 @@
     var L = lib();
     if (!L) return null;
     var params = {
-      request_retention: 0.9,     // 目标记忆保持率
+      request_retention: 0.95,    // 目标记忆保持率（考研要认得牢，用 95% 而不是库默认的 90%）
       maximum_interval: MAX_DAYS, // 封顶 365 天（库默认是 100 年）
       enable_fuzz: false,         // 关随机抖动：同一天同样的评分结果可复现
       enable_short_term: true,    // 忘了之后按 15 分钟步长再练
