@@ -126,8 +126,16 @@ GitHub Pages 只能托管静态文件，不能安全保存 Gemini/Groq/OpenRoute
 ### 后续待做
 - `assets/app.js` 仍是一个 IIFE（约 2,870 行），按功能继续拆成独立模块：
   背词 / 今天 / 书架 / 词库与收藏 / 统计与图表 / 打字与键盘手型。
-- 已拆出第一块：`assets/modules/drill/keyboard.js`（虚拟键盘、键位高亮、手部图层、
-  hands.js 懒加载），约定 `window.RWKeyboard.create({ el, state })`，app.js 只传上下文。
+- 已拆出的模块（`window.RW<名字>.create(ctx)` 约定，app.js 只组装上下文）：
+  - `core/`：store（统一存储）、ui-toast（提示条）、scheduler（FSRS-6）、
+    review-log（复习日志）、format（日期/时长/文案）
+  - `drill/keyboard.js`：虚拟键盘、键位高亮、手部图层、hands.js 懒加载
+  - `pages/`：today（今天页）、drill（背词流程 + 秒表）、stats（统计与图表）、
+    words（词库）、favs（收藏）、bookshelf（书架）、detail（详细资料）、typing（全屏打字）
+- `app.js` 从 3,100 行降到 900 行左右，只剩：存储与记录、取词池、状态、
+  提示音与发音、视图切换、设置抽屉、bind()、启动。
+- `reviewwords-enhancements.js` 已用 prettier 展开成正常排版（1,215 行），
+  功能还没并进对应模块，是下一步。
 - `assets/modules/reviewwords-enhancements.js` 还是压行的写法，先展开再按功能并入模块。
 - 拆分前先给作文、打字、统计、书架补自动化测试（打字与手部懒加载已有
   `tests/lazy-hands.e2e.mjs` 打底）。
