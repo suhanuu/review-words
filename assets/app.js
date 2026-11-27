@@ -22,8 +22,7 @@
     sound: true,
     autoplay: true,
     fontScale: 1,
-    dailyGoal: 10,     // 学习目标（今天新学几个），学习页右上角可以改
-    reviewGoal: 10     // 复习目标（今天复习几个）
+    dailyGoal: 10      // 学习目标（今天新学几个），学习页右上角可以改
   };
 
   var el = function (id) { return document.getElementById(id); };

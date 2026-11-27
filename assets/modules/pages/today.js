@@ -4,7 +4,7 @@
    顶栏那个「待复习 N」小格子。
 
    页面自己不判题、不排期，只把外面算好的数摆上去：
-     stats.dailyGoal() / reviewGoal() / dayStats()   目标与今日完成数
+     stats.dailyGoal() / dayStats()                 目标与今日完成数
      batchStats() / BATCH_SIZE                        今天这批的进度
      reviewPool() / dueCount() / overdueCount()       到期、逾期、下一个多久回来
      nextDueIn() / fmt.countdownText()                倒计时文案
@@ -43,7 +43,6 @@ window.RWToday = {
     var left = Math.max(0, total - done);
 
     var goalL = Stats.dailyGoal();
-    var goalR = Stats.reviewGoal();
     var ds = Stats.dayStats(todayKey());
     var learnedCount = ctx.learnedToday();
     var due = reviewPool(Date.now());
@@ -99,11 +98,10 @@ window.RWToday = {
     el('todayDate').textContent = dateLabel();
   }
 
-  // 学习设置（今天页右上角）：学习目标 / 复习目标，后续别的可调项也放这个弹层里
+  // 学习设置（今天页右上角）：只调「每天新学几个」
   function openGoalPop() {
     var input = el('goalInput');
     input.value = String(Stats.dailyGoal());
-    el('goalReviewInput').value = String(Stats.reviewGoal());
     el('goalPop').hidden = false;
     input.focus();
     input.select();
@@ -136,12 +134,9 @@ window.RWToday = {
       el('btnGoalCancel').addEventListener('click', closeGoalPop);
       el('btnGoalSave').addEventListener('click', function () {
         var n = Math.round(Number(el('goalInput').value));
-        var r = Math.round(Number(el('goalReviewInput').value));
-        if (!(n > 0)) { el('goalInput').focus(); return; }
-        if (!(r > 0)) { el('goalReviewInput').focus(); return; }
-        ctx.db().settings.dailyGoal = Math.min(999, n);
-        ctx.db().settings.reviewGoal = Math.min(999, r);
-        ctx.save();
+          if (!(n > 0)) { el('goalInput').focus(); return; }
+          ctx.db().settings.dailyGoal = Math.min(999, n);
+          ctx.save();
         closeGoalPop();
         renderToday();
       });

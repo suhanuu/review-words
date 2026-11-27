@@ -75,10 +75,7 @@ window.RWStats = {
     return n > 0 ? Math.round(n) : 10;
   }
 
-  function reviewGoal() {
-    var n = Number(data().settings.reviewGoal);
-    return n > 0 ? Math.round(n) : 10;
-  }
+
 
 
   function renderStats() {
@@ -572,8 +569,7 @@ window.RWStats = {
       hideAllChartTips: hideAllChartTips,
       dayStats: dayStats,
       todayDoneCount: todayDoneCount,
-      dailyGoal: dailyGoal,
-      reviewGoal: reviewGoal
+      dailyGoal: dailyGoal
     };
   }
 };
