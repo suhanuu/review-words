@@ -89,7 +89,7 @@ window.RWDrill = {
       el('doneTitle').textContent = nextAt
         ? '下一个词 ' + countdownText(nextAt) + '后回来'
         : '这本书暂时没有要复习的词了';
-      setDonePrimary(due ? '继续复习' : '回今天', due ? 'review' : 'today');
+      setDonePrimary(due ? '继续复习' : '返回', due ? 'review' : 'today');
     } else {
       el('doneKicker').textContent = '今天的新词学完了';
       el('doneTitle').textContent = (st.total || BATCH_SIZE) + ' 个今天都过了一遍';

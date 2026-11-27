@@ -705,7 +705,7 @@
 
     el('btnDrillBack').addEventListener('click', function () { setView('today'); });
 
-    // 收尾卡：主按钮跟着场景变（去复习 / 再学 10 个 / 回今天）
+    // 收尾卡：主按钮跟着场景变（去复习 / 再学 10 个 / 返回）
     el('btnDonePrimary').addEventListener('click', function () {
       var action = this.dataset.action;
       if (action === 'review') Drill.startReview();
